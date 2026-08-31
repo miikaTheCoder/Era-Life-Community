@@ -20,13 +20,16 @@ comments and original formatting. Everything functional is here.
 6. Replace the old `EraLife.exe` + `EraLife.pck` with the new pair. Both files
    together — an old exe with a new pck can break in confusing ways.
 
-The reconstructed pck did not contain export presets. Portable Linux and Windows
-Desktop presets have now been added in `export_presets.cfg`. See the repository
+The reconstructed pck did not contain export presets. Portable Linux, Windows
+Desktop, and macOS presets have now been added in `export_presets.cfg`. See the repository
 [build instructions](../README.md) for command-line setup, exports, and output paths.
 
 ---
 
 ## What was verified
+
+This section records the original reconstruction checks. For the current desktop
+entry flows, aging, and save/reload checks, see [desktop gameplay validation](../docs/DESKTOP-GAMEPLAY.md).
 
 - **334/334 scripts parse with zero errors** under Godot 4.4.1.
 - **Project boots headless with no script errors** (`--headless --quit-after 300`).

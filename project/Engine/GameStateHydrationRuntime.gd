@@ -4123,6 +4123,8 @@ func _apply_live_person_row(npc, row: Dictionary, target_year: int) -> void:
 	for key in array_keys:
 		if row.has(key) and key in npc and typeof(row.get(key)) == TYPE_ARRAY:
 			npc.set(key, row.get(key).duplicate(true))
+	if npc is Person:
+		npc.normalize_relationship_ids()
 
 	if npc.has_method("set_meta"):
 		npc.set_meta("last_temporal_biology_year", target_year)
@@ -5201,6 +5203,17 @@ func _resolve_save_slice_contracts() -> Array:
 
 	if out.is_empty():
 		out = _fallback_legacy_save_slice_contracts()
+	# Checkpoints also carry the bounded diary authority, which must resume
+	# before another age-up event is appended to the restored life.
+	if not out.any(func(row): return row is Dictionary and row.get("save_key", row.get("id", "")) == "life_diary_contract_engine_state"):
+		out.append({
+			"id": "life_diary_contract_engine_state",
+			"save_key": "life_diary_contract_engine_state",
+			"engine_id": "life_diary_contract_engine",
+			"import_method": "import_state",
+			"hydration_phase": PHASE_SYSTEM_STATE,
+			"required": false,
+		})
 
 	return out
 

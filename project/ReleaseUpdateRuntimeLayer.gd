@@ -63,6 +63,19 @@ func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
+func _ready() -> void:
+	# Desktop community releases are updated through their own GitHub releases.
+	# Keep the original verification code/key intact, but do not poll or apply
+	# the upstream stable channel to a fork. Android retains its existing policy.
+	if not bool(ProjectSettings.get_setting_with_override("community/updates/allow_upstream_runtime")):
+		set_process(false)
+		last_release_update_report = {
+			"success": true,
+			"stage": "disabled_for_community_desktop",
+			"manual_updates": true,
+		}
+
+
 func _process(_delta: float) -> void:
 	var now_ms: int = int(
 		Time.get_ticks_msec()

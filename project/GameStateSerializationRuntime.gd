@@ -494,6 +494,11 @@ func _interactive_checkpoint_actor_ids(
 			queue.append(
 				int(raw_id)
 			)
+	# A created household may include friends or roommates outside the family
+	# graph. Keep those authored members in the same bounded checkpoint.
+	var household_index: Dictionary = gs.scenario_state.get("custom_household_member_index", {})
+	for raw_id in household_index.values():
+		queue.append(int(raw_id))
 
 	while (
 		not queue.is_empty()
@@ -567,7 +572,18 @@ func _interactive_checkpoint_scenario_capsule(
 		"royalty_institution_state",
 		"career_ecosystem_state",
 		"reality_mode",
-		"reality_feature_overrides"
+		"reality_feature_overrides",
+		"custom_household_spawn_contract",
+		"custom_household_member_index",
+		"custom_household_start_person_key",
+		"custom_household_spawned",
+		"custom_household_existing_life_start",
+		"custom_household_birth_intro_suppressed",
+		"choose_adventure",
+		"choose_adventure_birth_trigger",
+		"narrative_birth_bias",
+		"choose_adventure_lineage_birth",
+		"active_lineage_birth_contract"
 	]
 	var capsule: Dictionary = {}
 
@@ -584,6 +600,37 @@ func _interactive_checkpoint_scenario_capsule(
 		var actor_id: int = int(raw_actor_id)
 		if actor_id > 0:
 			switch_actor_keys [str(actor_id)] = true
+
+	# Preserve the visible diary for saved actors without serializing every
+	# resident NPC's history or UI caches.
+	var diary_rows: Dictionary = gs.scenario_state.get("life_diary_state_by_npc", {})
+	var saved_diaries: Dictionary = {}
+	for actor_key in switch_actor_keys:
+		if diary_rows.has(actor_key):
+			saved_diaries[actor_key] = diary_rows[actor_key].duplicate(true)
+		if gs.life_diary_contract_engine != null:
+			var entries: Array = gs.life_diary_contract_engine.diary_entries_for_actor(int(actor_key), {"read_only": true})
+			if not entries.is_empty():
+				var row: Dictionary = saved_diaries.get(actor_key, {})
+				row["entries"] = entries.duplicate(true)
+				saved_diaries[actor_key] = row
+	capsule["life_diary_state_by_npc"] = saved_diaries
+	# Keep the authority's event IDs/deduplication state as well as its rendered
+	# entries, so continuing the diary after reload cannot replay old events.
+	if gs.life_diary_contract_engine != null:
+		var diary_engine = gs.life_diary_contract_engine
+		var saved_engine: Dictionary = {"schema": LifeDiaryContractEngine.ENGINE_SCHEMA, "version": 1, "sequence": diary_engine.sequence}
+		for field in ["actor_streams", "actor_dedupe_index", "actor_signatures"]:
+			var source: Dictionary = diary_engine.get(field)
+			var selected: Dictionary = {}
+			for actor_key in switch_actor_keys:
+				if source.has(actor_key):
+					selected[actor_key] = source[actor_key]
+			saved_engine[field] = selected.duplicate(true)
+		capsule["life_diary_contract_engine_state"] = saved_engine
+	for snapshot_key in ["prebuilt_first_frame_ui_snapshot", "zero_frame_consciousness_switch_surface"]:
+		if capsule.get(snapshot_key) is Dictionary:
+			capsule[snapshot_key] = _checkpoint_presentation_snapshot(capsule[snapshot_key])
 
 	var packet_cache_raw: Variant = gs.scenario_state.get(
 		"profile_pointer_packet_by_actor",
@@ -756,6 +803,40 @@ func _interactive_checkpoint_scenario_capsule(
 
 	return capsule
 
+func _checkpoint_presentation_snapshot(source: Dictionary) -> Dictionary:
+	var snapshot := source.duplicate(true)
+	if gs == null or gs.player == null:
+		return snapshot
+	var actor: Person = gs.player
+	snapshot["year"] = int(gs.year)
+	snapshot["age"] = actor.age
+	snapshot["actor_id"] = actor.id
+	snapshot["player_id"] = actor.id
+	snapshot["actor_name"] = (actor.first_name + " " + actor.last_name).strip_edges()
+	for field in ["first_name", "last_name", "alive", "bank_balance"]:
+		snapshot[field] = actor.get(field)
+	snapshot["money"] = actor.bank_balance
+	snapshot["dead"] = not actor.alive
+	var stats: Dictionary = snapshot.get("stats", {}).duplicate(true)
+	for field in ["health", "hunger", "looks", "smarts", "mental_health", "imagination", "willpower"]:
+		stats[field] = actor.get(field)
+		snapshot[field] = actor.get(field)
+	snapshot["stats"] = stats
+	var entries: Array = gs.scenario_state.get("life_diary_state_by_npc", {}).get(str(actor.id), {}).get("entries", [])
+	if gs.life_diary_contract_engine != null:
+		var current_entries: Array = gs.life_diary_contract_engine.diary_entries_for_actor(actor.id, {"read_only": true})
+		if not current_entries.is_empty():
+			entries = current_entries
+	var lines: Array = []
+	for entry in entries:
+		var entry_lines: Array = entry if entry is Array else entry.get("lines", []) if entry is Dictionary else [str(entry)]
+		lines.append_array(entry_lines)
+		lines.append("")
+	if not lines.is_empty():
+		snapshot["life_diary_lines"] = lines
+	return snapshot
+
+
 func _build_interactive_checkpoint_payload(
 	options: Dictionary = {}
 ) -> Dictionary:
@@ -834,6 +915,7 @@ func _build_interactive_checkpoint_payload(
 			else 0
 		),
 		"npcs": npc_rows,
+		"world_feed": gs.world_feed.duplicate(true),
 		"controlled_lineage_ids": (
 			gs.controlled_lineage_ids.duplicate()
 			if typeof(
@@ -842,6 +924,7 @@ func _build_interactive_checkpoint_payload(
 			else []
 		),
 		"scenario_state": scenario_capsule,
+		"life_diary_contract_engine_state": scenario_capsule.get("life_diary_contract_engine_state", {}),
 		"custom_mode": bool(gs.custom_mode),
 		"custom_settings": gs.custom_settings,
 		"reality_mode": gs.reality_mode,
@@ -960,6 +1043,9 @@ func save_interactive_reality_checkpoint(
 
 	var live_options: Dictionary = (
 		options.duplicate(false)
+	)
+	live_options["checkpoint_first_frame_snapshot"] = _checkpoint_presentation_snapshot(
+		_safe_dictionary(options.get("checkpoint_first_frame_snapshot", {}))
 	)
 	live_options ["interactive_save"] = true
 	live_options [

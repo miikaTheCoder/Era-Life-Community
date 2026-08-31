@@ -10457,7 +10457,9 @@ func _wire_custom_household_relationships(anchor: Person, member_people: Diction
 
 		var member: Dictionary = raw_member as Dictionary
 		var local_key: String = str(member.get("local_key", "")).strip_edges()
-		if local_key == "" or local_key == start_key:
+		# Relationships belong to the authored household, including the member
+		# chosen as the player. Selecting that member must not erase their links.
+		if local_key == "":
 			continue
 		if not member_people.has(local_key):
 			continue
@@ -10473,6 +10475,8 @@ func _wire_custom_household_relationships(anchor: Person, member_people: Diction
 		var anchor_person: Person = anchor
 		if member_people.has(anchor_key) and member_people [anchor_key] is Person:
 			anchor_person = member_people [anchor_key]
+		if anchor_person == other:
+			continue
 
 		var relation: String = str(member.get("relationship_to_anchor", member.get("relationship_to_start", "none"))).strip_edges().to_lower()
 		_link_custom_household_relationship(anchor_person, other, relation)
@@ -14659,6 +14663,7 @@ func _deserialize_npc(d: Dictionary) -> Person:
 		var name = prop.name
 		if d.has(name):
 			p.set(name, d [name])
+	p.normalize_relationship_ids()
 
 	if typeof(p.consciousness_contract) != TYPE_DICTIONARY:
 		p.consciousness_contract = {}

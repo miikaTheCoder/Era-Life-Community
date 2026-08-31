@@ -46,6 +46,7 @@ unzip -q -o "$download_dir/$editor_archive" -d "$editor_dir"
 unzip -q -j -o "$download_dir/$templates_archive" \
     'templates/linux_debug.x86_64' 'templates/linux_release.x86_64' \
     'templates/windows_debug_x86_64.exe' 'templates/windows_release_x86_64.exe' \
+    'templates/macos.zip' \
     'templates/version.txt' -d "$template_dir"
 if [[ "$target" == android || "$target" == all ]]; then
     unzip -q -j -o "$download_dir/$templates_archive" \

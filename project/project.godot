@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="ERA-LIFE Experiment 2.0"
-config/version="0.1.2"
+config/version="0.1.3"
 run/main_scene="res://scenes/main.scn"
 run/main_scene.android="res://scenes/mobile_boot.tscn"
 config/features=PackedStringArray("4.4", "Mobile")
@@ -24,6 +24,11 @@ run/flush_stdout_on_print.android=true
 
 SelfHostRuntime="*res://SelfHostRuntimeLayer.gd"
 ReleaseUpdateRuntimeLayer="*res://ReleaseUpdateRuntimeLayer.gd"
+
+[community]
+
+updates/allow_upstream_runtime=false
+updates/allow_upstream_runtime.android=true
 
 [debug]
 

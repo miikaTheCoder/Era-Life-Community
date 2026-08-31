@@ -1189,6 +1189,25 @@ func _person_id_array(values: Array) -> Array:
 	return out
 
 
+func normalize_relationship_ids() -> void:
+	# JSON-backed saves decode numbers as floats. Array.has uses their Variant
+	# type, so leave gameplay's integer ID lookups with integer ID arrays.
+	for field in ["parents", "children", "friends", "ex_partners", "schoolmates", "coworkers"]:
+		var values: Variant = get(field)
+		if typeof(values) != TYPE_ARRAY:
+			continue
+		var normalized: Array = []
+		for value in values:
+			normalized.append(int(value) if typeof(value) in [TYPE_INT, TYPE_FLOAT] else value)
+		set(field, normalized)
+	# JSON object keys become strings, including affection's actor IDs.
+	var normalized_affection: Dictionary = {}
+	for key in affection:
+		var numeric_key: bool = typeof(key) in [TYPE_INT, TYPE_FLOAT] or (key is String and key.is_valid_int())
+		normalized_affection[int(key) if numeric_key else key] = affection[key]
+	affection = normalized_affection
+
+
 func _person_ref_id(value: Variant) -> int:
 	if value == null:
 		return -1

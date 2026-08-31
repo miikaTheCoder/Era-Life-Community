@@ -40018,7 +40018,7 @@ func _drive_luxury_exchange_shiny_audio_prewarm() -> void:
 	var cached_raw: Variant = get_meta(
 		"luxury_exchange_shiny_audio_stream_cache",
 		null
-	)
+	) if has_meta("luxury_exchange_shiny_audio_stream_cache") else null
 
 	if cached_raw is AudioStream:
 		var cached_stream: AudioStream = (
@@ -155989,14 +155989,14 @@ func _show_choose_adventure_entry_panel() -> void:
 			"footer": (
 				"Choice → pressure → world reaction → dynamic outcome."
 			),
-			"button_text": "Almost Done!",
+			"button_text": "Almost Done!" if MobileSupport.is_enabled() else "Begin Adventure",
 			"accent": Color(
 				0.6,
 				0.42,
 				0.72
 			),
 			"button_role": "narrative_alive",
-			"demo_temporarily_unavailable": true,
+			"demo_temporarily_unavailable": MobileSupport.is_enabled(),
 			"min_width": 350.0,
 			"min_height": 570.0
 		},
@@ -156010,14 +156010,14 @@ func _show_choose_adventure_entry_panel() -> void:
 				+ "then choose whose life you enter."
 			),
 			"footer": "Full Family control",
-			"button_text": "Almost Done!",
+			"button_text": "Almost Done!" if MobileSupport.is_enabled() else "Create Household",
 			"accent": Color(
 				0.76,
 				0.28,
 				0.19
 			),
 			"button_role": "household_alive",
-			"demo_temporarily_unavailable": true,
+			"demo_temporarily_unavailable": MobileSupport.is_enabled(),
 			"min_width": 350.0,
 			"min_height": 570.0
 		},
@@ -158913,12 +158913,23 @@ func _schedule_finish_choose_ereality_entry_after_shell_frame() -> void:
 
 	call_deferred("_finish_choose_ereality_entry_after_shell_prewarm")
 func _on_choose_adventure_entry_pressed() -> void:
+	if bool(get_meta("narrative_entry_pending", false)):
+		return
+	set_meta("narrative_entry_pending", true)
 	_ensure_choose_adventure_preboot_engines()
-	_hide_choose_adventure_entry_panel()
+	# A click during the menu's first paint may defer engine initialization.
+	# Keep the menu available until the scenario service can accept the request.
+	var deadline := Time.get_ticks_msec() + 5000
+	while gs != null and gs.choose_adventure_engine == null and Time.get_ticks_msec() < deadline:
+		await get_tree().create_timer(0.05).timeout
+		_ensure_choose_adventure_preboot_engines()
+	set_meta("narrative_entry_pending", false)
 
 	if gs == null or gs.choose_adventure_engine == null:
+		push_warning("Narrative mode could not initialize. The mode menu remains available.")
 		return
 
+	_hide_choose_adventure_entry_panel()
 	var result: Dictionary = gs.choose_adventure_engine.start_adventure()
 	_refresh_choose_adventure_scenario_panel(result)
 
@@ -158961,9 +158972,9 @@ func _on_choose_household_entry_pressed() -> void:
 			"prebuilt_surface_missing"
 		)
 
-		call_deferred(
-			"_prebuild_household_creator_surface_hidden"
-		)
+		if not bool(get_meta("household_entry_pending", false)):
+			set_meta("household_entry_pending", true)
+			call_deferred("_finish_household_entry_preparation")
 		return
 
 	_hide_choose_adventure_entry_panel()
@@ -158990,6 +159001,13 @@ func _on_choose_household_entry_pressed() -> void:
 		"choose_household_entry_pressed"
 	)
 	_surface_guard_release_deferred("household_creator", 0.35)
+func _finish_household_entry_preparation() -> void:
+	_prebuild_household_creator_surface_hidden()
+	await get_tree().process_frame
+	set_meta("household_entry_pending", false)
+	if is_instance_valid(choose_adventure_entry_overlay) and choose_adventure_entry_overlay.visible:
+		_on_choose_household_entry_pressed()
+
 func _show_household_creator_panel(
 	reveal_surface: bool = true
 ) -> void:
@@ -160175,27 +160193,14 @@ func _on_household_creator_continue_pressed() -> void:
 
 func _begin_household_final_life_prewarm(auto_start_single: bool) -> void:
 	var contract: Dictionary = _household_creator_final_contract()
-	var settings: Dictionary = _household_creator_settings_from_contract(contract)
+	household_creator_pending_settings = _household_creator_settings_from_contract(contract)
+	# Choose the controlled actor before constructing the runtime. This avoids
+	# building a first-player UI and then trying to retarget its cached identity.
+	if auto_start_single:
+		_on_household_start_candidate_pressed("person_0")
+	else:
+		_show_household_start_selection_panel()
 
-	household_creator_pending_settings = settings.duplicate(true)
-
-	if household_creator_active_draft_id.strip_edges() != "":
-		MainSceneLogic._household_creator_remove_unfinished_draft(gs, household_creator_active_draft_id)
-
-	set_meta("household_creator_auto_start_after_prewarm", auto_start_single)
-	set_meta("household_creator_auto_start_key", "person_0")
-	set_meta("household_creator_waiting_for_start_selection", true)
-
-	if household_creator_status_label != null and is_instance_valid(household_creator_status_label):
-		if auto_start_single:
-			household_creator_status_label.text = "Prewarming this solo household life. No family members will be created."
-		else:
-			household_creator_status_label.text = "Prewarming full household life. Start selection will appear when ready."
-
-	if household_creator_prewarm_progress_bar != null and is_instance_valid(household_creator_prewarm_progress_bar):
-		household_creator_prewarm_progress_bar.value = 0.05
-
-	_queue_god_mode_life_prewarm_from_settings(settings, "prewarm_button_pressed", true)
 func _household_creator_show_choice_prompt(title_text: String, body_text: String, yes_text: String, no_text: String, yes_callable: Callable, no_callable: Callable) -> void:
 	_household_creator_close_choice_prompt()
 
@@ -161675,17 +161680,15 @@ func _on_choose_adventure_choice_pressed(choice_id: String) -> void:
 
 
 func _begin_life_from_choose_adventure_result(result: Dictionary) -> void:
-	if choose_adventure_scenario_panel != null and is_instance_valid(choose_adventure_scenario_panel):
-		choose_adventure_scenario_panel.hide_panel()
+	if bool(get_meta("prepared_mode_entry_pending", false)):
+		return
 	var settings: Dictionary = _build_choose_adventure_life_settings(result)
-	var birth_bias_raw: Variant = result.get("birth_bias", {})
-	var birth_bias: Dictionary = birth_bias_raw.duplicate(true) if typeof(birth_bias_raw) == TYPE_DICTIONARY else {}
+	# Carry authored choices into the new runtime, not just the menu's GameState.
+	settings["choose_adventure_birth_trigger"] = result.duplicate(true)
 	if gs != null and typeof(gs.scenario_state) == TYPE_DICTIONARY:
-		gs.scenario_state ["choose_adventure_birth_trigger"] = result.duplicate(true)
-		gs.scenario_state ["narrative_birth_bias"] = birth_bias.duplicate(true)
-		gs.scenario_state ["choose_adventure_lineage_birth"] = true
-		gs.scenario_state ["active_lineage_birth_contract"] = settings.get("lineage_birth_contract", {}).duplicate(true) if typeof(settings.get("lineage_birth_contract", {})) == TYPE_DICTIONARY else {}
+		settings["choose_adventure_state"] = gs.scenario_state.get("choose_adventure", {}).duplicate(true)
 	_begin_choose_adventure_life_with_settings(settings)
+
 func _build_choose_adventure_life_settings(result: Dictionary) -> Dictionary:
 	var random_settings: Dictionary = _build_random_god_mode_settings()
 	var settings: Dictionary = random_settings.duplicate(true)
@@ -161757,16 +161760,61 @@ func _build_choose_adventure_life_settings(result: Dictionary) -> Dictionary:
 func _begin_choose_adventure_life_with_settings(settings: Dictionary) -> void:
 	if gs == null:
 		return
+	# Selecting a birth path is an explicit start action, just like God Mode's
+	# Start button. Use that existing seed-creation path instead of an unknown
+	# reason that discards the seed before the residency transaction.
+	var clean_settings := _apply_god_mode_reality_candidate_to_settings(settings, "manual_start")
+	_begin_prepared_mode_life(clean_settings, "narrative")
 
-	var clean_settings: Dictionary = settings.duplicate(true)
-	clean_settings ["_god_mode_entry_kind"] = str(clean_settings.get("_god_mode_entry_kind", "choose_adventure_birth_trigger"))
-	clean_settings ["god_mode_entry_kind"] = str(clean_settings.get("god_mode_entry_kind", "choose_adventure_birth_trigger"))
-	clean_settings = _apply_god_mode_reality_candidate_to_settings(clean_settings, "choose_adventure_birth")
+func _begin_prepared_mode_life(settings: Dictionary, mode: String) -> void:
+	if bool(get_meta("prepared_mode_entry_pending", false)):
+		return
+	set_meta("prepared_mode_entry_pending", true)
+	_set_prepared_mode_loading(mode, true, "Preparing your life...")
+	_begin_god_mode_seed_crafting_session("%s_mode_start" % mode)
+	_execute_god_mode_viewer_residency_request(settings, "%s_mode_start" % mode, true)
+	call_deferred("_finish_prepared_mode_life", mode)
 
-	if choose_adventure_scenario_panel != null and is_instance_valid(choose_adventure_scenario_panel):
-		choose_adventure_scenario_panel.hide_panel()
+func _set_prepared_mode_loading(mode: String, loading: bool, message: String) -> void:
+	var surface: Control = household_creator_overlay if mode == "household" else choose_adventure_scenario_panel
+	if is_instance_valid(surface):
+		for button in surface.find_children("*", "BaseButton", true, false):
+			if loading:
+				if not button.has_meta("prepared_entry_was_disabled"):
+					button.set_meta("prepared_entry_was_disabled", button.disabled)
+				button.disabled = true
+			elif button.has_meta("prepared_entry_was_disabled"):
+				button.disabled = bool(button.get_meta("prepared_entry_was_disabled"))
+				button.remove_meta("prepared_entry_was_disabled")
+	if mode == "household" and is_instance_valid(household_creator_status_label):
+		household_creator_status_label.text = message
+	elif mode == "narrative" and is_instance_valid(choose_adventure_scenario_panel):
+		choose_adventure_scenario_panel.footer_label.text = message
 
-	_begin_god_mode_life_with_settings(clean_settings)
+func _finish_prepared_mode_life(mode: String) -> void:
+	var deadline := Time.get_ticks_msec() + 120000
+	while Time.get_ticks_msec() < deadline:
+		if _ready_door_latch_is_hot():
+			if _reveal_staged_god_mode_playable_surface_on_ready("%s_mode_entry" % mode):
+				set_meta("prepared_mode_entry_pending", false)
+				set_meta("god_mode_start_after_prewarm_requested", false)
+				_set_prepared_mode_loading(mode, false, "")
+				if mode == "household":
+					if not household_creator_active_draft_id.is_empty():
+						MainSceneLogic._household_creator_remove_unfinished_draft(gs, household_creator_active_draft_id)
+					_hide_household_creator_panel()
+				elif is_instance_valid(choose_adventure_scenario_panel):
+					choose_adventure_scenario_panel.hide_panel()
+				EraLog.truth("ERALIFE_MODE_ENTRY|mode=%s|actor_id=%d|age=%d" % [mode, gs.player.id, gs.player.age])
+				return
+		var progress := float(get_meta("reality_residency_last_observed_progress", 0.0))
+		_set_prepared_mode_loading(mode, true, "Preparing your life... %d%%" % int(progress * 100))
+		await get_tree().create_timer(0.1).timeout
+	set_meta("prepared_mode_entry_pending", false)
+	set_meta("god_mode_start_after_prewarm_requested", false)
+	_set_prepared_mode_loading(mode, false, "The life could not finish preparing. Your choices are kept; please try again.")
+	push_warning("%s mode did not reach a playable life within the preparation deadline." % mode)
+
 func _god_mode_start_panel_viewport_margin() -> Vector2:
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var horizontal_margin: float = max(18.0, round(viewport_size.x * 0.025))
@@ -167656,16 +167704,6 @@ func _apply_god_mode_life_prewarm_thread_report(
 	)
 	_refresh_god_mode_start_button_state()
 func _show_household_start_selection_panel() -> void:
-	var prewarmed_raw: Variant = get_meta("god_mode_life_prewarmed_gs", null)
-	if not (prewarmed_raw is GameState):
-		if household_creator_status_label != null and is_instance_valid(household_creator_status_label):
-			household_creator_status_label.text = "Household prewarm finished, but no valid GameState capsule was returned."
-		return
-
-	var prewarmed_gs: GameState = prewarmed_raw as GameState
-	if prewarmed_gs == null:
-		return
-
 	var settings: Dictionary = household_creator_pending_settings.duplicate(true)
 	if settings.is_empty() and typeof(gs.custom_settings) == TYPE_DICTIONARY:
 		settings = gs.custom_settings.duplicate(true)
@@ -167773,78 +167811,42 @@ func _show_household_start_selection_panel() -> void:
 		button.pressed.connect(Callable(self, "_on_household_start_candidate_pressed").bind(local_key))
 		household_creator_start_selection_list.add_child(button)
 
+	var back := Button.new()
+	back.text = "Back to household"
+	back.custom_minimum_size.y = 48
+	back.pressed.connect(func() -> void:
+		if is_instance_valid(household_creator_start_selection_overlay):
+			household_creator_start_selection_overlay.queue_free()
+		household_creator_start_selection_overlay = null
+		household_creator_start_selection_list = null
+	)
+	root.add_child(back)
+
 
 func _on_household_start_candidate_pressed(local_key: String) -> void:
-	var settings: Dictionary = household_creator_pending_settings.duplicate(true)
-	if settings.is_empty() and gs != null and typeof(gs.custom_settings) == TYPE_DICTIONARY:
-		settings = gs.custom_settings.duplicate(true)
-
-	var contract: Dictionary = _household_spawn_contract_from_settings(settings)
-	if contract.is_empty():
+	if bool(get_meta("prepared_mode_entry_pending", false)):
 		return
-
+	var settings: Dictionary = household_creator_pending_settings.duplicate(true)
+	var contract: Dictionary = _household_spawn_contract_from_settings(settings)
 	var member: Dictionary = MainSceneHelpers._household_member_contract_for_key(contract, local_key)
 	if member.is_empty():
 		return
-
-	contract ["start_person_key"] = local_key
-	settings ["household_spawn_contract"] = contract.duplicate(true)
-	settings ["first_name"] = str(member.get("first_name", settings.get("first_name", ""))).strip_edges()
-	settings ["last_name"] = str(member.get("last_name", settings.get("last_name", ""))).strip_edges()
-	settings ["gender"] = str(member.get("gender", settings.get("gender", ""))).strip_edges()
-	settings ["age"] = int(member.get("age", settings.get("age", 0)))
-	settings ["starting_age"] = int(member.get("age", settings.get("starting_age", 0)))
-	settings ["social_class"] = str(member.get("social_class", settings.get("social_class", "Middle Class")))
-	settings ["bank_balance"] = int(member.get("money", settings.get("bank_balance", 0)))
-	settings ["job"] = str(member.get("job", settings.get("job", ""))).strip_edges()
-	settings ["birth_intro_cry_allowed"] = int(settings.get("starting_age", settings.get("age", 0))) == 0
-	settings ["suppress_birth_intro_for_existing_life"] = int(settings.get("starting_age", settings.get("age", 0))) > 0
-	settings ["starting_infinity_stones"] = 0
-	settings ["start_with_red_bonnet"] = false
-	settings ["_god_mode_entry_kind"] = "household_curated_life"
-	settings ["god_mode_entry_kind"] = "household_curated_life"
-
-	var prewarmed_raw: Variant = get_meta("god_mode_life_prewarmed_gs", null)
-	if prewarmed_raw is GameState:
-		var prewarmed_gs: GameState = prewarmed_raw as GameState
-		if prewarmed_gs != null and prewarmed_gs.has_method("activate_custom_household_start"):
-			var activation_report: Dictionary = prewarmed_gs.activate_custom_household_start(local_key)
-			if not bool(activation_report.get("success", false)):
-				if household_creator_status_label != null and is_instance_valid(household_creator_status_label):
-					household_creator_status_label.text = str(activation_report.get("reason", "Could not activate household start actor."))
-				return
-
+	contract["start_person_key"] = local_key
+	settings["household_spawn_contract"] = contract
+	for field in ["first_name", "last_name", "gender", "age", "social_class", "job"]:
+		settings[field] = member.get(field, settings.get(field))
+	settings["starting_age"] = int(member.get("age", 0))
+	settings["bank_balance"] = int(member.get("money", 0))
+	for stat in member.get("stats", {}):
+		settings[stat] = member.stats[stat]
+	settings["birth_intro_cry_allowed"] = settings.starting_age == 0
+	settings["suppress_birth_intro_for_existing_life"] = settings.starting_age > 0
 	household_creator_pending_settings = settings.duplicate(true)
-
-	var selected_signature: String = _god_mode_life_prewarm_signature(settings)
-	if selected_signature != "":
-		set_meta("god_mode_life_start_prevalidated_signature", selected_signature)
-
-	var selected_prewarmed_raw: Variant = get_meta("god_mode_life_prewarmed_gs", null)
-	if selected_prewarmed_raw is GameState:
-		var selected_prewarmed_gs: GameState = selected_prewarmed_raw as GameState
-		if selected_prewarmed_gs != null and selected_prewarmed_gs.player != null and selected_signature != "":
-			set_meta("god_mode_life_prewarm_signature", selected_signature)
-			set_meta("god_mode_life_prewarm_ready", true)
-			set_meta("god_mode_life_prewarm_pending", false)
-			set_meta("god_mode_life_prewarmed_settings", settings.duplicate(true))
-			set_meta("household_start_actor_entry_prewarm_signature_retargeted", true)
-			set_meta("household_start_actor_entry_prewarm_signature", selected_signature)
-
-	_arm_playable_life_surface_authority_lock("household_start_actor_entry")
-	set_meta("household_start_actor_entry_authority_lock_active", true)
-	set_meta("household_start_actor_entry_authority_lock_reason", local_key)
-	set_meta("household_start_actor_entry_authority_lock_at_ms", int(Time.get_ticks_msec()))
-
-	if household_creator_start_selection_overlay != null and is_instance_valid(household_creator_start_selection_overlay):
+	if is_instance_valid(household_creator_start_selection_overlay):
 		household_creator_start_selection_overlay.queue_free()
 	household_creator_start_selection_overlay = null
 	household_creator_start_selection_list = null
-
-	_hide_household_creator_panel()
-
-	_begin_zero_frame_ui_render_enforcement("household_start_actor_entry", 650)
-	_begin_god_mode_life_with_settings(settings)
+	_begin_prepared_mode_life(settings, "household")
 
 func _household_spawn_contract_from_settings(settings: Dictionary) -> Dictionary:
 	var raw: Variant = settings.get("household_spawn_contract", {})
@@ -171767,7 +171769,8 @@ func _on_god_mode_viewer_prewarm_requested(
 	)
 func _execute_god_mode_viewer_residency_request(
 	panel_state: Dictionary,
-	reason: String
+	reason: String,
+	preserve_world_seed: bool = false
 ) -> void:
 	var engine:= _ensure_god_mode_contract_engine()
 
@@ -171780,7 +171783,7 @@ func _execute_god_mode_viewer_residency_request(
 		return
 
 	var prewarming_reason: String = (
-		"prewarming_button_pressed"
+		"manual_start" if preserve_world_seed else "prewarming_button_pressed"
 	)
 
 

@@ -412,6 +412,7 @@ func start_story(story_id: String = "") -> Dictionary:
 	state ["active"] = true
 	state ["catalog_open"] = false
 	state ["cycle"] = 0
+	state ["saturation"] = 0.0
 	state ["birth_ready"] = false
 	state ["birth_mode"] = ""
 	state ["current_story_id"] = clean_story_id

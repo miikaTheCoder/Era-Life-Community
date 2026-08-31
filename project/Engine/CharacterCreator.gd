@@ -128,6 +128,12 @@ func _build_character_birth_origin_contract(player: Person, settings: Dictionary
 
 
 func create_custom_player(settings: Dictionary) -> Person:
+	if settings.has("choose_adventure_state"):
+		gs.scenario_state["choose_adventure"] = settings["choose_adventure_state"].duplicate(true)
+		gs.scenario_state["choose_adventure_birth_trigger"] = settings.get("choose_adventure_birth_trigger", {}).duplicate(true)
+		gs.scenario_state["narrative_birth_bias"] = settings.get("narrative_birth_bias", {}).duplicate(true)
+		gs.scenario_state["choose_adventure_lineage_birth"] = bool(settings.get("choose_adventure_lineage_birth", false))
+		gs.scenario_state["active_lineage_birth_contract"] = settings.get("lineage_birth_contract", {}).duplicate(true)
 	if settings.has("pending_reincarnation_slot"):
 		var reincarnated_child: Person = gs.create_custom_reincarnated_child(settings)
 		if reincarnated_child != null:
@@ -225,7 +231,11 @@ func create_custom_player(settings: Dictionary) -> Person:
 	gs.apply_reality_rules_to_person(p)
 	if gs.bridge_to_terabithia_engine != null:
 		gs.bridge_to_terabithia_engine.ensure_person_imagination_state(p)
-	if bool(settings.get("choose_adventure_lineage_birth", false)) and gs.lineage_engine != null and gs.lineage_engine.has_method("create_player_from_lineage_contract"):
+	if bool(settings.get("choose_adventure_lineage_birth", false)):
+		# A resident world uses a smaller bootstrap than the menu GameState.
+		# A narrative birth still requires its lineage authority before spawning.
+		if gs.lineage_engine == null:
+			gs.lineage_engine = LineageEngine.new(gs)
 		var lineage_player: Person = gs.lineage_engine.create_player_from_lineage_contract(p, settings)
 		if lineage_player != null:
 			if settings.has("era") and gs.era_engine.eras.has(settings.era):
@@ -279,6 +289,10 @@ func create_custom_player(settings: Dictionary) -> Person:
 	father.marital_status = "Married"
 	mother.marital_status = "Married"
 	p.parents = [father.id, mother.id]
+	if not father.children.has(p.id):
+		father.children.append(p.id)
+	if not mother.children.has(p.id):
+		mother.children.append(p.id)
 	gs.npcs.append(father)
 	gs.npcs.append(mother)
 	_generate_player_siblings(p, mother, father, settings)
