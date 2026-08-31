@@ -6382,8 +6382,12 @@ func _record_phase_overflow_if_needed(phase_id: String, elapsed_ms: int) -> Dict
 		report ["degradation_applied"] = true
 
 	runtime_phase_overflow_log.append(report)
-	if runtime_phase_overflow_log.size() > 80:
-		runtime_phase_overflow_log = runtime_phase_overflow_log.slice(runtime_phase_overflow_log.size() - 80, runtime_phase_overflow_log.size())
+	# Copying 80 nested diagnostic reports cost ~54 ms per frame on the phone.
+	# Keep a shorter diagnostic history there; the runtime guard still receives
+	# every overflow and applies exactly the same degradation policy.
+	var history_limit := 8 if MobileSupport.is_enabled() else 80
+	if runtime_phase_overflow_log.size() > history_limit:
+		runtime_phase_overflow_log = runtime_phase_overflow_log.slice(runtime_phase_overflow_log.size() - history_limit, runtime_phase_overflow_log.size())
 
 	if gs != null and typeof(gs.scenario_state) == TYPE_DICTIONARY:
 		gs.scenario_state ["age_up_runtime_phase_overflow_log"] = runtime_phase_overflow_log.duplicate(true)

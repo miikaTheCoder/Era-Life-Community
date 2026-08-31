@@ -5882,6 +5882,26 @@ func _service_rehydration_record(
 		)
 		return
 
+	# Saves without an embedded resume contract reach this decode path. They
+	# need the same engine-graph worker as the prebuilt-resume path above.
+	# Otherwise the ready tail fails with checkpoint_engine_graph_worker_missing.
+	var hot_chassis := bool(record.get("used_hot_chassis", false))
+	record["resident_chassis_tail_complete"] = hot_chassis
+	if not hot_chassis:
+		var graph_worker := Thread.new()
+		var graph_error := graph_worker.start(
+			Callable(self, "_hydrate_checkpoint_engine_graph_on_worker").bind(
+				resident_gs, signature, str(checkpoint_candidate.get("checkpoint_path", ""))
+			),
+			Thread.PRIORITY_LOW
+		)
+		if graph_error != OK:
+			_fail_record(record, signature, "checkpoint_engine_graph_worker_start_failed", {"error": graph_error})
+			return
+		checkpoint_engine_graph_threads[signature] = graph_worker
+		record["checkpoint_engine_graph_worker_active"] = true
+		record["checkpoint_engine_graph_worker_started_at_ms"] = int(Time.get_ticks_msec())
+
 	var ready_at_ms: int = int(Time.get_ticks_msec())
 
 	record ["runtime_ref"] = resident_gs
@@ -7799,6 +7819,26 @@ func _service_ready_checkpoint_tail(
 
 
 		return
+	# UI projections can keep polling a worker that needs the saved state.
+	# Advance the existing one-item hydration slice before that early return;
+	# the visible-shell projection lane above still gets a turn each frame.
+	if bool(
+		record.get(
+			"checkpoint_payload_apply_pending",
+			false
+		)
+	):
+		if not _service_ready_checkpoint_payload_tail(
+			signature,
+			record,
+			resident_gs
+		):
+			return
+
+		record = _record_for(
+			signature
+		)
+
 	var early_projection_lane: Dictionary = (
 		_service_checkpoint_interactive_projection_lane(
 			signature,
@@ -7822,26 +7862,6 @@ func _service_ready_checkpoint_tail(
 	record = _record_for(
 		signature
 	)
-
-
-
-
-	if bool(
-		record.get(
-			"checkpoint_payload_apply_pending",
-			false
-		)
-	):
-		if not _service_ready_checkpoint_payload_tail(
-			signature,
-			record,
-			resident_gs
-		):
-			return
-
-		record = _record_for(
-			signature
-		)
 
 	var projection_terminal: bool = (
 		bool(
@@ -8766,6 +8786,21 @@ func _ready_resident_waiting_for_first_lens_signature() -> String:
 
 	return ""
 
+func _pending_detached_checkpoint_signature() -> String:
+	if attached_signature.is_empty():
+		return ""
+	for raw_key in active_service_keys:
+		var key := str(raw_key)
+		if not key.begins_with("resident:"):
+			continue
+		var signature := key.trim_prefix("resident:")
+		if signature == attached_signature:
+			continue
+		var record := _record_for(signature)
+		if str(record.get("state", "")) in ["checkpoint_resolution_pending", "rehydration_pending"]:
+			return signature
+	return ""
+
 func _ensure_service_pump() -> void:
 	if active_service_keys.is_empty():
 		service_pump_armed = false
@@ -8835,6 +8870,7 @@ func _ensure_service_pump() -> void:
 				)
 			) == "ready"
 			and all_attached_publication_terminal
+			and _pending_detached_checkpoint_signature().is_empty()
 		):
 			service_pump_armed = false
 
@@ -8981,6 +9017,22 @@ func _arm_service_pump_for_next_renderer_frame() -> void:
 func _service_pump_frame() -> void:
 	if active_service_keys.is_empty():
 		service_pump_armed = false
+		return
+
+	# The active life's idle policy must not starve a requested disk restore.
+	# Advance only the detached checkpoint, within the existing one-step budget;
+	# the active life stays attached until the normal transaction commits.
+	var pending_checkpoint := _pending_detached_checkpoint_signature()
+	if not pending_checkpoint.is_empty():
+		service_pump_sequence += 1
+		service_residency({
+			"signature": pending_checkpoint,
+			"max_steps": 1,
+			"frame_budget_ms": 1,
+			"source": "reality_residency_manager.checkpoint_restore",
+		})
+		service_pump_armed = false
+		_ensure_service_pump()
 		return
 
 	var attached_projection_publication_only: bool = false

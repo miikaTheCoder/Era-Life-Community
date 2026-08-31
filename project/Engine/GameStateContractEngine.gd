@@ -4200,7 +4200,7 @@ func _detect_runtime_capability_profile() -> Dictionary:
 	var device_class: String = "desktop"
 	if OS.has_feature("web"):
 		device_class = "web"
-	elif OS.has_feature("mobile") or os_name.find("android") >= 0 or os_name.find("ios") >= 0:
+	elif MobileSupport.is_enabled() or OS.has_feature("mobile") or os_name.find("android") >= 0 or os_name.find("ios") >= 0:
 		device_class = "mobile"
 
 	if _is_likely_smart_tv_user_agent(user_agent):

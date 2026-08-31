@@ -258,7 +258,8 @@ func _era_modifier(good_name: String) -> float:
 
 
 func _realm_local_modifier(realm_id: int) -> float:
-	if realm_id == -1:
+	# Checkpoint shells can request prices before the realm service is hydrated.
+	if realm_id == -1 or gs == null or gs.realm_engine == null:
 		return 1.0
 
 	if not gs.realm_engine.realms.has(realm_id):
@@ -282,7 +283,7 @@ func _realm_local_modifier(realm_id: int) -> float:
 
 
 func _realm_name(realm_id: int) -> String:
-	if realm_id == -1:
+	if realm_id == -1 or gs == null or gs.realm_engine == null:
 		return ""
 	if not gs.realm_engine.realms.has(realm_id):
 		return ""

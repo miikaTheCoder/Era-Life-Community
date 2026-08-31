@@ -18,8 +18,8 @@ builds/
 export/
 exports/
 
-# Export presets contain absolute paths and, if you ever add signing, credentials.
- export_presets.cfg
+# Keep portable export presets in Git. Godot 4 signing credentials and local
+# editor settings live under the ignored .godot/ directory.
 
 # Editor / OS noise
 .DS_Store

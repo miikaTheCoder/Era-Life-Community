@@ -2143,6 +2143,24 @@ func _resident_runtime_engine_steps() -> Array:
 			"identity_contract_engine",
 			IdentityContractEngine
 		),
+		# Save Game routes to these already-resident services. The creator's
+		# chassis path previously omitted them, so every save failed to route.
+		_resident_engine_step(
+			"life_account_transfer_contract_engine",
+			LifeAccountTransferContractEngine
+		),
+		_resident_engine_step(
+			"session_contract_engine",
+			SessionContractEngine
+		),
+		_resident_engine_step(
+			"reality_checkpoint_contract_engine",
+			RealityCheckpointContractEngine
+		),
+		_resident_engine_step(
+			"game_state_serialization_runtime",
+			GameStateSerializationRuntime
+		),
 		_resident_engine_step(
 			"red_bonnet_engine",
 			RedBonnetEngine

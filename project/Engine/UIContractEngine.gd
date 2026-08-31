@@ -180,6 +180,10 @@ static func resolve_presentation_density_bootstrap_contract(
 static func _resolve_presentation_density_contract_pure(
 	context: Dictionary = {}
 ) -> Dictionary:
+	var mobile_presentation: bool = bool(context.get("mobile_presentation", false))
+	var reference_width: float = 960.0 if mobile_presentation else PRESENTATION_REFERENCE_WIDTH
+	var reference_height: float = 540.0 if mobile_presentation else PRESENTATION_REFERENCE_HEIGHT
+	var minimum_scale: float = 0.1 if mobile_presentation else PRESENTATION_SCALE_MIN
 	var physical_width: float = maxf(
 		1.0,
 		float(
@@ -256,12 +260,12 @@ static func _resolve_presentation_density_contract_pure(
 
 	var width_density: float = (
 		usable_width
-		/ PRESENTATION_REFERENCE_WIDTH
+		/ reference_width
 	)
 
 	var height_density: float = (
 		usable_height
-		/ PRESENTATION_REFERENCE_HEIGHT
+		/ reference_height
 	)
 
 	var desktop_presentation: bool = bool(
@@ -285,13 +289,13 @@ static func _resolve_presentation_density_contract_pure(
 
 	var clamped_scale: float = clampf(
 		raw_scale,
-		PRESENTATION_SCALE_MIN,
+		minimum_scale,
 		PRESENTATION_SCALE_MAX
 	)
 
 	var ui_scale: float = clamped_scale
 
-	if not desktop_presentation:
+	if not desktop_presentation and not mobile_presentation:
 		ui_scale = (
 			round(
 				clamped_scale
@@ -344,8 +348,8 @@ static func _resolve_presentation_density_contract_pure(
 		"version": PRESENTATION_DENSITY_CONTRACT_VERSION,
 
 		"reference_viewport": {
-			"width": PRESENTATION_REFERENCE_WIDTH,
-			"height": PRESENTATION_REFERENCE_HEIGHT
+			"width": reference_width,
+			"height": reference_height
 		},
 
 		"physical_viewport": {
@@ -372,8 +376,9 @@ static func _resolve_presentation_density_contract_pure(
 
 		"raw_scale": raw_scale,
 		"ui_scale": ui_scale,
-		"scale_min": PRESENTATION_SCALE_MIN,
+		"scale_min": minimum_scale,
 		"scale_max": PRESENTATION_SCALE_MAX,
+		"mobile_presentation": mobile_presentation,
 
 		"density_profile": density_profile,
 		"aspect_ratio": aspect_ratio,
@@ -449,6 +454,7 @@ static func resolve_presentation_composition_bootstrap_contract(
 static func _resolve_presentation_composition_contract_pure(
 	context: Dictionary = {}
 ) -> Dictionary:
+	var mobile_presentation: bool = bool(context.get("mobile_presentation", false))
 	var logical_width: float = maxf(
 		1.0,
 		float(
@@ -506,7 +512,7 @@ static func _resolve_presentation_composition_contract_pure(
 	var stage_bottom: float = stage_height
 
 	var choose_adventure_occupancy_ratio: float = 0.85
-	var choose_adventure_card_count: int = 3
+	var choose_adventure_card_count: int = 1 if mobile_presentation else 3
 	var choose_adventure_card_separation: float = 22.0
 	var choose_adventure_card_minimum_width: float = 350.0
 	var choose_adventure_card_minimum_height: float = 570.0
@@ -550,6 +556,9 @@ static func _resolve_presentation_composition_contract_pure(
 			* choose_adventure_occupancy_ratio
 		)
 	)
+	if mobile_presentation:
+		choose_adventure_shell_width = maxf(1.0, logical_width - 48.0)
+		choose_adventure_shell_height = 0.0
 
 	var menu_horizontal_gutter: float = maxf(
 		0.0,

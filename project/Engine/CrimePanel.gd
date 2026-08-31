@@ -961,6 +961,12 @@ func _build_crime_target_reticle(
 	card_control: PanelContainer,
 	row: Dictionary
 ) -> void:
+	# Browsing hides this decoration. Avoid constructing six font-backed labels
+	# for every background card on phones; create them when targeting needs them.
+	if MobileSupport.is_enabled() and _crime_target_targeting_state(row) == "browse":
+		if is_instance_valid(card_control):
+			card_control.set_meta("crime_target_row_contract", row.duplicate(false))
+		return
 	if (
 		card_control == null
 		or not is_instance_valid(
@@ -1286,6 +1292,8 @@ func _refresh_crime_target_reticle(
 	row: Dictionary,
 	hovered: bool
 ) -> void:
+	if MobileSupport.is_enabled() and is_instance_valid(card_control) and not card_control.has_meta("crime_target_reticle_overlay") and _crime_target_targeting_state(row) != "browse":
+		_build_crime_target_reticle(card_control, row)
 	if (
 		card_control == null
 		or not is_instance_valid(

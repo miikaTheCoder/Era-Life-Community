@@ -1500,6 +1500,7 @@ func _build() -> void:
 	_apply_palette(false)
 	_refresh_location_pickers()
 	_refresh_preview()
+	MobileSupport.adapt_form(self)
 func _build_subtitle_rich_label() -> void:
 	if subtitle_label != null and is_instance_valid(subtitle_label):
 		return
@@ -4327,6 +4328,7 @@ func _apply_palette(_animated: bool = false) -> void:
 		_tick_preview_label_visuals()
 
 	_update_subtitle_rich_text()
+	MobileSupport.adapt_form(self)
 func _style_circle_button(button: Button, accent: Color) -> void:
 	if button == null or not is_instance_valid(button):
 		return

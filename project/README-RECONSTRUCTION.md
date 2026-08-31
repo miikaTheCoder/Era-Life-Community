@@ -15,14 +15,14 @@ comments and original formatting. Everything functional is here.
 2. Open Godot → Import → pick the `project.godot` in this folder.
 3. Let it finish importing (first import takes a while — 334 scripts).
 4. Press **F5** to run. Start a life, open a pending situation, tap an option.
-5. When you're happy: **Project → Export** → your existing Windows preset →
+5. When you're happy: **Project → Export** → the included Windows Desktop preset →
    this regenerates `EraLife.exe` and `EraLife.pck`.
 6. Replace the old `EraLife.exe` + `EraLife.pck` with the new pair. Both files
    together — an old exe with a new pck can break in confusing ways.
 
-There is no export preset in this folder (presets live in `export_presets.cfg`, which
-is not shipped inside a pck). You'll need to create one: Project → Export → Add →
-Windows Desktop. Default settings match what you had.
+The reconstructed pck did not contain export presets. Portable Linux and Windows
+Desktop presets have now been added in `export_presets.cfg`. See the repository
+[build instructions](../README.md) for command-line setup, exports, and output paths.
 
 ---
 
@@ -105,7 +105,7 @@ uncompressed in the pck and are the originals.
 
 ### Not included
 
-- `export_presets.cfg` (never shipped in a pck — recreate in the editor)
+- The original `export_presets.cfg` (never shipped in a pck — portable desktop presets have since been added)
 - The `Web/` PWA icon set and `index.manifest.json` (only the compressed `.ctex`
   versions were in the pck; re-add your source PNGs if you export for web again)
 - The `eralife-discord-gateway` bot source. Only 35 stray `node_modules/package.json`

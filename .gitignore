@@ -1,0 +1,6 @@
+# Local toolchain, export artifacts, logs, and isolated smoke-test data.
+/build/
+# Never commit Android signing keys or machine-specific SDK configuration.
+*.keystore
+*.jks
+local.properties

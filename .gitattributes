@@ -5,6 +5,7 @@
 *.godot         text eol=lf
 *.md            text eol=lf
 *.json          text eol=lf
+*.sh            text eol=lf
 *.gitignore     text eol=lf
 
 # BINARY -- never touch these. A blanket "* text=auto" rewrites line endings inside

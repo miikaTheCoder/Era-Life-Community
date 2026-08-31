@@ -427,6 +427,8 @@ func _interactive_checkpoint_actor_snapshot(
 		"partner"
 	]
 
+	# Person's state uses ordinary script variables, not exported Resource
+	# properties. PROPERTY_USAGE_STORAGE omitted names, stats and family IDs.
 	for property_row in actor.get_property_list():
 		var property_name: String = str(
 			property_row.get(
@@ -446,7 +448,7 @@ func _interactive_checkpoint_actor_snapshot(
 			or property_name in skipped_properties
 			or (
 				property_usage
-				& PROPERTY_USAGE_STORAGE
+				& PROPERTY_USAGE_SCRIPT_VARIABLE
 			) == 0
 		):
 			continue
@@ -1032,14 +1034,14 @@ func save_interactive_reality_checkpoint(
 	)
 
 	EraLog.truth(
-		"ERALIFE_LINEAGE_SAVE_TRUTH"
+		("ERALIFE_LINEAGE_SAVE_TRUTH"
 		+ "|success=%s"
 		+ "|actor_id=%d"
 		+ "|checkpoint_committed=%s"
 		+ "|full_universe_walk=false"
 		+ "|engine_registry_export=false"
 		+ "|duration_ms=%d"
-		+ "|at_ms=%d"
+		+ "|at_ms=%d")
 		% [
 			str(
 				save_report.get(

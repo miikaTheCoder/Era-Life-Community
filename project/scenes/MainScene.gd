@@ -990,7 +990,7 @@ const ERA_BORDER_PARTICLE_COUNT: int = 18
 
 var choose_adventure_entry_overlay: Control
 var choose_adventure_entry_dim: ColorRect
-var choose_adventure_entry_shell: HBoxContainer
+var choose_adventure_entry_shell: BoxContainer
 var choose_adventure_entry_left_card: PanelContainer
 var choose_adventure_entry_middle_card: PanelContainer
 var choose_adventure_entry_right_card: PanelContainer
@@ -21979,7 +21979,7 @@ func _save_current_life_to_slot_deferred(
 	)
 
 	EraLog.truth(
-		"ERALIFE_LINEAGE_SAVE_LENS_TRUTH"
+		("ERALIFE_LINEAGE_SAVE_LENS_TRUTH"
 		+ "|success=%s"
 		+ "|actor_id=%d"
 		+ "|file_saved=%s"
@@ -21988,7 +21988,7 @@ func _save_current_life_to_slot_deferred(
 		+ "|renderer_called_engine_directly=false"
 		+ "|full_universe_walk=%s"
 		+ "|duration_ms=%d"
-		+ "|at_ms=%d"
+		+ "|at_ms=%d")
 		% [
 			str(save_succeeded).to_lower(),
 			actor_id,
@@ -22011,6 +22011,8 @@ func _save_current_life_to_slot_deferred(
 		]
 	)
 
+	if MobileSupport.is_enabled() and OS.is_debug_build():
+		print("MOBILE SAVE: success=", save_succeeded, "; reason=", save_report.get("reason", ""), "; result_keys=", save_report.keys())
 	if world_actions_status_label != null:
 		if save_succeeded:
 			if manual_preserve:
@@ -26204,7 +26206,8 @@ func _presentation_density_context(
 		"display_server": DisplayServer.get_name(),
 
 		"source": reason,
-		"desktop_presentation": true,
+		"desktop_presentation": not MobileSupport.is_enabled(),
+		"mobile_presentation": MobileSupport.is_enabled(),
 		"ui_is_expression_only": true
 	}
 
@@ -26389,7 +26392,8 @@ func _resolve_presentation_composition_contract(
 		"aspect_ratio": aspect_ratio,
 		"aspect_profile": aspect_profile,
 		"source": reason,
-		"desktop_presentation": true,
+		"desktop_presentation": not MobileSupport.is_enabled(),
+		"mobile_presentation": MobileSupport.is_enabled(),
 		"ui_is_expression_only": true
 	}
 
@@ -26722,6 +26726,9 @@ func _repair_playable_life_shell_after_viewport_resize(
 			Time.get_ticks_msec()
 		)
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and MobileSupport.is_enabled():
+		MobileSupport.handle_back(self)
+		return
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		call_deferred("_boxing_hub_restore_after_focus_return")
 
@@ -51249,7 +51256,14 @@ func _ensure_world_feed_popup() -> void:
 	actions_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actions_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	actions_root.add_theme_constant_override("separation", 8)
-	world_action_panel.add_child(actions_root)
+	if MobileSupport.is_enabled():
+		var action_scroll := ScrollContainer.new()
+		action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		action_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		world_action_panel.add_child(action_scroll)
+		action_scroll.add_child(actions_root)
+	else:
+		world_action_panel.add_child(actions_root)
 
 	var auto_toggle:= CheckBox.new()
 	auto_toggle.text = "Auto-Preserve"
@@ -62583,6 +62597,15 @@ func _apply_player_stat_row_visual_state(
 	var theme_key: String = (
 		_current_era_ui_theme_key()
 	)
+	if MobileSupport.is_enabled():
+		# Keep phone stat glows steady, and repaint when their visible state changes.
+		pulse_strength = 0.0
+		var mobile_visual_key := [label.get_instance_id(), title, theme_key, is_hovered, danger_state,
+			bar.value, bar.max_value, bar.size, bar.get_meta("bending_hub_surface", false),
+			bar.get_meta("bending_element", ""), bar.get_meta("bending_level", 0)].hash()
+		if bar.get_meta("mobile_stat_visual_key", -1) == mobile_visual_key:
+			return
+		bar.set_meta("mobile_stat_visual_key", mobile_visual_key)
 	var palette: Dictionary = (
 		_resolve_player_stat_palette(
 			title
@@ -64063,6 +64086,16 @@ func _apply_player_stat_surface_content(
 		or bar == null
 	):
 		return
+	if MobileSupport.is_enabled():
+		var mobile_content_key := [label.get_instance_id(), title, value, max_value,
+			surface_context.hash(), _current_era_ui_theme_key(),
+			bar.get_meta("bending_element", ""), bar.get_meta("bending_level", 0)].hash()
+		if bar.get_meta("mobile_stat_content_key", -1) == mobile_content_key:
+			return
+		bar.set_meta("mobile_stat_content_key", mobile_content_key)
+		# Content can change a flavor label's visibility without changing the value.
+		if bar.has_meta("mobile_stat_visual_key"):
+			bar.remove_meta("mobile_stat_visual_key")
 
 	var effective_surface_context: Dictionary = (
 		surface_context.duplicate(false)
@@ -64894,6 +64927,8 @@ func _apply_runtime_hud_button_stack_layout(
 	)
 
 	var button_width: float = 82.0
+	if MobileSupport.is_enabled() and button.get_meta("mobile_stack_viewport", Vector2.ZERO) == viewport_size and button.get_meta("runtime_floating_hud_stack_index", -1) == safe_stack_index and button.get_meta("mobile_stack_rect", Rect2()) == button.get_rect() and button.scale == Vector2.ONE and button.rotation == 0.0:
+		return
 	var button_height: float = 62.0
 	var horizontal_gap: float = 12.0
 	var vertical_gap: float = 12.0
@@ -65041,6 +65076,9 @@ func _apply_runtime_hud_button_stack_layout(
 		"runtime_floating_hud_never_requires_fullscreen",
 		true
 	)
+	if MobileSupport.is_enabled():
+		button.set_meta("mobile_stack_viewport", viewport_size)
+		button.set_meta("mobile_stack_rect", button.get_rect())
 func _runtime_floating_hud_button_core_color(button: Button) -> Color:
 	if button == boxing_hud_button:
 		return Color(0.94, 0.18, 0.16, 1.0)
@@ -65105,6 +65143,7 @@ func _apply_runtime_floating_hud_button_visual_contract(
 	):
 		return
 
+	button.begin_bulk_theme_override()
 	button.add_theme_stylebox_override(
 		"normal",
 		MainSceneHelpers._build_runtime_floating_hud_button_style(
@@ -65173,6 +65212,7 @@ func _apply_runtime_floating_hud_button_visual_contract(
 	button.add_theme_constant_override("shadow_offset_x", 0)
 	button.add_theme_constant_override("shadow_offset_y", 2)
 	button.add_theme_font_size_override("font_size", 24)
+	button.end_bulk_theme_override()
 
 	button.set_meta(
 		"runtime_floating_hud_visual_contract_applied",
@@ -75900,15 +75940,19 @@ func _update_bending_hud() -> void:
 		bending_hud_button.text = _bending_hud_button_icon()
 
 	var core:= _bending_hud_core_color()
-	var hud_pulse:= (sin(bending_hud_breathe_time * 2.0) + 1.0) * 0.5
+	var hud_pulse:= 0.5 if MobileSupport.is_enabled() else (sin(bending_hud_breathe_time * 2.0) + 1.0) * 0.5
 	var btn_style: StyleBoxFlat = MainSceneHelpers._runtime_stylebox_flat_from_meta(bending_hud_button, "bending_hud_button_style", 2, 16)
-	if btn_style != null:
+	var refresh_button_style: bool = not MobileSupport.is_enabled() or bending_hud_button.get_meta("mobile_bending_style_color", Color.TRANSPARENT) != core or bending_hud_button.get_theme_stylebox("normal") != btn_style
+	if btn_style != null and refresh_button_style:
+		bending_hud_button.begin_bulk_theme_override()
 		bending_hud_button.add_theme_stylebox_override("normal", btn_style)
 		bending_hud_button.add_theme_stylebox_override("hover", btn_style)
 		bending_hud_button.add_theme_stylebox_override("pressed", btn_style)
 		btn_style.bg_color = Color(core.r, core.g, core.b, 0.22 + (hud_pulse * 0.12))
 		btn_style.border_color = Color(core.r, core.g, core.b, 0.42 + (hud_pulse * 0.18))
 		bending_hud_button.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+		bending_hud_button.end_bulk_theme_override()
+		bending_hud_button.set_meta("mobile_bending_style_color", core)
 
 	_update_bending_hud_button_border_overlay(hud_pulse)
 
@@ -113516,18 +113560,12 @@ func _controlled_actor_incarceration_lens_contract() -> Dictionary:
 		"activities",
 		"career"
 	]:
-		var surface: Dictionary = MainSceneHelpers._safe_dictionary(
-			resident_deck.get(
-				surface_id,
-				{}
-			)
-		)
-		var resident_lens: Dictionary = MainSceneHelpers._safe_dictionary(
-			surface.get(
-				"incarceration_lens",
-				{}
-			)
-		)
+		# This lookup only reads the deck. Copy the small result on return,
+		# not every card in four complete tab contracts on each HUD refresh.
+		var surface_raw: Variant = resident_deck.get(surface_id, {})
+		var surface: Dictionary = surface_raw if surface_raw is Dictionary else {}
+		var lens_raw: Variant = surface.get("incarceration_lens", {})
+		var resident_lens: Dictionary = lens_raw if lens_raw is Dictionary else {}
 
 		if (
 			not resident_lens.is_empty()
@@ -113544,7 +113582,7 @@ func _controlled_actor_incarceration_lens_contract() -> Dictionary:
 				)
 			)
 		):
-			return resident_lens.duplicate(false)
+			return resident_lens.duplicate(true)
 
 	return {}
 func _ensure_god_mode_background_dim() -> void:
@@ -116943,6 +116981,9 @@ func _apply_fullscreen_god_mode_layout() -> void:
 		_apply_god_mode_start_panel_fullscreen_layout()
 
 func _apply_centered_live_layout() -> void:
+	if MobileSupport.is_enabled():
+		MobileSupport.layout_life(self)
+		return
 	var root:= get_node_or_null(
 		"UIContainer"
 	) as Control
@@ -117366,7 +117407,7 @@ func _presentation_composition_choose_adventure_shell_size() -> Vector2:
 
 		if (
 			shell_width > 0.0
-			and shell_height > 0.0
+			and (shell_height > 0.0 or MobileSupport.is_enabled())
 		):
 			return Vector2(
 				shell_width,
@@ -121385,6 +121426,8 @@ func _bind_ui_nav_buttons() -> void:
 			Time.get_ticks_msec()
 		)
 	)
+	if MobileSupport.is_enabled():
+		MobileSupport.layout_life(self)
 func _arm_main_tab_input_contract_for_playable_shell(reason: String = "main_tab_input_contract") -> void:
 	_bind_ui_nav_buttons()
 
@@ -151006,6 +151049,7 @@ func _show_startup_intro_final_card() -> void:
 	startup_intro_accepting_input = false
 	set_meta("startup_intro_title_card_visible_surface", true)
 	set_meta("startup_intro_title_card_identity_surface_visible", true)
+	MobileSupport.add_title_actions(self)
 
 	startup_intro_title_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	startup_intro_subtitle_label.modulate = Color(1.0, 1.0, 1.0, 0.0)
@@ -153694,6 +153738,7 @@ func _refresh_title_card_identity_surface() -> void:
 		)
 
 	_sync_global_reality_intake_button()
+	MobileSupport.add_title_actions(self)
 func _title_card_continue_contract() -> Dictionary:
 	var direct_raw: Variant = get_meta(
 		"title_card_continue_contract",
@@ -154953,13 +154998,27 @@ func _ensure_title_card_account_panel() -> void:
 	title_card_account_popup.offset_top = -210
 	title_card_account_popup.offset_bottom = 210
 	add_child(title_card_account_popup)
+	var account_body: Container = title_card_account_popup
+	if MobileSupport.is_enabled():
+		title_card_account_popup.z_index = 4096
+		var account_style := StyleBoxFlat.new()
+		account_style.bg_color = Color(0.025, 0.05, 0.06, 1.0)
+		account_style.border_color = Color(0.25, 0.7, 0.75, 1.0)
+		account_style.set_border_width_all(1)
+		title_card_account_popup.add_theme_stylebox_override("panel", account_style)
+		var account_scroll := ScrollContainer.new()
+		account_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		account_scroll.follow_focus = true
+		title_card_account_popup.add_child(account_scroll)
+		account_body = account_scroll
 
 	var margin:= MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 22)
 	margin.add_theme_constant_override("margin_right", 22)
 	margin.add_theme_constant_override("margin_top", 20)
 	margin.add_theme_constant_override("margin_bottom", 20)
-	title_card_account_popup.add_child(margin)
+	account_body.add_child(margin)
 
 	var box:= VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
@@ -155056,6 +155115,7 @@ func _ensure_title_card_account_panel() -> void:
 	close_button.text = "Back"
 	close_button.pressed.connect(_close_title_card_account_panel)
 	button_row.add_child(close_button)
+	MobileSupport.adapt_form(title_card_account_popup)
 func _toggle_title_card_account_password_visibility() -> void:
 	if title_card_account_password_edit == null:
 		return
@@ -155877,7 +155937,7 @@ func _show_choose_adventure_entry_panel() -> void:
 		choose_adventure_entry_dim
 	)
 
-	var center:= CenterContainer.new()
+	var center: Container = ScrollContainer.new() if MobileSupport.is_enabled() else CenterContainer.new()
 	center.name = "ChooseAdventureEntryCenter"
 	center.set_anchors_preset(
 		Control.PRESET_FULL_RECT
@@ -155888,8 +155948,16 @@ func _show_choose_adventure_entry_panel() -> void:
 	choose_adventure_entry_overlay.add_child(
 		center
 	)
+	if center is ScrollContainer:
+		center.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		center.follow_focus = true
+		center.mouse_filter = Control.MOUSE_FILTER_STOP
+		center.offset_left = 16
+		center.offset_right = -16
+		center.offset_top = 16
+		center.offset_bottom = -16
 
-	choose_adventure_entry_shell = HBoxContainer.new()
+	choose_adventure_entry_shell = VBoxContainer.new() if MobileSupport.is_enabled() else HBoxContainer.new()
 	choose_adventure_entry_shell.name = (
 		"ChooseAdventureEntryTripleShell"
 	)
@@ -155897,6 +155965,9 @@ func _show_choose_adventure_entry_panel() -> void:
 		1120,
 		620
 	)
+	if MobileSupport.is_enabled():
+		choose_adventure_entry_shell.custom_minimum_size = Vector2.ZERO
+		choose_adventure_entry_shell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	choose_adventure_entry_shell.add_theme_constant_override(
 		"separation",
 		22
@@ -156085,6 +156156,9 @@ func _show_choose_adventure_entry_panel() -> void:
 				2
 			]
 		)
+		if MobileSupport.is_enabled():
+			# Put the currently playable mode first without changing card identities.
+			choose_adventure_entry_shell.move_child(choose_adventure_entry_right_card, 0)
 
 	for i in range(
 		built_cards.size()
@@ -156613,6 +156687,8 @@ func _build_choose_adventure_entry_card(
 		),
 		requested_height
 	)
+	if MobileSupport.is_enabled():
+		card.custom_minimum_size = Vector2(menu_shell_size.x, 0)
 
 	card.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL
@@ -156950,6 +157026,10 @@ func _start_choose_adventure_entry_button_motion(button: Button, _accent: Color,
 	choose_adventure_entry_tweens.append(tween)
 
 func _start_choose_adventure_entry_card_motion(card: PanelContainer, delay: float = 0.0) -> void:
+	# The mobile VBox owns each card's position; a desktop bobbing tween would
+	# move all three cards back to y=0 and make the first two unclickable.
+	if MobileSupport.is_enabled():
+		return
 	if card == null or not is_instance_valid(card):
 		return
 
@@ -178952,7 +179032,7 @@ func _continue_post_spawn_world_prewarm_idle_tick(boot_ticket: int = -1, pass_in
 		CONNECT_ONE_SHOT
 	)
 func _enter_tree() -> void:
-
+	MobileSupport.configure(self)
 
 	set_anchors_and_offsets_preset(
 		Control.PRESET_FULL_RECT
@@ -178998,7 +179078,8 @@ func _enter_tree() -> void:
 			+ "presentation_bootstrap"
 		),
 
-		"desktop_presentation": true,
+		"desktop_presentation": not MobileSupport.is_enabled(),
+		"mobile_presentation": MobileSupport.is_enabled(),
 		"ui_is_expression_only": true
 	}
 
@@ -179087,7 +179168,8 @@ func _enter_tree() -> void:
 			+ "presentation_bootstrap"
 		),
 
-		"desktop_presentation": true,
+		"desktop_presentation": not MobileSupport.is_enabled(),
+		"mobile_presentation": MobileSupport.is_enabled(),
 		"ui_is_expression_only": true
 	}
 
@@ -182749,6 +182831,8 @@ func _input(event):
 	if _startup_intro_event_targets_replay_button(
 		event
 	):
+		return
+	if MobileSupport.event_targets_title_actions(self, event):
 		return
 
 	if event is InputEventKey:

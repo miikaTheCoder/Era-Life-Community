@@ -3537,11 +3537,18 @@ static func _rick_weapon_shop_local_rick_name(country: String) -> String:
 static func _style_rick_weapon_shop_button(button: Button, pulse: float) -> void:
 	if button == null or not is_instance_valid(button):
 		return
+	# Reapplying this decorative theme every frame cascades through the HUD.
+	# Phones use a steady glow; the button's action and visibility are unchanged.
+	if MobileSupport.is_enabled():
+		if button.get_meta("mobile_rick_style_applied", false):
+			return
+		pulse = 0.5
 
 	var btn_style: StyleBoxFlat = MainSceneHelpers._runtime_stylebox_flat_from_meta(button, "rick_weapon_shop_button_style", 2, 16)
 	if btn_style == null:
 		return
 
+	button.begin_bulk_theme_override()
 	button.text = "🔫"
 	button.tooltip_text = "Open Rick's Universal Weapon Shop"
 	button.add_theme_font_size_override("font_size", 28)
@@ -3552,6 +3559,9 @@ static func _style_rick_weapon_shop_button(button: Button, pulse: float) -> void
 	button.add_theme_stylebox_override("normal", btn_style)
 	button.add_theme_stylebox_override("hover", btn_style)
 	button.add_theme_stylebox_override("pressed", btn_style)
+	button.end_bulk_theme_override()
+	if MobileSupport.is_enabled():
+		button.set_meta("mobile_rick_style_applied", true)
 
 
 static func _create_spirit_world_avatar_echo(gs: GameState,
