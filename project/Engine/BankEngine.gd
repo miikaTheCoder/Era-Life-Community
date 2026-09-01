@@ -319,6 +319,8 @@ func request_bank_action(payload: Dictionary = {}, context: Dictionary = {}) -> 
 			return deposit(owner_id, float(wallet.get("amount", 0.0)), world_id, currency, context)
 		"withdraw", "withdraw_money":
 			return withdraw(owner_id, amount, world_id, currency, context)
+		"spend", "pay", "debit", "service_payment":
+			return spend(owner_id, amount, world_id, currency, payload, context)
 		"credit_cash", "crime_payout_cash":
 			return credit_cash(owner_id, amount, world_id, currency, payload, context)
 		"transfer", "transfer_money":
@@ -419,6 +421,83 @@ func withdraw(owner_id: String, amount: float, world_id: String = "", currency: 
 	})
 	last_report = report.duplicate(true)
 	return report
+
+func spend(owner_id: String, amount: float, world_id: String = "", currency: String = DEFAULT_CURRENCY, payload: Dictionary = {}, context: Dictionary = {}) -> Dictionary:
+	amount = _money_amount(amount)
+	if amount <= 0.0:
+		return { "success": false, "reason": "Payment amount must be positive."}
+
+	var clean_owner: String = str(owner_id).strip_edges()
+	var clean_world: String = _resolve_world_id({ "world_id": world_id})
+	var clean_currency: String = str(currency).strip_edges().to_upper()
+	var wallet: Dictionary = ensure_cash_wallet(clean_owner, clean_world, clean_currency, context)
+	var wallet_id: String = str(wallet.get("wallet_id", ""))
+	var spendable_accounts: Array = []
+	var available: float = max(0.0, float(cash_on_hand [wallet_id].get("amount", 0.0)))
+
+	for account_id in _accounts_for_owner(clean_owner):
+		var account_raw: Variant = accounts.get(account_id, {})
+		if typeof(account_raw) != TYPE_DICTIONARY:
+			continue
+		var account: Dictionary = account_raw
+		if str(account.get("currency", clean_currency)).to_upper() != clean_currency:
+			continue
+		var balance: float = max(0.0, float(account.get("balance", 0.0)))
+		if balance <= 0.0:
+			continue
+		var gate: Dictionary = _can_credit_or_debit(str(account_id), minf(balance, amount), "debit", context)
+		if not bool(gate.get("allowed", true)):
+			continue
+		spendable_accounts.append(str(account_id))
+		available += balance
+
+	if amount > available:
+		return {
+			"success": false,
+			"reason": "Not enough accessible money for this payment.",
+			"requested_amount": amount,
+			"available_amount": available
+		}
+
+	var remaining: float = amount
+	var debits: Array = []
+	for account_id in spendable_accounts:
+		if remaining <= 0.0:
+			break
+		var balance: float = max(0.0, float(accounts [account_id].get("balance", 0.0)))
+		var debit: float = minf(balance, remaining)
+		accounts [account_id] ["balance"] = max(0.0, balance - debit)
+		accounts [account_id] ["updated_at_ms"] = int(Time.get_ticks_msec())
+		remaining -= debit
+		debits.append({
+			"source": "bank_account",
+			"account_id": account_id,
+			"amount": debit
+		})
+
+	if remaining > 0.0:
+		var cash_available: float = max(0.0, float(cash_on_hand [wallet_id].get("amount", 0.0)))
+		var cash_debit: float = minf(cash_available, remaining)
+		cash_on_hand [wallet_id] ["amount"] = max(0.0, cash_available - cash_debit)
+		cash_on_hand [wallet_id] ["updated_at_ms"] = int(Time.get_ticks_msec())
+		remaining -= cash_debit
+		debits.append({
+			"source": "cash_wallet",
+			"wallet_id": wallet_id,
+			"amount": cash_debit
+		})
+
+	_sync_actor_by_owner(clean_owner)
+	var report: Dictionary = _finish_money_action(ActionEventTypes.MONEY_SPENT, clean_owner, amount, clean_world, clean_currency, {
+		"reason": str(payload.get("reason", context.get("reason", "payment"))),
+		"source": str(context.get("source", payload.get("source", "bank_engine"))),
+		"debits": debits.duplicate(true),
+		"text": str(payload.get("text", "A payment was made through BankEngine."))
+	})
+	report ["debits"] = debits.duplicate(true)
+	last_report = report.duplicate(true)
+	return report
+
 func credit_cash(owner_id: String, amount: float, world_id: String = "", currency: String = DEFAULT_CURRENCY, payload: Dictionary = {}, context: Dictionary = {}) -> Dictionary:
 	amount = _money_amount(amount)
 	if amount <= 0.0:

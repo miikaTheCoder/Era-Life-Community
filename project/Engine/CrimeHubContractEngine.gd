@@ -4177,6 +4177,52 @@ func resolve_intent(
 				),
 				"blocks_ui": false
 			}
+		"crime_world_refresh", \
+		"crime_world_bootstrap", \
+		"crime_world_job", \
+		"crime_world_join", \
+		"crime_world_request_promotion", \
+		"crime_world_generate_extortion", \
+		"crime_world_respond_extortion":
+			if gs == null or gs.crime_world_engine == null:
+				return _failure(
+					"crime_world_engine_unavailable",
+					"Crime World is unavailable."
+				)
+			var crime_world_report: Dictionary = (
+				gs.crime_world_engine.resolve_intent(actor, payload)
+			)
+			var target_section: String = section_id
+			if action_id in [
+				"crime_world_job",
+				"crime_world_join",
+				"crime_world_request_promotion"
+			]:
+				target_section = "underworld"
+			elif action_id in [
+				"crime_world_generate_extortion",
+				"crime_world_respond_extortion"
+			]:
+				target_section = "rackets"
+			if target_section not in ["underworld", "organizations", "rackets"]:
+				target_section = "underworld"
+			var crime_world_surface: Dictionary = _crime_section_surface(
+				actor,
+				target_section,
+				{},
+				true
+			)
+			return {
+				"success": bool(crime_world_report.get("success", false)),
+				"mode": "crime_hub_crime_world_action",
+				"open_crime_hub": true,
+				"crime_hub_section": target_section,
+				"section_contract": crime_world_surface,
+				"action_report": crime_world_report,
+				"result": crime_world_report,
+				"hub_contract": {},
+				"blocks_ui": false
+			}
 		"prison_activity":
 			if (
 				gs == null
@@ -6792,6 +6838,18 @@ func _section_tabs(
 			"label": "OVERVIEW"
 		},
 		{
+			"id": "underworld",
+			"label": "UNDERWORLD"
+		},
+		{
+			"id": "organizations",
+			"label": "FAMILIES"
+		},
+		{
+			"id": "rackets",
+			"label": "RACKETS"
+		},
+		{
 			"id": "crime_actions",
 			"label": "CRIME ACTIONS"
 		},
@@ -7516,6 +7574,20 @@ func _section_rows(
 		prison_contract: Dictionary
 ) -> Array:
 	match section_id:
+		"underworld", "organizations", "rackets":
+			if gs != null and gs.crime_world_engine != null:
+				return gs.crime_world_engine.build_section_rows(
+					actor,
+					section_id
+				)
+			return [
+				{
+					"kind": "crime_world_unavailable",
+					"label": "Underworld records unavailable",
+					"subtitle": "Crime World has not initialized yet."
+				}
+			]
+
 		"crime_actions":
 			return _crime_action_rows(
 				actor
@@ -8367,6 +8439,9 @@ func _section(
 
 	if clean in [
 		"overview",
+		"underworld",
+		"organizations",
+		"rackets",
 		"crime_actions",
 		"targets",
 		"weapons",

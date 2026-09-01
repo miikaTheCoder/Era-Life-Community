@@ -167,6 +167,17 @@ func register_default_runtime_listeners() -> void:
 		}
 	)
 	_register_yearly_phase_listener(
+		"crime_world_engine.yearly_tick",
+		PHASE_CORE_STATE,
+		LANE_C,
+		gs.crime_world_engine,
+		"yearly_tick",
+		{
+			"priority": 34,
+			"depends_on": ["settlement_presence_engine.yearly_tick"]
+		}
+	)
+	_register_yearly_phase_listener(
 		"universal_faction_engine.yearly_core_resolution",
 		PHASE_CORE_STATE,
 		LANE_C,
@@ -174,7 +185,7 @@ func register_default_runtime_listeners() -> void:
 		"yearly_core_resolution",
 		{
 			"priority": 35,
-			"depends_on": ["settlement_presence_engine.yearly_tick"]
+			"depends_on": ["crime_world_engine.yearly_tick"]
 		}
 	)
 	_register_yearly_phase_listener(
@@ -364,6 +375,7 @@ func _legacy_yearly_listener_ids() -> Dictionary:
 		"geo_engine.yearly_tick": true,
 		"migration_engine.yearly_tick": true,
 		"settlement_presence_engine.yearly_tick": true,
+		"crime_world_engine.yearly_tick": true,
 		"universal_faction_engine.yearly_core_resolution": true,
 
 		"place_influence_engine.yearly_tick": true,
