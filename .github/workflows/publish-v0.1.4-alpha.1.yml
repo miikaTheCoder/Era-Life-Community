@@ -1,0 +1,52 @@
+name: Publish v0.1.4-alpha.1
+
+on:
+  push:
+    branches:
+      - codex/publish-v0.1.4-alpha.1
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out release automation
+        uses: actions/checkout@v4
+
+      - name: Check out tagged release source
+        uses: actions/checkout@v4
+        with:
+          ref: v0.1.4-alpha.1
+          path: release-source
+
+      - name: Install pinned Godot desktop toolchain
+        run: ./release-source/scripts/setup-godot.sh desktop
+
+      - name: Build all desktop packages
+        run: ./release-source/scripts/build.sh all
+
+      - name: Verify release packages
+        working-directory: release-source/build
+        run: |
+          sha256sum -c SHA256SUMS.txt
+          tar -tzf EraLife-linux-x86_64.tar.gz >/dev/null
+          unzip -t EraLife-windows-x86_64.zip
+          unzip -t EraLife-macos-universal.zip
+
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.1.4-alpha.1 \
+            release-source/build/EraLife-linux-x86_64.tar.gz \
+            release-source/build/EraLife-windows-x86_64.zip \
+            release-source/build/EraLife-macos-universal.zip \
+            release-source/build/SHA256SUMS.txt \
+            --repo "${{ github.repository }}" \
+            --verify-tag \
+            --prerelease \
+            --title "Era Life Community — v0.1.4 Alpha 1" \
+            --notes-file .github/release-notes/v0.1.4-alpha.1.md
