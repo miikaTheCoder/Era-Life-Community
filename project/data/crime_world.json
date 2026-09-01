@@ -1,0 +1,208 @@
+{
+  "schema": "eralife.crime_world_content",
+  "version": 1,
+  "minimum_criminal_age": 16,
+  "ranks": [
+    {"id": "outsider", "label": "Outsider", "reputation": 0, "successful_jobs": 0},
+    {"id": "connected", "label": "Connected", "reputation": 6, "successful_jobs": 1},
+    {"id": "associate", "label": "Associate", "reputation": 12, "successful_jobs": 2},
+    {"id": "soldier", "label": "Soldier", "reputation": 28, "successful_jobs": 5},
+    {"id": "capo", "label": "Capo", "reputation": 52, "successful_jobs": 10},
+    {"id": "underboss", "label": "Underboss", "reputation": 82, "successful_jobs": 17},
+    {"id": "boss", "label": "Boss", "reputation": 118, "successful_jobs": 26}
+  ],
+  "jobs": [
+    {
+      "id": "deliver_message",
+      "label": "Deliver a Sealed Message",
+      "description": "Carry a message across town without opening it or attracting attention.",
+      "minimum_rank": "outsider",
+      "base_success": 82,
+      "payout_min": 120,
+      "payout_max": 420,
+      "reputation_gain": 6,
+      "fear_gain": 0,
+      "heat_gain": 1
+    },
+    {
+      "id": "keep_watch",
+      "label": "Keep Watch",
+      "description": "Watch a meeting place and warn the crew if authorities appear.",
+      "minimum_rank": "connected",
+      "base_success": 74,
+      "payout_min": 300,
+      "payout_max": 900,
+      "reputation_gain": 8,
+      "fear_gain": 1,
+      "heat_gain": 3
+    },
+    {
+      "id": "collect_debt",
+      "label": "Collect a Debt",
+      "description": "Convince a reluctant debtor that an old promise still matters.",
+      "minimum_rank": "associate",
+      "base_success": 66,
+      "payout_min": 800,
+      "payout_max": 2400,
+      "reputation_gain": 10,
+      "fear_gain": 5,
+      "heat_gain": 6
+    },
+    {
+      "id": "manage_racket",
+      "label": "Manage a Protection Route",
+      "description": "Keep payments, promises, and volatile subordinates under control.",
+      "minimum_rank": "soldier",
+      "base_success": 61,
+      "payout_min": 1800,
+      "payout_max": 5200,
+      "reputation_gain": 13,
+      "fear_gain": 7,
+      "heat_gain": 8
+    },
+    {
+      "id": "settle_dispute",
+      "label": "Settle an Underworld Dispute",
+      "description": "Resolve a dangerous dispute before it becomes a public war.",
+      "minimum_rank": "capo",
+      "base_success": 57,
+      "payout_min": 3500,
+      "payout_max": 9500,
+      "reputation_gain": 17,
+      "fear_gain": 9,
+      "heat_gain": 10
+    }
+  ],
+  "extortion": {
+    "minimum_annual_payment": 1200,
+    "maximum_annual_payment": 48000,
+    "property_value_rate": 0.035,
+    "security_cost_rate": 0.55,
+    "yearly_offer_chance": 24,
+    "retaliation_chance": 68,
+    "security_retaliation_reduction": 46,
+    "eligible_job_terms": ["business owner", "entrepreneur", "shopkeeper", "merchant", "restaurant owner"]
+  },
+  "eras": {
+    "Ancient Era": [
+      {
+        "id": "iron_road_brotherhood",
+        "name": "Iron Road Brotherhood",
+        "kind": "protection_band",
+        "tags": ["crime", "bandits", "tribute", "ancient"],
+        "wealth": 22000,
+        "power": 48,
+        "fear": 61,
+        "heat": 18,
+        "corruption": 24
+      },
+      {
+        "id": "red_seal_ring",
+        "name": "Red Seal Ring",
+        "kind": "smuggling_ring",
+        "tags": ["crime", "smuggling", "tribute", "ancient"],
+        "wealth": 31000,
+        "power": 43,
+        "fear": 49,
+        "heat": 22,
+        "corruption": 38
+      }
+    ],
+    "Medieval Era": [
+      {
+        "id": "black_lantern_guild",
+        "name": "Black Lantern Guild",
+        "kind": "thieves_guild",
+        "tags": ["crime", "thieves_guild", "protection", "medieval"],
+        "wealth": 68000,
+        "power": 57,
+        "fear": 63,
+        "heat": 25,
+        "corruption": 41
+      },
+      {
+        "id": "ashen_coin_company",
+        "name": "Ashen Coin Company",
+        "kind": "outlaw_company",
+        "tags": ["crime", "outlaws", "smuggling", "medieval"],
+        "wealth": 79000,
+        "power": 52,
+        "fear": 55,
+        "heat": 29,
+        "corruption": 34
+      }
+    ],
+    "Industrial Era": [
+      {
+        "id": "moretti_family",
+        "name": "Moretti Family",
+        "kind": "mafia_family",
+        "tags": ["crime", "mafia", "protection", "industrial"],
+        "wealth": 420000,
+        "power": 68,
+        "fear": 72,
+        "heat": 38,
+        "corruption": 62
+      },
+      {
+        "id": "rossi_family",
+        "name": "Rossi Family",
+        "kind": "mafia_family",
+        "tags": ["crime", "mafia", "smuggling", "industrial"],
+        "wealth": 360000,
+        "power": 64,
+        "fear": 67,
+        "heat": 34,
+        "corruption": 58
+      }
+    ],
+    "Modern Era": [
+      {
+        "id": "moretti_family",
+        "name": "Moretti Family",
+        "kind": "mafia_family",
+        "tags": ["crime", "mafia", "protection", "modern"],
+        "wealth": 2400000,
+        "power": 71,
+        "fear": 69,
+        "heat": 52,
+        "corruption": 48
+      },
+      {
+        "id": "valenti_syndicate",
+        "name": "Valenti Syndicate",
+        "kind": "crime_syndicate",
+        "tags": ["crime", "syndicate", "smuggling", "modern"],
+        "wealth": 3100000,
+        "power": 74,
+        "fear": 64,
+        "heat": 57,
+        "corruption": 44
+      }
+    ],
+    "Future Era": [
+      {
+        "id": "onyx_exchange",
+        "name": "Onyx Exchange",
+        "kind": "corporate_syndicate",
+        "tags": ["crime", "corporate", "black_market", "future"],
+        "wealth": 18000000,
+        "power": 79,
+        "fear": 66,
+        "heat": 72,
+        "corruption": 39
+      },
+      {
+        "id": "ghostline_network",
+        "name": "Ghostline Network",
+        "kind": "network_syndicate",
+        "tags": ["crime", "network", "smuggling", "future"],
+        "wealth": 22500000,
+        "power": 76,
+        "fear": 58,
+        "heat": 77,
+        "corruption": 35
+      }
+    ]
+  }
+}

@@ -217,6 +217,7 @@ var case_orchestrator
 
 
 var crime_engine
+var crime_world_engine
 var relationship_activities_engine
 
 
@@ -6625,6 +6626,7 @@ func initialize():
 	vampire_cure_engine = VampireCureEngine.new(self)
 	vampire_engine = VampireEngine.new(self)
 	universal_faction_engine = UniversalFactionEngine.new(self)
+	crime_world_engine = CrimeWorldEngine.new(self)
 	runtime_health_registry = RuntimeHealthRegistry.new(self)
 	runtime_fault_router = RuntimeFaultRouter.new(self)
 	patch_suggestion_engine = PatchSuggestionEngine.new(self)
@@ -7886,6 +7888,7 @@ func _initialize_birth_shell_first_life() -> void:
 	vampire_cure_engine = VampireCureEngine.new(self)
 	vampire_engine = VampireEngine.new(self)
 	universal_faction_engine = UniversalFactionEngine.new(self)
+	crime_world_engine = CrimeWorldEngine.new(self)
 	runtime_health_registry = RuntimeHealthRegistry.new(self)
 	runtime_fault_router = RuntimeFaultRouter.new(self)
 	patch_suggestion_engine = PatchSuggestionEngine.new(self)
