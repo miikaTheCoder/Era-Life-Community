@@ -683,6 +683,11 @@ var saved_life_picker_title_label: Label
 var saved_life_picker_status_label: Label
 var saved_life_picker_list: VBoxContainer
 var saved_life_picker_confirm_button: Button
+# Retry interval for the saved-life residency observation poll. Re-running the whole
+# load path every frame starved the staged surface publication it waits on.
+const SAVED_LIFE_RESIDENCY_OBSERVATION_INTERVAL_MS: int = 120
+var saved_life_picker_delete_button: Button
+var saved_life_picker_delete_armed_path: String = ""
 var saved_life_picker_cancel_button: Button
 var saved_life_picker_mode: String = ""
 var saved_life_picker_pending_path: String = ""
@@ -14674,16 +14679,18 @@ func _show_grocery_aisle_shoppers_popup(
 	)
 
 	EraLog.truth(
-		"ERALIFE_GROCERY_SHOPPER_LENS_TRUTH"
-		+ "|store_id=%s"
-		+ "|aisle_id=%s"
-		+ "|rows=%d"
-		+ "|popup_shell_rebuilt=false"
-		+ "|cards_destroyed=false"
-		+ "|cards_reused=true"
-		+ "|visible_before_reconcile=true"
-		+ "|duration_ms=%d"
-		+ "|at_ms=%d"
+		(
+			"ERALIFE_GROCERY_SHOPPER_LENS_TRUTH"
+			+ "|store_id=%s"
+			+ "|aisle_id=%s"
+			+ "|rows=%d"
+			+ "|popup_shell_rebuilt=false"
+			+ "|cards_destroyed=false"
+			+ "|cards_reused=true"
+			+ "|visible_before_reconcile=true"
+			+ "|duration_ms=%d"
+			+ "|at_ms=%d"
+		)
 		% [
 			store_id,
 			aisle_id,
@@ -21849,6 +21856,14 @@ func _save_current_life_to_slot_deferred(
 		"ui_is_expression_only": true,
 	}
 
+	# FIX: "target_engine_unavailable" on Save Game. The intent below routes to
+	# gs.game_state_serialization_runtime, but that engine is created lazily -- only
+	# inside GameState.save_game() and one other path. If neither has run in this
+	# session the property is still null, the route resolves to nothing, and the save
+	# fails with that reason instead of saving. Create it before routing.
+	if gs != null and gs.game_state_serialization_runtime == null:
+		gs.game_state_serialization_runtime = GameStateSerializationRuntime.new(gs)
+
 	var save_report: Dictionary = (
 		_request_runtime_engine_method_intent(
 			"game_state_serialization_runtime",
@@ -21979,16 +21994,18 @@ func _save_current_life_to_slot_deferred(
 	)
 
 	EraLog.truth(
-		("ERALIFE_LINEAGE_SAVE_LENS_TRUTH"
-		+ "|success=%s"
-		+ "|actor_id=%d"
-		+ "|file_saved=%s"
-		+ "|checkpoint_saved=%s"
-		+ "|global_intent_routed=%s"
-		+ "|renderer_called_engine_directly=false"
-		+ "|full_universe_walk=%s"
-		+ "|duration_ms=%d"
-		+ "|at_ms=%d")
+		(
+			"ERALIFE_LINEAGE_SAVE_LENS_TRUTH"
+			+ "|success=%s"
+			+ "|actor_id=%d"
+			+ "|file_saved=%s"
+			+ "|checkpoint_saved=%s"
+			+ "|global_intent_routed=%s"
+			+ "|renderer_called_engine_directly=false"
+			+ "|full_universe_walk=%s"
+			+ "|duration_ms=%d"
+			+ "|at_ms=%d"
+		)
 		% [
 			str(save_succeeded).to_lower(),
 			actor_id,
@@ -22721,6 +22738,18 @@ func _load_life_from_slot_deferred(
 	)
 	var status_report: Dictionary = {}
 
+	# DIAGNOSTIC: this is the load path the picker actually uses -- the earlier
+	# instrumentation went on _load_saved_life_playable_first(), which has no callers
+	# at all. Report which residency branch runs and what it returns.
+	var load_slot_log_count: int = int(get_meta("load_slot_entry_log_count", 0)) + 1
+	set_meta("load_slot_entry_log_count", load_slot_log_count)
+
+	if load_slot_log_count <= 3 or load_slot_log_count % 500 == 0:
+		EraLog.truth(
+			"ERALIFE_LOAD_SLOT|attempt=%d|signature=%s|reservation_declared=%s|path=%s"
+			% [load_slot_log_count, str(signature), str(reservation_declared), str(clean_path)]
+		)
+
 	if reservation_declared:
 		status_report = (
 			_request_reality_residency_intent(
@@ -22790,6 +22819,24 @@ func _load_life_from_slot_deferred(
 			)
 		)
 		return
+
+	# Throttled: this polls until residency reports ready, and when it never does the
+	# unthrottled version logged ~1,400 identical lines and drowned everything else.
+	var residency_poll_count: int = int(
+		get_meta("load_slot_residency_poll_count", 0)
+	) + 1
+	set_meta("load_slot_residency_poll_count", residency_poll_count)
+
+	if residency_poll_count <= 5 or residency_poll_count % 100 == 0:
+		EraLog.truth(
+			"ERALIFE_LOAD_SLOT|stage=residency_status|poll=%d|success=%s|ready=%s|reason=%s"
+			% [
+				residency_poll_count,
+				str(status_report.get("success", false)),
+				str(status_report.get("ready", false)),
+				str(status_report.get("reason", "-"))
+			]
+		)
 
 	var residency_ready: bool = bool(
 		status_report.get(
@@ -23466,6 +23513,176 @@ func _present_attached_checkpoint_lens_now(
 
 	startup_intro_exiting = true
 
+	# Which GameState is MainScene actually playing on after a resume? Compare this
+	# against ERALIFE_RESUME_MIRRORED and ERALIFE_ASSETS_BIND -- if all three differ,
+	# the restore is landing on a runtime nothing reads.
+	EraLog.truth(
+		"ERALIFE_MAINSCENE_RUNTIME|gs=%s|vehicle_engine=%s|vehicle_owner_rows=%d|edges=%d"
+		% [
+			str(gs.get_instance_id()) if gs != null else "<null>",
+			str(gs != null and gs.vehicle_engine != null),
+			(
+				gs.vehicle_engine.vehicles.size()
+				if gs != null and gs.vehicle_engine != null and typeof(gs.vehicle_engine.vehicles) == TYPE_DICTIONARY
+				else -1
+			),
+			(
+				MainSceneHelpers._safe_dictionary(gs.canonical_relationship_graph.get("edges", {})).size()
+				if gs != null and typeof(gs.canonical_relationship_graph) == TYPE_DICTIONARY
+				else -1
+			)
+		]
+	)
+
+	# FIX: after the section refresh the pets query runs but reports
+	# graph_edges_total=0 -- the runtime it reads has an empty graph while the resume
+	# restored into a different one. Adopt the graph from the attached resident record.
+	# The report below is unconditional: an earlier version logged inside the guards,
+	# so when a guard failed there was no evidence of why.
+	var live_graph_edges: int = (
+		MainSceneHelpers._safe_dictionary(
+			gs.canonical_relationship_graph.get("edges", {})
+		).size()
+		if gs != null and typeof(gs.canonical_relationship_graph) == TYPE_DICTIONARY
+		else -1
+	)
+	var adopt_source_edges: int = -1
+	var adopt_source_id: int = 0
+	var adopt_applied: bool = false
+
+	if gs != null and gs.reality_residency_manager != null:
+		var attached_record: Dictionary = MainSceneHelpers._safe_dictionary(
+			gs.reality_residency_manager.resident_records.get(
+				str(gs.reality_residency_manager.attached_signature),
+				{}
+			)
+		)
+		var source_runtime = attached_record.get("runtime_ref", null)
+
+		if source_runtime is GameState:
+			adopt_source_id = int(source_runtime.get_instance_id())
+			adopt_source_edges = (
+				MainSceneHelpers._safe_dictionary(
+					source_runtime.canonical_relationship_graph.get("edges", {})
+				).size()
+				if typeof(source_runtime.canonical_relationship_graph) == TYPE_DICTIONARY
+				else -1
+			)
+
+			if source_runtime != gs and live_graph_edges <= 0 and adopt_source_edges > 0:
+				gs.canonical_relationship_graph = (
+					source_runtime.canonical_relationship_graph.duplicate(true)
+				)
+
+				if typeof(source_runtime.entity_registry) == TYPE_DICTIONARY:
+					gs.entity_registry = source_runtime.entity_registry.duplicate(true)
+
+				adopt_applied = true
+
+	# There are at least THREE runtimes in play: MainScene's gs, the attached record's
+	# runtime, and whichever one the relationships hub builds surfaces on -- the pets
+	# query reported graph_edges_total=0 on a gs matching neither of the first two.
+	# Rather than keep chasing them pairwise, push the best graph to every runtime the
+	# residency manager knows about.
+	if gs != null and gs.reality_residency_manager != null:
+		var best_graph: Dictionary = (
+			gs.canonical_relationship_graph
+			if typeof(gs.canonical_relationship_graph) == TYPE_DICTIONARY
+			else {}
+		)
+		var best_edges: int = MainSceneHelpers._safe_dictionary(
+			best_graph.get("edges", {})
+		).size()
+		var best_entities: Dictionary = (
+			gs.entity_registry
+			if typeof(gs.entity_registry) == TYPE_DICTIONARY
+			else {}
+		)
+		var propagated: int = 0
+
+		for raw_signature in gs.reality_residency_manager.resident_records.keys():
+			var record_row: Dictionary = MainSceneHelpers._safe_dictionary(
+				gs.reality_residency_manager.resident_records.get(raw_signature, {})
+			)
+			var record_runtime = record_row.get("runtime_ref", null)
+
+			if not (record_runtime is GameState) or record_runtime == gs:
+				continue
+
+			var record_edges: int = (
+				MainSceneHelpers._safe_dictionary(
+					record_runtime.canonical_relationship_graph.get("edges", {})
+				).size()
+				if typeof(record_runtime.canonical_relationship_graph) == TYPE_DICTIONARY
+				else 0
+			)
+
+			if record_edges < best_edges:
+				record_runtime.canonical_relationship_graph = best_graph.duplicate(true)
+				record_runtime.entity_registry = best_entities.duplicate(true)
+				propagated += 1
+
+		EraLog.truth(
+			"ERALIFE_LOAD_GRAPH_PROPAGATED|best_edges=%d|runtimes_updated=%d|records=%d"
+			% [
+				best_edges,
+				propagated,
+				gs.reality_residency_manager.resident_records.size()
+			]
+		)
+
+	EraLog.truth(
+		"ERALIFE_LOAD_GRAPH_ADOPTED|applied=%s|live_edges=%d|source_gs=%d|source_edges=%d|manager=%s|attached=%s"
+		% [
+			str(adopt_applied),
+			live_graph_edges,
+			adopt_source_id,
+			adopt_source_edges,
+			str(gs != null and gs.reality_residency_manager != null),
+			str(gs.reality_residency_manager.attached_signature) if gs != null and gs.reality_residency_manager != null else "-"
+		]
+	)
+
+	# FIX: after a load the pets section never queries at all -- PET_CARDS_READ does
+	# not appear, where it does in a normal session. The relationship hub is serving
+	# surfaces built before the resume. This uses the narrow, purpose-built section
+	# refresh rather than the new-world reset that was tried here before and wiped
+	# stats and money: it touches only the relationship sections.
+	if (
+		gs != null
+		and gs.reality_projection_contract_engine != null
+		and gs.reality_projection_contract_engine.has_method(
+			"queue_resident_relationship_section_refresh"
+		)
+		and gs.player != null
+	):
+		var pets_refresh: Dictionary = MainSceneHelpers._safe_dictionary(
+			gs.reality_projection_contract_engine
+			.queue_resident_relationship_section_refresh(
+				int(gs.player.id),
+				["pets", "household", "social"],
+				{
+					"source": "checkpoint_reattach_lens_presented",
+					"ui_is_renderer_only": true
+				}
+			)
+		)
+
+		EraLog.truth(
+			"ERALIFE_LOAD_PETS_REFRESH|actor_id=%d|success=%s|reason=%s"
+			% [
+				int(gs.player.id),
+				str(pets_refresh.get("success", false)),
+				str(pets_refresh.get("reason", "-"))
+			]
+		)
+
+	# REVERTED: _reset_world_specific_ui_lens_state_for_new_world_seed() was called
+	# here to clear stale relationship-hub surfaces after a load. It is meant for
+	# starting a NEW world and clears far more than UI caches -- with it in place a
+	# loaded save came up with zeroed stats and no money. The stale-surface problem is
+	# real but this is the wrong lever for it.
+
 	_release_title_card_continue_cover_after_atomic_shell(
 		0
 	)
@@ -23672,6 +23889,24 @@ func _service_saved_life_residency_observation_queue() -> void:
 
 	if saved_life_residency_observation_queue.is_empty():
 		return
+
+	# FIX: this re-ran the ENTIRE load path on every process_frame while waiting for
+	# the checkpoint's contracts to become ready -- reservation, status query and
+	# dozens of meta writes, roughly 12,000 times over a 200-second load. That work
+	# competes with the staged surface publication it is waiting for, which is why the
+	# window stopped responding while the log showed publication still crawling
+	# forward. Retry on a fixed interval instead; the publication needs the frames
+	# more than the poller does.
+	var now_ms: int = int(Time.get_ticks_msec())
+	var last_service_ms: int = int(
+		get_meta("saved_life_residency_observation_last_service_ms", 0)
+	)
+
+	if now_ms - last_service_ms < SAVED_LIFE_RESIDENCY_OBSERVATION_INTERVAL_MS:
+		_arm_saved_life_residency_observation_service()
+		return
+
+	set_meta("saved_life_residency_observation_last_service_ms", now_ms)
 
 	var row_raw: Variant = (
 		saved_life_residency_observation_queue.pop_front()
@@ -23891,7 +24126,88 @@ func _apply_reality_fusion_entered_player_if_needed(path: String, load_report: D
 	remove_meta("reality_fusion_entering_universe_path")
 	remove_meta("reality_fusion_entering_universe_label")
 	remove_meta("reality_fusion_entering_source_mode")
+func _attach_restored_reality_after_load() -> void:
+	# Pick whichever resident record the load left behind and attach it. Normal boot
+	# attaches through RealityResidencyContractEngine's "attach" command; the load
+	# path never did, which is why a loaded save sat unattached forever.
+	if gs == null or gs.reality_residency_manager == null:
+		return
+
+	var manager = gs.reality_residency_manager
+
+	if not manager.has_method("attach_reality"):
+		return
+
+	if str(manager.attached_signature).strip_edges() != "":
+		EraLog.truth("ERALIFE_LOAD_ATTACH|skipped=already_attached")
+		return
+
+	var records: Dictionary = manager.resident_records
+
+	if typeof(records) != TYPE_DICTIONARY or records.is_empty():
+		EraLog.truth("ERALIFE_LOAD_ATTACH|failed=no_resident_records")
+		return
+
+	var chosen_signature: String = ""
+
+	for raw_signature in records.keys():
+		var candidate: String = str(raw_signature).strip_edges()
+		if candidate == "":
+			continue
+		chosen_signature = candidate
+		break
+
+	if chosen_signature == "":
+		EraLog.truth("ERALIFE_LOAD_ATTACH|failed=no_usable_signature")
+		return
+
+	# A record restored from disk cannot carry runtime_ref -- it is a live object
+	# reference, so serialisation drops it. attach_reality() rejects the record with
+	# "resident_runtime_reference_missing", which is exactly the
+	# first_false_gate=resident_runtime_exists in the residency truth line. Put the
+	# live GameState back on the record before attaching.
+	var restored_record: Dictionary = records [chosen_signature]
+
+	if typeof(restored_record) == TYPE_DICTIONARY:
+		if not (restored_record.get("runtime_ref", null) is GameState):
+			restored_record ["runtime_ref"] = gs
+			records [chosen_signature] = restored_record
+			manager.resident_records = records
+
+	var attach_report: Dictionary = MainSceneHelpers._safe_dictionary(
+		manager.attach_reality(
+			chosen_signature,
+			{
+				"source": "mainscene.load_saved_life",
+				"ui_is_renderer_only": true
+			}
+		)
+	)
+
+	EraLog.truth(
+		"ERALIFE_LOAD_ATTACH|signature=%s|success=%s|attached_now=%s"
+		% [
+			chosen_signature,
+			str(attach_report.get("success", false)),
+			str(manager.attached_signature)
+		]
+	)
+
+
 func _load_saved_life_playable_first(path: String, extra_options: Dictionary = {}) -> Dictionary:
+	# DIAGNOSTIC: ERALIFE_LOAD_ATTACH never appears, so the load is not reaching the
+	# hydration branch where the attach was added. This function has three exits --
+	# boot_contract, hydration runtime, and the legacy gs.load_game() fallback -- so
+	# report which one actually runs.
+	EraLog.truth(
+		"ERALIFE_LOAD_ENTRY|path=%s|has_boot_contract=%s|has_hydration_runtime=%s"
+		% [
+			str(path),
+			str(extra_options.has("boot_contract")),
+			str(gs != null and "game_state_hydration_runtime" in gs)
+		]
+	)
+
 	var clean_path: String = str(path).strip_edges()
 	if clean_path == "":
 		return {
@@ -23944,11 +24260,52 @@ func _load_saved_life_playable_first(path: String, extra_options: Dictionary = {
 		return boot_report
 
 	if "game_state_hydration_runtime" in gs:
+		# FIX: this path creates the hydration runtime but, unlike GameState.load_game(),
+		# never runs the two dependency ensurers. Hydration then fails on missing
+		# engines -- the same lazy-null defect that broke Save -- and because nothing
+		# below checks report.success the failure was returned silently: no message,
+		# and the life simply did not change.
+		if gs.has_method("_ensure_load_game_runtime_dependencies"):
+			gs._ensure_load_game_runtime_dependencies()
+
+		if gs.has_method("_ensure_identity_checkpoint_runtime_dependencies"):
+			gs._ensure_identity_checkpoint_runtime_dependencies()
+
 		if gs.game_state_hydration_runtime == null:
 			gs.game_state_hydration_runtime = GameStateHydrationRuntime.new(gs)
 
 		if gs.game_state_hydration_runtime != null and gs.game_state_hydration_runtime.has_method("hydrate_playable_from_path"):
 			var report: Dictionary = gs.game_state_hydration_runtime.hydrate_playable_from_path(clean_path, load_options)
+
+			# A failed hydration used to be returned with nobody checking it, so a
+			# broken load looked identical to a successful one: no message, and the
+			# life unchanged. Say so.
+			if not bool(report.get("success", false)):
+				EraLog.truth(
+					"ERALIFE_LOAD_FAILED|path=%s|reason=%s|text=%s"
+					% [
+						clean_path,
+						str(report.get("reason", "unknown")),
+						str(report.get("text", ""))
+					]
+				)
+
+				if world_actions_status_label != null and is_instance_valid(world_actions_status_label):
+					world_actions_status_label.text = (
+						"Load failed: %s"
+						% str(report.get("reason", "unknown"))
+					)
+
+			# FIX: hydration restores the game state but never touches the residency
+			# manager -- there are zero references to it in GameStateHydrationRuntime.
+			# So after a load the resident record existed with a live service key, but
+			# nothing was ever attached to it: attached_signature stayed empty, the
+			# residency truth reported first_false_gate=resident_runtime_exists, and
+			# the pump armed hundreds of times against work it could never finish.
+			# Attach the restored reality so the load actually completes.
+			if bool(report.get("success", false)):
+				_attach_restored_reality_after_load()
+
 			report ["load_mode"] = "playable_first"
 			report ["profile"] = str(load_options.get("profile", "zero_frame_local_life_packet"))
 			report ["live_shell_requested"] = true
@@ -23958,6 +24315,7 @@ func _load_saved_life_playable_first(path: String, extra_options: Dictionary = {
 			return report
 
 	if gs.has_method("load_game"):
+		EraLog.truth("ERALIFE_LOAD_BRANCH|branch=legacy_load_game")
 		var legacy_result: Variant = gs.load_game(clean_path, load_options)
 		if typeof(legacy_result) == TYPE_DICTIONARY:
 			var legacy_report: Dictionary = (legacy_result as Dictionary).duplicate(true)
@@ -40015,10 +40373,18 @@ func _drive_luxury_exchange_shiny_audio_prewarm() -> void:
 	player.bus = "Master"
 	player.volume_db = -5.0
 
-	var cached_raw: Variant = get_meta(
-		"luxury_exchange_shiny_audio_stream_cache",
-		null
-	) if has_meta("luxury_exchange_shiny_audio_stream_cache") else null
+	# FIX: this logged "The object does not have any 'meta' values with the key
+	# 'luxury_exchange_shiny_audio_stream_cache'" on every frame -- hundreds of error
+	# lines drowning the console. Passing a default to get_meta() does not suppress the
+	# error when the object has no metadata at all, so check has_meta() first.
+	var cached_raw: Variant = (
+		get_meta(
+			"luxury_exchange_shiny_audio_stream_cache",
+			null
+		)
+		if has_meta("luxury_exchange_shiny_audio_stream_cache")
+		else null
+	)
 
 	if cached_raw is AudioStream:
 		var cached_stream: AudioStream = (
@@ -59632,6 +59998,13 @@ func _ensure_saved_life_picker_popup() -> void:
 	saved_life_picker_confirm_button.pressed.connect(_on_saved_life_picker_confirm_pressed)
 	buttons_row.add_child(saved_life_picker_confirm_button)
 
+	saved_life_picker_delete_button = Button.new()
+	saved_life_picker_delete_button.text = "Delete Save"
+	saved_life_picker_delete_button.disabled = true
+	saved_life_picker_delete_button.custom_minimum_size = Vector2(140, 46)
+	saved_life_picker_delete_button.pressed.connect(_on_saved_life_picker_delete_button_pressed)
+	buttons_row.add_child(saved_life_picker_delete_button)
+
 	saved_life_picker_cancel_button = Button.new()
 	saved_life_picker_cancel_button.text = "Back"
 	saved_life_picker_cancel_button.custom_minimum_size = Vector2(120, 46)
@@ -59827,6 +60200,48 @@ func _refresh_saved_life_picker_list() -> void:
 			delete_button.pressed.connect(_on_saved_life_picker_delete_pressed.bind(path, button_text))
 			row.add_child(delete_button)
 
+func _on_saved_life_picker_delete_button_pressed() -> void:
+	# The existing _on_saved_life_picker_delete_pressed(path, label) already deletes
+	# correctly -- GameState.delete_saved_life() removes the .bin and its .summary
+	# companion -- there was simply no button wired to it. This wrapper deletes
+	# whichever save is currently selected, behind a two-press confirmation so a
+	# stray click cannot destroy a life.
+	var target_path: String = str(saved_life_picker_pending_path).strip_edges()
+
+	if target_path == "":
+		if saved_life_picker_status_label != null:
+			saved_life_picker_status_label.text = "Select a save first, then delete."
+		return
+
+	if saved_life_picker_delete_armed_path != target_path:
+		saved_life_picker_delete_armed_path = target_path
+
+		if saved_life_picker_delete_button != null:
+			saved_life_picker_delete_button.text = "Really delete?"
+
+		if saved_life_picker_status_label != null:
+			saved_life_picker_status_label.text = (
+				"Press again to permanently delete:\n%s"
+				% str(saved_life_picker_pending_label)
+			)
+		return
+
+	var target_label: String = str(saved_life_picker_pending_label)
+
+	saved_life_picker_delete_armed_path = ""
+	saved_life_picker_pending_path = ""
+	saved_life_picker_pending_label = ""
+
+	if saved_life_picker_delete_button != null:
+		saved_life_picker_delete_button.text = "Delete Save"
+		saved_life_picker_delete_button.disabled = true
+
+	_on_saved_life_picker_delete_pressed(
+		target_path,
+		target_label
+	)
+
+
 func _on_saved_life_picker_delete_pressed(path: String, label: String) -> void:
 	if gs == null or path == "":
 		return
@@ -59873,6 +60288,16 @@ func _on_saved_life_picker_entry_pressed(
 
 	saved_life_picker_pending_path = clean_path
 	saved_life_picker_pending_label = clean_label
+
+	# Selecting a different save cancels any armed delete confirmation.
+	if saved_life_picker_delete_armed_path != clean_path:
+		saved_life_picker_delete_armed_path = ""
+
+		if saved_life_picker_delete_button != null:
+			saved_life_picker_delete_button.text = "Delete Save"
+
+	if saved_life_picker_delete_button != null:
+		saved_life_picker_delete_button.disabled = clean_path == ""
 
 	if saved_life_picker_status_label != null:
 		saved_life_picker_status_label.text = (
@@ -133700,9 +134125,17 @@ func _play_luxury_exchange_shiny_audio_from_authority(
 	var player:= get_node_or_null(
 		"LuxuryExchangeShinyAudio"
 	) as AudioStreamPlayer
-	var cached_raw: Variant = get_meta(
-		"luxury_exchange_shiny_audio_stream_cache",
-		null
+	# FIX: this logged "The object does not have any 'meta' values with the key
+	# 'luxury_exchange_shiny_audio_stream_cache'" on every frame -- hundreds of error
+	# lines drowning the console. Passing a default to get_meta() does not suppress the
+	# error when the object has no metadata at all, so check has_meta() first.
+	var cached_raw: Variant = (
+		get_meta(
+			"luxury_exchange_shiny_audio_stream_cache",
+			null
+		)
+		if has_meta("luxury_exchange_shiny_audio_stream_cache")
+		else null
 	)
 
 	if (
@@ -167674,10 +168107,12 @@ func _apply_god_mode_life_prewarm_thread_report(
 		_set_god_mode_prewarm_progress(
 			0.94,
 			(
-				"The resident player and family are ready, "
-				+ "but the first-visible Life shell gate "
-				+ "did not seal. Missing contracts: %s. "
-				+ "Main-tab input hot: %s."
+				(
+					"The resident player and family are ready, "
+					+ "but the first-visible Life shell gate "
+					+ "did not seal. Missing contracts: %s. "
+					+ "Main-tab input hot: %s."
+				)
 				% [
 					str(
 						missing_contracts
@@ -190689,13 +191124,15 @@ func _commit_relationship_profile_pointer_switch_fallback_now(
 		)
 
 	EraLog.truth(
-		"ERALIFE_ENTITY_SWITCH_FALLBACK_TRUTH"
-		+ "|success=false"
-		+ "|actor_id=%d"
-		+ "|reason=prepared_pointer_packet_required"
-		+ "|direct_family_engine_call=false"
-		+ "|direct_player_assignment=false"
-		+ "|at_ms=%d"
+		(
+			"ERALIFE_ENTITY_SWITCH_FALLBACK_TRUTH"
+			+ "|success=false"
+			+ "|actor_id=%d"
+			+ "|reason=prepared_pointer_packet_required"
+			+ "|direct_family_engine_call=false"
+			+ "|direct_player_assignment=false"
+			+ "|at_ms=%d"
+		)
 		% [
 			target_id,
 			now_ms
