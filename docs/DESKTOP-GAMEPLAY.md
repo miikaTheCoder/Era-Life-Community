@@ -49,7 +49,7 @@ Checks run with Godot 4.4.1 on Linux, using isolated saves and an NVIDIA RTX 306
 with the OpenGL compatibility renderer. The PC exports include both Linux x86_64
 and Windows x86_64. Windows runtime behavior is not verified here.
 
-Verified on 2026-08-31:
+Verified on 2026-09-03:
 
 | Desktop flow | Result |
 | --- | --- |
@@ -57,8 +57,8 @@ Verified on 2026-08-31:
 | Narrative newborn route | Entered at age 0, aged to 1, saved, restarted, restored parents and story history, aged to 2, retained all three diary blocks |
 | Narrative adult continuation | Entered at age 21, aged to 22, saved, restarted, restored family and story history, aged to 23, retained both diary years |
 | Existing God Mode, exported Linux executable | Created a life, aged to 1, saved, restarted, restored family and relationship scores, aged to 2, retained all three diary blocks |
-| Focused regression scripts | Actor snapshots, checkpoint scheduling/progress/market, narrative catalog, and mode checkpoint tests passed |
-| Desktop packaging | Linux and Windows exports completed; both archive integrity checks passed; Linux executable passed headless startup and graphical gameplay/reload checks |
+| Focused regression scripts | Actor snapshots, checkpoint scheduling/progress/market, narrative catalog, mode checkpoint, deferred EventBus, crime-target refresh, residency convergence, and quiet-year diary tests passed |
+| Desktop packaging | Linux, Windows, and macOS exports completed from clean `main`; all three archive checksums and contents verified |
 
 Logs and selected screenshots from this run are retained locally in
 `build/desktop-validation/`, alongside archive checksums. The tests still report
@@ -140,15 +140,14 @@ the next frame skipped the exhausted phase loop and never finalized the year.
 Finalization now resumes outside that loop, including when its own snapshot work
 needs another frame. The regression reproduces the old indefinite running state.
 
-The post-alpha-1 extended pass is **not a 25-year certification**. All nine focused
-regression scripts pass, and Linux/Windows exports succeed, but graphical runs
-still expose yearly relationship/event-processing stalls and unresolved behavior during
-background checkpoint hydration. A Narrative newborn's saved relationship score
-was correct at the first playable frame and differed after hydration. An adult
-Narrative run ended before completing its checks and is not counted as a pass.
-Full local logs, screenshots, candidate packages and the measured results are in
-`build/desktop-long-validation/`. Manual activity and usability checks remain in
-[PC-PLAYTEST.md](PC-PLAYTEST.md); native Windows and macOS gameplay remain untested.
+The current focused pass fixes the hydration score race, bounds household/custodial
+movement checks to one snapshot per year, and makes the multi-year smoke harness
+dismiss stale result cards before the next Age Up. A fresh adult graphical run passes
+the one-year certification; a five-year run advances four years before the Godot
+process reaches its existing per-process resource ceiling. Therefore this is still
+**not a clean 25-year certification**. The reproducible long-run evidence is retained
+under `build/desktop-certification-50ff57e/`. Native Windows and macOS gameplay,
+manual activity usability, and a birth-to-death run remain untested.
 
 Use a fresh directory for each creation run. Test profiles isolate saves/configuration
 and retain logs/screenshots. The test requests a 1440×900 window; tiling window

@@ -4,18 +4,19 @@ Use the Linux or Windows desktop build and record its release tag. Keep macOS
 experimental until someone can test it on a Mac. Android is a separate effort.
 Back up any life you care about before testing; use a new life for each route.
 
-The post-alpha-1 working tree includes four repairs found by extended testing:
-relationship ID normalization on Continue, the resident yearly phase schedule,
-diary entries for quiet years, and finalization after a frame-budget yield.
+The current working tree includes bounded yearly processing, relationship ID
+normalization on Continue, the resident yearly phase schedule, quiet-year diary
+entries, finalization after a frame-budget yield, hydration ownership checks, and
+movement authority snapshots.
 The original published alpha-1 archives do not include those repairs. Local
 candidates are under `build/desktop-long-validation/candidate/`; their build
 metadata explicitly records uncommitted source changes.
 
-Long-life validation is not yet a clean pass across all modes. Household and God
-Mode runs timed out during yearly relationship/event processing, and a Narrative newborn
-save restored its original relationship score on the first frame but showed a
-different score after background hydration. Record these as unresolved; do not
-replace or retag the existing release based only on successful exports.
+Long-life validation is not yet a clean pass across all modes. The relationship
+hydration score drift and the per-NPC household-contract movement stall are repaired.
+A five-year adult session currently reaches year four before hitting the process
+resource ceiling, so the 25-year target remains unresolved. Record that limitation;
+do not replace or retag a release based only on successful exports.
 
 ## Four routes
 
