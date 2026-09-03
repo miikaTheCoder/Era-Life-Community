@@ -4791,6 +4791,10 @@ func _materialize_checkpoint_resume_shell(
 		)
 
 	actor.id = actor_id
+	# The immediately playable actor bypasses GameState._deserialize_npc and
+	# is deliberately skipped by later spatial hydration. Normalize JSON IDs
+	# here too, before relationship lookups use the resumed actor.
+	actor.normalize_relationship_ids()
 	resident_gs.player = actor
 	resident_gs.player_id = actor_id
 	resident_gs.npcs = [actor]

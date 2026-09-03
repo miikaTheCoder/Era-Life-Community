@@ -48,6 +48,14 @@ func _run() -> void:
 	var restored_child: Person = state._deserialize_npc(payload.npcs.filter(func(row): return int(row.id) == 42)[0])
 	_check(restored_parent.children.has(42) and restored_child.parents.has(41), "Decoded family IDs cannot be found by normal gameplay lookups")
 	_check(restored_child.affection.get(41) == 78 and restored_parent.affection.get(42) == 78, "Decoded relationship scores cannot be found by actor ID")
+	# Continue shows this actor before background spatial hydration. That path
+	# skips _deserialize_npc, and the actor is not imported again in the tail.
+	var resumed_state := GameState.new()
+	var residency := RealityResidencyManager.new(resumed_state)
+	var resume_report: Dictionary = residency._materialize_checkpoint_resume_shell(resumed_state, {"actor_id": 42, "actor_snapshot": payload.npcs.filter(func(row): return int(row.id) == 42)[0], "year": 2001}, "checkpoint-test", {})
+	_check(resume_report.get("success", false), "Checkpoint resume shell could not materialize")
+	_check(resumed_state.player.parents.has(41), "Immediately resumed actor has non-integer parent IDs")
+	_check(resumed_state.player.affection.get(41) == 78, "Immediately resumed actor lost its relationship score")
 	_check(ids.has(43), "Checkpoint dropped a household member outside the family graph")
 	_check(payload.scenario_state.custom_household_start_person_key == "person_1", "Checkpoint lost selected household member")
 	_check(payload.scenario_state.choose_adventure.pressure_history.size() == 1, "Checkpoint lost narrative choices")

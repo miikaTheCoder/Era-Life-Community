@@ -6389,26 +6389,21 @@ func normalize_contract(contract: Dictionary, source_path: String = "") -> Dicti
 
 	var normalized_runtime_phases: Array = []
 	var seen_phases: Dictionary = {}
-	if runtime_phases.is_empty():
-		for phase_name in DEFAULT_RUNTIME_PHASES:
-			normalized_runtime_phases.append(normalize_runtime_phase_contract({
-				"id": phase_name,
-				"enabled": true,
-				"order": normalized_runtime_phases.size(),
-				"budget_ms": DEFAULT_PHASE_BUDGET_MS,
-				"hard_budget_ms": DEFAULT_HARD_PHASE_BUDGET_MS
-			}, state_id, normalized_runtime_phases.size()))
-	else:
-		for raw_phase in runtime_phases:
-			var phase: Dictionary = normalize_runtime_phase_contract(raw_phase, state_id, normalized_runtime_phases.size())
-			var phase_id: String = str(phase.get("id", "")).strip_edges()
-			if phase_id == "":
-				warnings.append("Skipped runtime phase without id.")
-				continue
-			if seen_phases.has(phase_id):
-				warnings.append("Duplicate runtime phase '%s' inside contract '%s'. Conflict policy will resolve at ingest." % [phase_id, state_id])
-			seen_phases [phase_id] = true
-			normalized_runtime_phases.append(phase)
+	# Feature/storage packs with no scheduler section must not invent phases.
+	# The old generic placeholders hid the age-up fallback in resident worlds;
+	# AgeUpRuntimeEngine silently skipped them, including school/work/health.
+	# The full kernel supplies its explicit schedule, and an empty registry
+	# already selects the implemented age-up fallback in the scheduler below.
+	for raw_phase in runtime_phases:
+		var phase: Dictionary = normalize_runtime_phase_contract(raw_phase, state_id, normalized_runtime_phases.size())
+		var phase_id: String = str(phase.get("id", "")).strip_edges()
+		if phase_id == "":
+			warnings.append("Skipped runtime phase without id.")
+			continue
+		if seen_phases.has(phase_id):
+			warnings.append("Duplicate runtime phase '%s' inside contract '%s'. Conflict policy will resolve at ingest." % [phase_id, state_id])
+		seen_phases [phase_id] = true
+		normalized_runtime_phases.append(phase)
 
 	var normalized_event_subscriptions: Array = []
 	var seen_subs: Dictionary = {}
@@ -11283,16 +11278,13 @@ func get_runtime_phase_scheduler_context(context: Dictionary = {}) -> Dictionary
 		phase_order.append(str(row.get("id", "")))
 
 	if phase_order.is_empty() and runtime_kind == "age_up":
-		phase_order = [
-			"year_and_era_mutation",
-			"core_state_resolution",
-			"internal_identity_drift",
-			"data_defined_simulation_laws",
-			"year_budget_pipeline_commit",
-			"player_phase_contract",
-			"choice_and_opportunity_surfacing",
-			"narrative_and_presentation"
-		]
+		# Use the complete built-in schedule, including its domain tasks and
+		# budgets. Names alone omit yearly finalization and stat progression.
+		for raw_phase in _build_default_age_up_runtime_phases():
+			var phase: Dictionary = normalize_runtime_phase_contract(raw_phase, DEFAULT_STATE_ID, phase_order.size())
+			var phase_id: String = str(phase.id)
+			phase_order.append(phase_id)
+			phase_contracts[phase_id] = phase
 
 	return {
 		"schema": "eralife.runtime_phase_live_scheduler_context",

@@ -4437,7 +4437,9 @@ or visible_runtime_hot
 				seen_diary_lines [line] = true
 				diary_lines.append("• %s" % line)
 
-			var final_text:= ""
+			# A quiet year still needs an age/year diary block. An empty result
+			# emits no diary intent, leaving Continue showing the last busy year.
+			var final_text:= "Another year passed."
 			if not diary_lines.is_empty():
 				final_text = "\n".join(PackedStringArray(diary_lines))
 
@@ -7751,7 +7753,10 @@ func run_year_runtime_slice(max_phase_steps: int = 1, max_commit_stages: int = 1
 		if int(Time.get_ticks_msec()) - slice_started_ms >= hard_frame_budget_ms:
 			return last_report
 
-		if runtime_slice_phase_cursor >= runtime_slice_order.size():
-			return _finalize_runtime_slice_session()
+	# The last phase may yield for the frame budget, and finalization itself
+	# can require multiple snapshot quanta. Resume it outside the phase loop
+	# so an exhausted phase cursor cannot leave the year running forever.
+	if runtime_slice_phase_cursor >= runtime_slice_order.size():
+		return _finalize_runtime_slice_session()
 
 	return last_report

@@ -105,6 +105,51 @@ Run graphical checks from a Linux desktop using Godot 4.4.1:
 ./scripts/test-desktop-modes.sh god /tmp/eralife-god-test
 ```
 
+For extended aging and repeated cold starts, see the [PC playtest checklist](PC-PLAYTEST.md)
+and `bash scripts/test-desktop-long.sh household /tmp/eralife-household-long`.
+The extended harness checks school/job scalar fields and relationship scores on
+reload, waits for annual simulation work, and records per-year diagnostics. The
+commands above still default to one year; `ERA_YEARS=5` selects a five-year batch
+and `ERA_YEARS=0` permits a restore-only verification. Use `ERA_RUN_LABEL` to retain
+separate logs and screenshots for repeated batches.
+
+Follow-up repair after alpha 1: the immediate Continue actor now normalizes JSON
+relationship IDs, just like the normal NPC loader. This actor is skipped by later
+spatial hydration, so omitting normalization could hide saved relationship scores.
+The regression exercises the actual immediate resume path as well as the normal
+deserializer. This source change does not modify the already published binaries.
+
+The extended run also found that packs without an explicit yearly schedule were
+injecting placeholder phases that AgeUpRuntimeEngine does not implement. This
+could advance the year while skipping player health, school, careers and event
+choices. Pack normalization now preserves an absent schedule; resident worlds can
+use the implemented age-up fallback. Explicit phase schedules remain unchanged.
+`test_year_scheduler.gd` reproduces the missing gameplay phases before the repair
+and checks both the fallback and explicit schedules afterward. The graphical
+long-run harness rejects years that do not execute the player phase.
+
+Quiet years also now produce an age/year diary entry. Previously the completed
+player phase returned empty text when there were no diary-worthy events, so the
+diary authority received nothing and Continue could show an older age. The new
+`test_year_diary.gd` checks two quiet years and duplicate finalization; the longer
+graphical test checks that every completed year has a diary block.
+
+The same test covers a final-frame stall found by the longer graphical runs.
+Finishing the final phase could yield for the frame budget before finalization;
+the next frame skipped the exhausted phase loop and never finalized the year.
+Finalization now resumes outside that loop, including when its own snapshot work
+needs another frame. The regression reproduces the old indefinite running state.
+
+The post-alpha-1 extended pass is **not a 25-year certification**. All nine focused
+regression scripts pass, and Linux/Windows exports succeed, but graphical runs
+still expose yearly relationship/event-processing stalls and unresolved behavior during
+background checkpoint hydration. A Narrative newborn's saved relationship score
+was correct at the first playable frame and differed after hydration. An adult
+Narrative run ended before completing its checks and is not counted as a pass.
+Full local logs, screenshots, candidate packages and the measured results are in
+`build/desktop-long-validation/`. Manual activity and usability checks remain in
+[PC-PLAYTEST.md](PC-PLAYTEST.md); native Windows and macOS gameplay remain untested.
+
 Use a fresh directory for each creation run. Test profiles isolate saves/configuration
 and retain logs/screenshots. The test requests a 1440×900 window; tiling window
 managers may need that test window floated or resized. No desktop configuration
