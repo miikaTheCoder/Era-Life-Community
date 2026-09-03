@@ -26,6 +26,7 @@ var preview_signature_by_slot: Dictionary = {}
 # Upper bound on step_resident_projection() passes for one projection before it is
 # declared degraded. Boot publishes 5 surfaces in well under this.
 const MAX_PROJECTION_TAIL_STEPS: int = 900
+const MAX_PROJECTION_TAIL_STAGNANT_STEPS: int = 300
 var active_service_keys: Array = []
 var attached_signature: String = ""
 var next_chassis_sequence: int = 1
@@ -40,7 +41,6 @@ var ledger: Array = []
 var last_report: Dictionary = {}
 var chassis_bootstrap_threads: Dictionary = {}
 var checkpoint_hydration_threads: Dictionary = {}
-var checkpoint_engine_graph_threads: Dictionary = {}
 
 func _init(
 	_gs = null,
@@ -2422,18 +2422,29 @@ func _bootstrap_chassis_runtime_on_worker(
 		"worker_thread_used": true,
 		"safety_cursor": safety_cursor
 	}
-func _hydrate_checkpoint_engine_graph_on_worker(
+func _step_checkpoint_engine_graph_on_main_thread(
 	resident_runtime: GameState,
 	signature: String,
 	checkpoint_path: String
 ) -> Dictionary:
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return {
+			"success": false,
+			"complete": false,
+			"reason": "checkpoint_engine_graph_requires_main_thread",
+			"signature": signature,
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false,
+		}
+
 	if resident_runtime == null:
 		return {
 			"success": false,
 			"complete": false,
 			"reason": "checkpoint_engine_graph_runtime_missing",
 			"signature": signature,
-			"worker_thread_used": true,
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false,
 		}
 
 	var context: Dictionary = {
@@ -2441,93 +2452,57 @@ func _hydrate_checkpoint_engine_graph_on_worker(
 		"checkpoint_path": checkpoint_path,
 		"source": (
 			"reality_residency_manager."
-			+ "checkpoint_engine_graph_worker"
+			+ "checkpoint_engine_graph_main_thread_quantum"
 		),
 		"max_steps": 1,
 		"frame_budget_ms": 1,
-		"worker_thread_used": true,
+		"worker_thread_used": false,
 		"runtime_scene_tree_access_allowed": false,
-		"constructor_work_on_renderer_thread": false,
+		"constructor_work_on_renderer_thread": true,
 		"ui_is_renderer_only": true
 	}
 
-	var build_report: Dictionary = {}
-	var safety_cursor: int = 0
-	var safety_limit: int = 4096
-
-	while safety_cursor < safety_limit:
-		build_report = (
-			resident_runtime
-			.prepare_resident_runtime_for_checkpoint_hydration(
-				context
-			)
+	var build_report: Dictionary = (
+		resident_runtime
+		.prepare_resident_runtime_for_checkpoint_hydration(
+			context
 		)
+	)
 
-		if (
-			resident_runtime.resident_runtime_bootstrap_failed
-			or bool(
-				build_report.get(
-					"failed",
-					false
-				)
-			)
-			or not bool(
-				build_report.get(
-					"success",
-					true
-				)
-			)
-		):
-			return {
-				"success": false,
-				"complete": false,
-				"reason": (
-					"checkpoint_engine_graph_bootstrap_failed"
-				),
-				"signature": signature,
-				"build_report": build_report,
-				"worker_thread_used": true,
-			}
+	if (
+		resident_runtime.resident_runtime_bootstrap_failed
+		or bool(build_report.get("failed", false))
+		or not bool(build_report.get("success", true))
+	):
+		return {
+			"success": false,
+			"complete": false,
+			"reason": "checkpoint_engine_graph_bootstrap_failed",
+			"signature": signature,
+			"build_report": build_report,
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": true,
+		}
 
-		if bool(
-			build_report.get(
-				"ready",
-				build_report.get(
-					"complete",
-					false
-				)
-			)
-		):
-			return {
-				"success": true,
-				"complete": true,
-				"signature": signature,
-				"build_report": build_report,
-				"worker_thread_used": true,
-				"ready_gate_member": false,
-				"completed_at_ms": int(
-					Time.get_ticks_msec()
-				)
-			}
-
-		safety_cursor += 1
-
-
-
-		OS.delay_msec(
-			4
+	var complete: bool = bool(
+		build_report.get(
+			"ready",
+			build_report.get("complete", false)
 		)
-
+	)
 	return {
-		"success": false,
-		"complete": false,
-		"reason": (
-			"checkpoint_engine_graph_worker_safety_limit_reached"
-		),
+		"success": true,
+		"complete": complete,
 		"signature": signature,
 		"build_report": build_report,
-		"worker_thread_used": true,
-		"safety_cursor": safety_cursor
+		"worker_thread_used": false,
+		"main_thread_live_state_commit": true,
+		"ready_gate_member": false,
+		"completed_at_ms": (
+			int(Time.get_ticks_msec())
+			if complete
+			else 0
+		),
 	}
 func _service_chassis_record(
 	chassis_id: String,
@@ -3417,10 +3392,13 @@ func reserve_checkpoint_reality(
 	] = true
 	checkpoint_candidate [
 		"checkpoint_engine_graph_worker_tail_required"
+	] = false
+	checkpoint_candidate [
+		"checkpoint_engine_graph_main_thread_tail_required"
 	] = true
 	checkpoint_candidate [
 		"constructor_work_on_renderer_thread_forbidden"
-	] = true
+	] = false
 
 	if resident_records.has(
 		clean_signature
@@ -3447,16 +3425,19 @@ func reserve_checkpoint_reality(
 		] = false
 		existing [
 			"checkpoint_engine_graph_worker_tail_required"
+		] = false
+		existing [
+			"checkpoint_engine_graph_main_thread_tail_required"
 		] = true
 		existing [
 			"constructor_work_after_lens_attach_forbidden"
 		] = false
 		existing [
 			"constructor_work_after_lens_attach_worker_only"
-		] = true
+		] = false
 		existing [
 			"constructor_work_on_renderer_thread_after_lens_attach_forbidden"
-		] = true
+		] = false
 
 		resident_records [
 			clean_signature
@@ -3512,10 +3493,11 @@ func reserve_checkpoint_reality(
 		"checkpoint_lightweight_chassis_allowed": true,
 		"checkpoint_waits_for_hot_chassis": false,
 		"checkpoint_engine_graph_must_be_hot_before_attach": false,
-		"checkpoint_engine_graph_worker_tail_required": true,
+		"checkpoint_engine_graph_worker_tail_required": false,
+		"checkpoint_engine_graph_main_thread_tail_required": true,
 		"constructor_work_after_lens_attach_forbidden": false,
-		"constructor_work_after_lens_attach_worker_only": true,
-		"constructor_work_on_renderer_thread_after_lens_attach_forbidden": true,
+		"constructor_work_after_lens_attach_worker_only": false,
+		"constructor_work_on_renderer_thread_after_lens_attach_forbidden": false,
 		"residency_tail_pending": false
 	}
 
@@ -5089,10 +5071,13 @@ func _materialize_checkpoint_resume_shell(
 	] = false
 	resident_gs.scenario_state [
 		"checkpoint_engine_construction_after_lens_attach_worker_only"
+	] = false
+	resident_gs.scenario_state [
+		"checkpoint_engine_construction_cooperative_main_thread"
 	] = not engine_graph_hot
 	resident_gs.scenario_state [
 		"checkpoint_engine_construction_on_renderer_thread_forbidden"
-	] = true
+	] = false
 	resident_gs.scenario_state [
 		"checkpoint_first_frame_truth_does_not_wait_for_engine_graph"
 	] = true
@@ -5266,7 +5251,8 @@ func _materialize_checkpoint_resume_shell(
 		"resume_not_birth": true,
 		"playable_before_full_residency": true,
 		"engine_graph_hot": engine_graph_hot,
-		"engine_graph_worker_tail_required": not engine_graph_hot,
+		"engine_graph_worker_tail_required": false,
+		"engine_graph_main_thread_tail_required": not engine_graph_hot,
 		"created_at_ms": int(Time.get_ticks_msec())
 	}
 
@@ -5368,10 +5354,13 @@ func _service_rehydration_record(
 		] = false
 		record [
 			"constructor_work_after_lens_attach_worker_only"
+		] = false
+		record [
+			"constructor_work_cooperative_main_thread"
 		] = not used_hot_chassis
 		record [
 			"constructor_work_on_renderer_thread_after_lens_attach_forbidden"
-		] = true
+		] = false
 
 		if used_hot_chassis:
 			record [
@@ -5458,39 +5447,18 @@ func _service_rehydration_record(
 		if resume_shell_ready:
 			var engine_graph_worker_started: bool = false
 			var engine_graph_worker_error: int = OK
-
-			if not used_hot_chassis:
-				var checkpoint_path: String = str(
-					resolved_candidate.get(
-						"checkpoint_path",
-						resolved_candidate.get(
-							"path",
-							""
-						)
-					)
-				).strip_edges()
-
-				var engine_graph_worker:= Thread.new()
-
-				engine_graph_worker_error = (
-					engine_graph_worker.start(
-						Callable(
-							self,
-							"_hydrate_checkpoint_engine_graph_on_worker"
-						).bind(
-							runtime,
-							signature,
-							checkpoint_path
-						),
-						Thread.PRIORITY_LOW
-					)
+			record ["checkpoint_engine_graph_path"] = str(
+				resolved_candidate.get(
+					"checkpoint_path",
+					resolved_candidate.get("path", "")
 				)
-
-				if engine_graph_worker_error == OK:
-					checkpoint_engine_graph_threads [
-						signature
-					] = engine_graph_worker
-					engine_graph_worker_started = true
+			).strip_edges()
+			record [
+				"checkpoint_engine_graph_main_thread_pending"
+			] = not used_hot_chassis
+			record [
+				"checkpoint_engine_graph_ready_gate_member"
+			] = false
 
 			record ["state"] = "ready"
 			record ["ready_at_ms"] = now_ms
@@ -5523,18 +5491,18 @@ func _service_rehydration_record(
 			)
 			record [
 				"checkpoint_engine_graph_worker_start_failed"
-			] = (
-				not used_hot_chassis
-				and not engine_graph_worker_started
-			)
+			] = false
 			record [
 				"checkpoint_engine_graph_worker_error"
 			] = engine_graph_worker_error
 			record [
 				"constructor_work_on_renderer_thread_after_lens_attach_forbidden"
-			] = true
+			] = false
 			record [
 				"constructor_work_after_lens_attach_worker_only"
+			] = false
+			record [
+				"constructor_work_cooperative_main_thread"
 			] = not used_hot_chassis
 
 			record ["projection_tail_pending"] = false
@@ -5545,7 +5513,6 @@ func _service_rehydration_record(
 
 			record ["worker_thread_used"] = (
 				used_hot_chassis
-				or engine_graph_worker_started
 			)
 			record ["worker_thread_active"] = (
 				engine_graph_worker_started
@@ -5596,8 +5563,11 @@ func _service_rehydration_record(
 				+ str(
 					engine_graph_worker_started
 				).to_lower()
-				+ "|renderer_thread_constructors_after_attach=false"
-				+ "|constructors_after_attach_worker_only="
+				+ "|engine_graph_main_thread_pending="
+				+ str(
+					not used_hot_chassis
+				).to_lower()
+				+ "|constructors_after_attach_cooperative_main_thread="
 				+ str(
 					not used_hot_chassis
 				).to_lower()
@@ -5886,25 +5856,16 @@ func _service_rehydration_record(
 		)
 		return
 
-	# Saves without an embedded resume contract reach this decode path. They
-	# need the same engine-graph worker as the prebuilt-resume path above.
-	# Otherwise the ready tail fails with checkpoint_engine_graph_worker_missing.
+	# Saves without an embedded resume contract reach this decode path. Their
+	# live engine graph is built one cooperative main-thread quantum per tick.
 	var hot_chassis := bool(record.get("used_hot_chassis", false))
 	record["resident_chassis_tail_complete"] = hot_chassis
-	if not hot_chassis:
-		var graph_worker := Thread.new()
-		var graph_error := graph_worker.start(
-			Callable(self, "_hydrate_checkpoint_engine_graph_on_worker").bind(
-				resident_gs, signature, str(checkpoint_candidate.get("checkpoint_path", ""))
-			),
-			Thread.PRIORITY_LOW
-		)
-		if graph_error != OK:
-			_fail_record(record, signature, "checkpoint_engine_graph_worker_start_failed", {"error": graph_error})
-			return
-		checkpoint_engine_graph_threads[signature] = graph_worker
-		record["checkpoint_engine_graph_worker_active"] = true
-		record["checkpoint_engine_graph_worker_started_at_ms"] = int(Time.get_ticks_msec())
+	record["checkpoint_engine_graph_worker_active"] = false
+	record["checkpoint_engine_graph_main_thread_pending"] = not hot_chassis
+	record["checkpoint_engine_graph_ready_gate_member"] = false
+	record["checkpoint_engine_graph_path"] = str(
+		checkpoint_candidate.get("checkpoint_path", "")
+	)
 
 	var ready_at_ms: int = int(Time.get_ticks_msec())
 
@@ -6446,7 +6407,7 @@ func _service_ready_checkpoint_payload_tail(
 		] = false
 		record [
 			"checkpoint_payload_main_thread_hydration_started"
-		] = false
+		] = true
 		record [
 			"checkpoint_progressive_hydration_begin_report"
 		] = begin_report.duplicate(false)
@@ -6588,6 +6549,9 @@ func _service_ready_checkpoint_payload_tail(
 		"checkpoint_hydration_worker_mutated_game_state"
 	] = false
 	resident_gs.scenario_state [
+		"checkpoint_hydration_main_thread_live_state_commit"
+	] = true
+	resident_gs.scenario_state [
 		"checkpoint_spatial_hydration_active"
 	] = false
 	resident_gs.scenario_state [
@@ -6631,6 +6595,12 @@ func _service_ready_checkpoint_payload_tail(
 	record [
 		"worker_thread_mutated_game_state"
 	] = false
+	record [
+		"main_thread_live_state_commit"
+	] = true
+	record [
+		"live_game_state_commit_thread"
+	] = "main"
 	record [
 		"checkpoint_progressive_hydration_complete"
 	] = true
@@ -6704,6 +6674,7 @@ func _service_ready_checkpoint_payload_tail(
 		+ "|playable=true"
 		+ "|background_active=false"
 		+ "|worker_mutated_game_state=false"
+		+ "|live_game_state_commit_thread=main"
 		+ "|live_spatial_tail=true"
 		+ "|one_item_per_slice=true"
 		+ "|one_entity_per_quantum=true"
@@ -6991,6 +6962,8 @@ func _service_checkpoint_interactive_projection_lane(
 		# never reach completion.
 		record ["projection_actor_rebind_requested_at_ms"] = 0
 		record ["projection_tail_step_count"] = 0
+		record ["projection_tail_stagnant_step_count"] = 0
+		record ["projection_tail_progress_token"] = ""
 		record ["projection_tail_started_at_ms"] = int(
 			Time.get_ticks_msec()
 		)
@@ -7474,6 +7447,40 @@ func _service_checkpoint_interactive_projection_lane(
 				Time.get_ticks_msec()
 			)
 
+	if (
+		not bool(
+			projection_status.get(
+				"complete",
+				false
+			)
+		)
+		and _degrade_projection_background_tail_if_exhausted(
+			signature,
+			record,
+			resident_gs,
+			projection_status
+		)
+	):
+		report ["serviced"] = true
+		report ["stepped"] = true
+		report ["projection_terminal"] = true
+		report ["background_tail_degraded"] = true
+		report ["ready_state_preserved"] = true
+		report ["stage_id"] = str(
+			projection_status.get(
+				"stage_id",
+				stage_id
+			)
+		)
+		report [
+			"stage_authority_status"
+		] = authority_status.duplicate(false)
+		report ["projection_status"] = (
+			projection_status.duplicate(false)
+		)
+
+		return report
+
 	if bool(
 		projection_status.get(
 			"complete",
@@ -7539,6 +7546,207 @@ func _service_checkpoint_interactive_projection_lane(
 	)
 
 	return report
+func _projection_tail_progress_token(
+	signature: String,
+	projection_status: Dictionary
+) -> String:
+	var projection_work: Dictionary = {}
+
+	if projection_engine != null:
+		var work_raw: Variant = (
+			projection_engine.projection_work_by_signature.get(
+				signature,
+				{}
+			)
+		)
+
+		if typeof(work_raw) == TYPE_DICTIONARY:
+			projection_work = (
+				work_raw as Dictionary
+			)
+
+	var active_surface_status: Dictionary = _dict(
+		projection_work.get(
+			"active_surface_status",
+			{}
+		)
+	)
+
+	return (
+		"%s|%.6f|%.6f|%s|%d|%d"
+		% [
+			str(
+				projection_status.get(
+					"stage_id",
+					""
+				)
+			),
+			float(
+				projection_status.get(
+					"progress",
+					0.0
+				)
+			),
+			float(
+				projection_work.get(
+					"active_surface_progress",
+					-1.0
+				)
+			),
+			str(
+				active_surface_status.get(
+					"stream_section_id",
+					""
+				)
+			),
+			int(
+				active_surface_status.get(
+					"projected_group_count",
+					-1
+				)
+			),
+			int(
+				active_surface_status.get(
+					"stream_group_cursor",
+					-1
+				)
+			)
+		]
+	)
+func _degrade_projection_background_tail_if_exhausted(
+	signature: String,
+	record: Dictionary,
+	resident_gs: GameState,
+	projection_status: Dictionary
+) -> bool:
+	var projection_step_count: int = int(
+		record.get(
+			"projection_tail_step_count",
+			0
+		)
+	) + 1
+	var progress_token: String = (
+		_projection_tail_progress_token(
+			signature,
+			projection_status
+		)
+	)
+	var previous_progress_token: String = str(
+		record.get(
+			"projection_tail_progress_token",
+			""
+		)
+	)
+	var stagnant_step_count: int = 0
+
+	if progress_token == previous_progress_token:
+		stagnant_step_count = int(
+			record.get(
+				"projection_tail_stagnant_step_count",
+				0
+			)
+		) + 1
+
+	record [
+		"projection_tail_step_count"
+	] = projection_step_count
+	record [
+		"projection_tail_progress_token"
+	] = progress_token
+	record [
+		"projection_tail_stagnant_step_count"
+	] = stagnant_step_count
+
+	var failure_reason: String = ""
+
+	if projection_step_count >= MAX_PROJECTION_TAIL_STEPS:
+		failure_reason = "projection_tail_step_budget_exhausted"
+	elif (
+		stagnant_step_count
+		>= MAX_PROJECTION_TAIL_STAGNANT_STEPS
+	):
+		failure_reason = "projection_tail_stagnation_budget_exhausted"
+
+	if failure_reason == "":
+		resident_records [signature] = record
+		return false
+
+	var interactive_surface_packets_complete: bool = bool(
+		record.get(
+			"projection_surface_packets_complete",
+			false
+		)
+	)
+
+	if projection_engine != null:
+		interactive_surface_packets_complete = (
+			interactive_surface_packets_complete
+			or projection_engine.interactive_surface_packets_ready(
+				signature
+			)
+		)
+
+	record ["projection_tail_pending"] = false
+	record ["projection_tail_failed"] = true
+	record ["projection_tail_degraded"] = true
+	record ["projection_tail_failure_reason"] = failure_reason
+	record ["projection_tail_failure_scope"] = "background_only"
+	record ["projection_tail_failure"] = {
+		"reason": failure_reason,
+		"step_count": projection_step_count,
+		"stagnant_step_count": stagnant_step_count,
+		"last_progress_token": progress_token,
+		"background_only": true,
+		"ready_gate_member": false
+	}
+	record [
+		"projection_surface_packets_complete"
+	] = interactive_surface_packets_complete
+	record [
+		"projection_interactive_surface_authority_preserved"
+	] = true
+	record ["ready_state_preserved"] = true
+
+	if typeof(
+		resident_gs.scenario_state
+	) == TYPE_DICTIONARY:
+		resident_gs.scenario_state [
+			"resident_runtime_deep_projection_tail_pending"
+		] = false
+		resident_gs.scenario_state [
+			"resident_runtime_projection_tail_degraded"
+		] = true
+		resident_gs.scenario_state [
+			"resident_runtime_projection_tail_failure_reason"
+		] = failure_reason
+		resident_gs.scenario_state [
+			"resident_runtime_projection_tail_failure_scope"
+		] = "background_only"
+		resident_gs.scenario_state [
+			"resident_projection_surface_packets_complete"
+		] = interactive_surface_packets_complete
+		resident_gs.scenario_state [
+			"resident_projection_interactive_surface_authority_preserved"
+		] = true
+		resident_gs.scenario_state [
+			"resident_ready_state_preserved_after_tail_failure"
+		] = true
+
+	resident_records [signature] = record
+	EraLog.watch_end(
+		"projection:%s" % signature
+	)
+	EraLog.truth(
+		"ERALIFE_RESIDENCY_TAIL_GAVE_UP"
+		+ "|signature=" + signature
+		+ "|reason=" + failure_reason
+		+ "|steps=" + str(projection_step_count)
+		+ "|stagnant_steps=" + str(stagnant_step_count)
+		+ "|interactive_surface_authority_preserved=true"
+		+ "|ready_gate_member=false"
+	)
+
+	return true
 func _service_ready_checkpoint_tail(
 	signature: String,
 	record: Dictionary,
@@ -7617,176 +7825,63 @@ func _service_ready_checkpoint_tail(
 			false
 		)
 	):
-		var worker_raw: Variant = (
-			checkpoint_engine_graph_threads.get(
+		var engine_graph_report: Dictionary = (
+			_step_checkpoint_engine_graph_on_main_thread(
+				resident_gs,
 				signature,
-				null
+				str(record.get("checkpoint_engine_graph_path", ""))
 			)
 		)
-
-		if not (worker_raw is Thread):
-			record [
-				"checkpoint_engine_graph_worker_active"
-			] = false
-			record [
-				"checkpoint_engine_graph_tail_degraded"
-			] = true
-			record [
-				"checkpoint_engine_graph_tail_failure_reason"
-			] = (
-				"checkpoint_engine_graph_worker_missing"
-			)
-			record [
-				"ready_state_preserved"
-			] = true
-			record [
-				"renderer_thread_engine_constructor_fallback_attempted"
-			] = false
-			record [
-				"renderer_thread_engine_constructor_fallback_forbidden"
-			] = true
-			record [
-				"residency_tail_pending"
-			] = false
-
-			resident_gs.scenario_state [
-				"checkpoint_engine_graph_tail_degraded"
-			] = true
-			resident_gs.scenario_state [
-				"checkpoint_engine_graph_tail_failure_reason"
-			] = (
-				"checkpoint_engine_graph_worker_missing"
-			)
-			resident_gs.scenario_state [
-				"checkpoint_first_frame_truth_remains_authoritative"
-			] = true
-
-			resident_records [
-				signature
-			] = record
-
-			_remove_service_key(
-				"resident:%s" % signature
-			)
-			return
-
-		var engine_graph_worker: Thread = (
-			worker_raw as Thread
-		)
-
-		if engine_graph_worker.is_alive():
-			record [
-				"checkpoint_engine_graph_worker_active"
-			] = true
-			record [
-				"checkpoint_engine_graph_worker_last_poll_at_ms"
-			] = int(
-				Time.get_ticks_msec()
-			)
-			record [
-				"checkpoint_engine_graph_worker_poll_only"
-			] = true
-			record [
-				"renderer_thread_engine_constructor_work"
-			] = false
-			record [
-				"ready_state_preserved"
-			] = true
-
-			resident_records [
-				signature
-			] = record
-			return
-
-		var worker_result_raw: Variant = (
-			engine_graph_worker.wait_to_finish()
-		)
-
-		checkpoint_engine_graph_threads.erase(
-			signature
-		)
-
-		var worker_result: Dictionary = (
-			worker_result_raw as Dictionary
-			if typeof(
-				worker_result_raw
-			) == TYPE_DICTIONARY
-			else {}
-		)
-
+		record ["checkpoint_engine_graph_worker_active"] = false
 		record [
-			"checkpoint_engine_graph_worker_active"
-		] = false
+			"checkpoint_engine_graph_main_thread_report"
+		] = engine_graph_report.duplicate(false)
 		record [
-			"checkpoint_engine_graph_worker_complete"
-		] = true
-		record [
-			"checkpoint_engine_graph_worker_completed_at_ms"
-		] = int(
-			Time.get_ticks_msec()
-		)
-		record [
-			"checkpoint_engine_graph_worker_report"
-		] = worker_result.duplicate(false)
+			"checkpoint_engine_graph_main_thread_last_step_at_ms"
+		] = int(Time.get_ticks_msec())
 
-		if not bool(
-			worker_result.get(
-				"success",
-				false
-			)
-		):
-			record [
-				"checkpoint_engine_graph_tail_degraded"
-			] = true
+		if not bool(engine_graph_report.get("success", false)):
+			record ["checkpoint_engine_graph_tail_degraded"] = true
 			record [
 				"checkpoint_engine_graph_tail_failure_reason"
 			] = str(
-				worker_result.get(
+				engine_graph_report.get(
 					"reason",
-					"checkpoint_engine_graph_worker_failed"
+					"checkpoint_engine_graph_main_thread_step_failed"
 				)
 			)
-			record [
-				"ready_state_preserved"
-			] = true
-			record [
-				"residency_tail_pending"
-			] = false
-
+			record ["ready_state_preserved"] = true
+			record ["residency_tail_pending"] = false
 			resident_gs.scenario_state [
 				"checkpoint_engine_graph_tail_degraded"
 			] = true
 			resident_gs.scenario_state [
 				"checkpoint_first_frame_truth_remains_authoritative"
 			] = true
-
-			resident_records [
-				signature
-			] = record
-
-			_remove_service_key(
-				"resident:%s" % signature
-			)
+			resident_records [signature] = record
+			_remove_service_key("resident:%s" % signature)
 			return
 
-		record [
-			"resident_chassis_tail_complete"
-		] = true
+		if not bool(engine_graph_report.get("complete", false)):
+			record [
+				"checkpoint_engine_graph_main_thread_pending"
+			] = true
+			record ["ready_state_preserved"] = true
+			resident_records [signature] = record
+			return
+
+		record ["resident_chassis_tail_complete"] = true
 		record [
 			"resident_chassis_tail_completed_at_ms"
-		] = int(
-			Time.get_ticks_msec()
-		)
-		record [
-			"checkpoint_engine_graph_hot"
-		] = true
+		] = int(Time.get_ticks_msec())
+		record ["checkpoint_engine_graph_hot"] = true
 		record [
 			"checkpoint_engine_graph_ready_gate_member"
 		] = false
 		record [
-			"ready_state_preserved"
-		] = true
-
+			"checkpoint_engine_graph_main_thread_pending"
+		] = false
+		record ["ready_state_preserved"] = true
 		resident_gs.scenario_state [
 			"resident_runtime_engine_graph_ready"
 		] = true
@@ -7802,27 +7897,17 @@ func _service_ready_checkpoint_tail(
 		resident_gs.scenario_state [
 			"checkpoint_engine_graph_ready_gate_member"
 		] = false
-
-		resident_records [
-			signature
-		] = record
-
+		resident_records [signature] = record
 		EraLog.truth(
-			"ERALIFE_CHECKPOINT_ENGINE_GRAPH_WORKER_TRUTH"
+			"ERALIFE_CHECKPOINT_ENGINE_GRAPH_MAIN_THREAD_TRUTH"
 			+ "|signature=" + signature
 			+ "|complete=true"
-			+ "|ready_gate_member=false"
-			+ "|renderer_thread_constructors=false"
-			+ "|life_shell_remained_observable=true"
-			+ "|at_ms="
-			+ str(
-				Time.get_ticks_msec()
-			)
+			+ "|one_quantum_per_service_tick=true"
+			+ "|worker_mutated_game_state=false"
+			+ "|at_ms=" + str(Time.get_ticks_msec())
 		)
-
-
-
 		return
+
 	# UI projections can keep polling a worker that needs the saved state.
 	# Advance the existing one-item hydration slice before that early return;
 	# the visible-shell projection lane above still gets a turn each frame.
@@ -8016,6 +8101,8 @@ func _service_ready_checkpoint_tail(
 			# rebuild, so the projection could never reach completion.
 			record ["projection_actor_rebind_requested_at_ms"] = 0
 			record ["projection_tail_step_count"] = 0
+			record ["projection_tail_stagnant_step_count"] = 0
+			record ["projection_tail_progress_token"] = ""
 			record ["projection_tail_started_at_ms"] = int(
 				Time.get_ticks_msec()
 			)
@@ -8166,34 +8253,15 @@ func _service_ready_checkpoint_tail(
 			# it reports complete. _append_service_key() re-arms the pump.
 			record ["projection_tail_pending"] = true
 
-			# Safety cap: if a projection can never complete, rescheduling it every
-			# frame would spin the service pump indefinitely. Give up after a
-			# generous number of steps and mark it degraded rather than hanging.
-			var projection_step_count: int = int(
-				record.get(
-					"projection_tail_step_count",
-					0
-				)
-			) + 1
-			record ["projection_tail_step_count"] = projection_step_count
-
-			if projection_step_count > MAX_PROJECTION_TAIL_STEPS:
-				record ["projection_tail_pending"] = false
-				record ["projection_tail_failed"] = true
-				record ["projection_tail_failure_reason"] = (
-					"projection_tail_step_budget_exhausted"
-				)
-				record ["projection_surface_packets_complete"] = true
-				record ["ready_state_preserved"] = true
-				resident_records [signature] = record
-
-				EraLog.truth(
-					"ERALIFE_RESIDENCY_TAIL_GAVE_UP|signature=%s|steps=%d"
-					% [
-						signature,
-						projection_step_count
-					]
-				)
+			# Both the attached interactive lane and this detached path use the
+			# same bounded progress authority. Exhaustion degrades only this
+			# non-gating tail and never fabricates surface readiness.
+			if _degrade_projection_background_tail_if_exhausted(
+				signature,
+				record,
+				resident_gs,
+				projection_status
+			):
 				return
 
 			resident_records [signature] = record

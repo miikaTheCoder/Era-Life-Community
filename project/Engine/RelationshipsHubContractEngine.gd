@@ -23,6 +23,12 @@ var card_contract_cache: Dictionary = {}
 var profile_contract_cache: Dictionary = {}
 const SWITCH_DESTINATION_UPGRADE_PUMP_MIN_DELAY_SECONDS: float = 0.016
 const SWITCH_DESTINATION_UPGRADE_PUMP_MAX_DELAY_SECONDS: float = 0.22
+const SWITCH_SHELL_STAGE_PUMP_MIN_DELAY_SECONDS: float = 0.016
+const SWITCH_SHELL_STAGE_PUMP_MAX_DELAY_SECONDS: float = 0.22
+const MAX_SWITCH_SHELL_STAGE_ATTEMPTS: int = 96
+const MAX_SWITCH_SHELL_STAGE_STAGNANT_ATTEMPTS: int = 48
+const MAX_SWITCH_DESTINATION_UPGRADE_ATTEMPTS: int = 96
+const MAX_SWITCH_DESTINATION_UPGRADE_STAGNANT_ATTEMPTS: int = 48
 
 var switch_shell_stage_queue: Array = []
 var switch_shell_stage_seen: Dictionary = {}
@@ -30,6 +36,7 @@ var switch_shell_stage_seen: Dictionary = {}
 
 
 var switch_shell_stage_pump_armed: bool = false
+var switch_shell_stage_pump_generation: int = 0
 
 
 
@@ -2220,85 +2227,28 @@ func _step_resident_hub_projection(
 
 
 
-	var switch_shell_quantum_serviced: bool = false
-	var switch_shell_report: Dictionary = {}
-	var actor_scalar_truth_report: Dictionary = {}
-
-	if not switch_shell_stage_queue.is_empty():
-		var switch_shell_head: Dictionary = _shallow_dictionary(
-			switch_shell_stage_queue [
-				0
-			]
-		)
-		var switch_shell_target_id: int = int(
-			switch_shell_head.get(
-				"target_id",
-				-1
-			)
-		)
-
-
-
-		actor_scalar_truth_report = (
-			_prepare_switch_destination_actor_scalar_truth(
-				switch_shell_target_id
-			)
-		)
-
-		switch_shell_report = (
-			flush_switch_shell_stage_queue(
-				1,
-				{
-					"source": (
-						"relationships_hub_contract_engine."
-						+ "resident_projection_switch_shell_tail"
-					),
-					"continuous_destination_preparation": true,
-					"ui_interaction_grace_ignored": true,
-					"background_only": true,
-					"blocks_ui": false,
-					"switch_press_must_not_build_surface": true,
-					"complete_destination_deck_required": false,
-					"support_deck_blocks_switch": false,
-					"ready_gate_member": false,
-					"ui_is_renderer_only": true
-				}
-			)
-		)
-
-		switch_shell_quantum_serviced = true
-
 	active_projection [
 		"switch_shell_background_quantum_serviced"
-	] = switch_shell_quantum_serviced
+	] = false
 	active_projection [
 		"switch_shell_background_quantum_report"
-	] = switch_shell_report.duplicate(false)
+	] = {}
 	active_projection [
 		"switch_shell_background_actor_scalar_truth_report"
-	] = actor_scalar_truth_report.duplicate(false)
+	] = {}
 	active_projection [
 		"switch_shell_background_quantum_renderer_thread"
 	] = false
 	active_projection [
 		"switch_shell_background_service_lane"
-	] = "detached_resident_projection_worker"
-
-	var switch_destination_upgrade_report: Dictionary = (
-		_service_resident_switch_destination_upgrade_quantum()
-	)
+	] = "independent_background_pump"
 
 	active_projection [
 		"switch_destination_upgrade_quantum_serviced"
-	] = bool(
-		switch_destination_upgrade_report.get(
-			"serviced",
-			false
-		)
-	)
+	] = false
 	active_projection [
 		"switch_destination_upgrade_quantum_report"
-	] = switch_destination_upgrade_report.duplicate(false)
+	] = {}
 	active_projection [
 		"switch_destination_upgrade_renderer_thread"
 	] = false
@@ -2313,10 +2263,11 @@ func _step_resident_hub_projection(
 	var switch_destination_upgrade_complete: bool = (
 		switch_destination_upgrade_queue.is_empty()
 	)
+	# Switch preparation is an independently pumped, non-authoritative tail.
+	# It may enrich a later profile switch, but its rows explicitly opt out of
+	# the ready gate and therefore cannot keep the relationship surface pending.
 	var relationship_authority_lane_complete: bool = (
 		relationship_surface_complete
-		and switch_shell_background_complete
-		and switch_destination_upgrade_complete
 	)
 
 
@@ -2344,6 +2295,12 @@ func _step_resident_hub_projection(
 	active_projection [
 		"relationship_authority_lane_complete"
 	] = relationship_authority_lane_complete
+	active_projection [
+		"switch_background_tail_ready_gate_member"
+	] = false
+	active_projection [
+		"switch_background_tail_blocks_surface_completion"
+	] = false
 
 	active_projection [
 		"projection_complete"
@@ -2352,12 +2309,11 @@ func _step_resident_hub_projection(
 		"projection_pending"
 	] = not relationship_authority_lane_complete
 
-	switch_shell_stage_pump_armed = (
-		not switch_shell_background_complete
-	)
-	switch_destination_upgrade_pump_armed = (
-		not switch_destination_upgrade_complete
-	)
+	if not switch_shell_background_complete:
+		_arm_switch_shell_stage_pump()
+
+	if not switch_destination_upgrade_complete:
+		_ensure_switch_destination_upgrade_pump()
 
 	if not relationship_authority_lane_complete:
 		last_report = (
@@ -2408,16 +2364,16 @@ func _step_resident_hub_projection(
 	] = false
 	active_projection [
 		"switch_shell_background_complete"
-	] = true
+	] = switch_shell_background_complete
 	active_projection [
 		"switch_shell_background_remaining"
-	] = 0
+	] = switch_shell_stage_queue.size()
 	active_projection [
 		"switch_destination_upgrade_complete"
-	] = true
+	] = switch_destination_upgrade_complete
 	active_projection [
 		"switch_destination_upgrade_remaining"
-	] = 0
+	] = switch_destination_upgrade_queue.size()
 
 	_store_hub_contract(
 		signature,
@@ -6423,7 +6379,151 @@ func legacy_pair_graph_backfill(
 		gs.human_relationship_contract_engine.ensure_pair_edge(observer, target, context)
 	)
 
+func _advance_switch_shell_background_retry_budget(
+	row: Dictionary,
+	target_id: int,
+	reason: String,
+	producer_report: Dictionary = {}
+) -> Dictionary:
+	var attempt_count: int = int(
+		row.get(
+			"background_attempt_count",
+			0
+		)
+	) + 1
+	var progress_token: String = (
+		"%s|%s|%.6f|%s|%s|%s"
+		% [
+			reason,
+			str(
+				producer_report.get(
+					"projection_stage_id",
+					producer_report.get(
+						"stage_id",
+						""
+					)
+				)
+			),
+			float(
+				producer_report.get(
+					"projection_progress",
+					producer_report.get(
+						"progress",
+						-1.0
+					)
+				)
+			),
+			str(
+				producer_report.get(
+					"pointer_core_hot",
+					false
+				)
+			),
+			str(
+				producer_report.get(
+					"main_tab_surface_deck_hot",
+					false
+				)
+			),
+			str(
+				producer_report.get(
+					"support_packet_hot",
+					false
+				)
+			)
+		]
+	)
+	var previous_progress_token: String = str(
+		row.get(
+			"background_progress_token",
+			""
+		)
+	)
+	var stagnant_attempt_count: int = 0
 
+	if progress_token == previous_progress_token:
+		stagnant_attempt_count = int(
+			row.get(
+				"background_stagnant_attempt_count",
+				0
+			)
+		) + 1
+
+	row ["background_attempt_count"] = attempt_count
+	row ["background_progress_token"] = progress_token
+	row [
+		"background_stagnant_attempt_count"
+	] = stagnant_attempt_count
+	row ["ready_gate_member"] = false
+
+	var exhaustion_reason: String = ""
+
+	if attempt_count >= MAX_SWITCH_SHELL_STAGE_ATTEMPTS:
+		exhaustion_reason = (
+			"switch_shell_background_attempt_budget_exhausted"
+		)
+	elif (
+		stagnant_attempt_count
+		>= MAX_SWITCH_SHELL_STAGE_STAGNANT_ATTEMPTS
+	):
+		exhaustion_reason = (
+			"switch_shell_background_stagnation_budget_exhausted"
+		)
+
+	if exhaustion_reason == "":
+		return {
+			"exhausted": false,
+			"attempt_count": attempt_count,
+			"stagnant_attempt_count": stagnant_attempt_count
+		}
+
+	switch_shell_stage_seen.erase(
+		target_id
+	)
+
+	if (
+		gs != null
+		and typeof(gs.scenario_state) == TYPE_DICTIONARY
+	):
+		gs.scenario_state [
+			"relationship_switch_shell_background_tail_degraded"
+		] = true
+		gs.scenario_state [
+			"relationship_switch_shell_background_tail_failure_reason"
+		] = exhaustion_reason
+		gs.scenario_state [
+			"relationship_switch_shell_background_tail_failed_actor_id"
+		] = target_id
+		gs.scenario_state [
+			"relationship_switch_shell_background_tail_ready_gate_member"
+		] = false
+		gs.scenario_state [
+			"relationship_surface_authority_preserved"
+		] = true
+
+	EraLog.truth(
+		"SWITCH_SHELL_BACKGROUND_TAIL_GAVE_UP"
+		+ "|actor_id=" + str(target_id)
+		+ "|reason=" + exhaustion_reason
+		+ "|last_reason=" + reason
+		+ "|attempts=" + str(attempt_count)
+		+ "|stagnant_attempts=" + str(stagnant_attempt_count)
+		+ "|relationship_surface_authority_preserved=true"
+		+ "|ready_gate_member=false"
+	)
+
+	return {
+		"exhausted": true,
+		"target_id": target_id,
+		"reason": exhaustion_reason,
+		"last_reason": reason,
+		"retryable": false,
+		"attempt_count": attempt_count,
+		"stagnant_attempt_count": stagnant_attempt_count,
+		"background_tail_degraded": true,
+		"relationship_surface_authority_preserved": true,
+		"ready_gate_member": false
+	}
 func flush_switch_shell_stage_queue(
 	max_count: int = 1,
 	context: Dictionary = {}
@@ -6676,6 +6776,25 @@ func flush_switch_shell_stage_queue(
 			row [
 				"ready_gate_member"
 			] = false
+			var producer_retry_budget: Dictionary = (
+				_advance_switch_shell_background_retry_budget(
+					row,
+					target_id,
+					producer_reason,
+					shell
+				)
+			)
+
+			if bool(
+				producer_retry_budget.get(
+					"exhausted",
+					false
+				)
+			):
+				failures.append(
+					producer_retry_budget
+				)
+				continue
 
 			delayed_rows.append(
 				row
@@ -6757,6 +6876,25 @@ func flush_switch_shell_stage_queue(
 			)
 			row ["background_retry"] = true
 			row ["ready_gate_member"] = false
+			var projection_retry_budget: Dictionary = (
+				_advance_switch_shell_background_retry_budget(
+					row,
+					target_id,
+					"resident_interactive_projection_pending",
+					shell
+				)
+			)
+
+			if bool(
+				projection_retry_budget.get(
+					"exhausted",
+					false
+				)
+			):
+				failures.append(
+					projection_retry_budget
+				)
+				continue
 
 			delayed_rows.append(
 				row
@@ -6783,6 +6921,24 @@ func flush_switch_shell_stage_queue(
 			)
 			row ["background_retry"] = true
 			row ["ready_gate_member"] = false
+			var empty_retry_budget: Dictionary = (
+				_advance_switch_shell_background_retry_budget(
+					row,
+					target_id,
+					"zero_frame_core_surface_not_hot"
+				)
+			)
+
+			if bool(
+				empty_retry_budget.get(
+					"exhausted",
+					false
+				)
+			):
+				failures.append(
+					empty_retry_budget
+				)
+				continue
 
 			delayed_rows.append(
 				row
@@ -6874,6 +7030,25 @@ func flush_switch_shell_stage_queue(
 				row [
 					"ready_gate_member"
 				] = false
+				var pointer_retry_budget: Dictionary = (
+					_advance_switch_shell_background_retry_budget(
+						row,
+						target_id,
+						"pointer_core_hot_but_complete_profile_packet_required",
+						shell
+					)
+				)
+
+				if bool(
+					pointer_retry_budget.get(
+						"exhausted",
+						false
+					)
+				):
+					failures.append(
+						pointer_retry_budget
+					)
+					continue
 
 				delayed_rows.append(
 					row
@@ -6999,6 +7174,31 @@ func flush_switch_shell_stage_queue(
 			row ["background_retry_is_throttled"] = true
 			row ["destination_deck_retry_may_not_consume_player_frames"] = true
 			row ["ready_gate_member"] = false
+			var not_hot_reason: String = str(
+				row.get(
+					"last_reason",
+					"staged_destination_deck_not_hot"
+				)
+			)
+			var not_hot_retry_budget: Dictionary = (
+				_advance_switch_shell_background_retry_budget(
+					row,
+					target_id,
+					not_hot_reason,
+					shell
+				)
+			)
+
+			if bool(
+				not_hot_retry_budget.get(
+					"exhausted",
+					false
+				)
+			):
+				failures.append(
+					not_hot_retry_budget
+				)
+				continue
 
 			delayed_rows.append(
 				row
@@ -9286,7 +9486,12 @@ func _ensure_switch_destination_upgrade_pump() -> void:
 
 
 
-	if not resident_projection_work_by_signature.is_empty():
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		switch_destination_upgrade_pump_generation += 1
+
+		var handoff_generation: int = (
+			switch_destination_upgrade_pump_generation
+		)
 		switch_destination_upgrade_pump_armed = true
 
 		if (
@@ -9297,28 +9502,17 @@ func _ensure_switch_destination_upgrade_pump() -> void:
 				"relationship_switch_destination_upgrade_pump_armed"
 			] = true
 			gs.scenario_state [
-				"relationship_switch_destination_upgrade_service_owner"
-			] = (
-				"RelationshipsHubContractEngine."
-				+ "detached_resident_projection_worker"
-			)
-			gs.scenario_state [
-				"relationship_switch_destination_upgrade_scene_tree_service_forbidden"
+				"relationship_switch_destination_upgrade_main_thread_handoff_pending"
 			] = true
-			gs.scenario_state [
-				"relationship_switch_destination_upgrade_ui_gated"
-			] = false
-			gs.scenario_state [
-				"relationship_switch_destination_upgrade_requires_input_idle"
-			] = false
 			gs.scenario_state [
 				"relationship_switch_destination_upgrade_ready_gate_member"
 			] = false
 
+		call_deferred(
+			"_resume_switch_destination_upgrade_pump_on_main_thread",
+			handoff_generation
+		)
 		return
-
-
-
 
 	var tree:= Engine.get_main_loop() as SceneTree
 
@@ -9404,6 +9598,23 @@ func _ensure_switch_destination_upgrade_pump() -> void:
 		call_deferred(
 			"_ensure_switch_destination_upgrade_pump"
 		)
+func _resume_switch_destination_upgrade_pump_on_main_thread(
+	generation: int
+) -> void:
+	if generation != switch_destination_upgrade_pump_generation:
+		return
+
+	switch_destination_upgrade_pump_armed = false
+
+	if (
+		gs != null
+		and typeof(gs.scenario_state) == TYPE_DICTIONARY
+	):
+		gs.scenario_state [
+			"relationship_switch_destination_upgrade_main_thread_handoff_pending"
+		] = false
+
+	_ensure_switch_destination_upgrade_pump()
 func _publish_resident_switch_destination_upgrade_packets(
 	staged_packets: Dictionary
 ) -> void:
@@ -9779,6 +9990,131 @@ func _switch_destination_upgrade_pump_frame(
 
 	if not switch_destination_upgrade_queue.is_empty():
 		_ensure_switch_destination_upgrade_pump()
+func _advance_switch_destination_upgrade_retry_budget(
+	row: Dictionary,
+	target_id: int,
+	reason: String,
+	producer_report: Dictionary = {}
+) -> Dictionary:
+	var attempt_count: int = int(
+		row.get(
+			"background_attempt_count",
+			0
+		)
+	) + 1
+	var progress_token: String = (
+		"%s|%s|%.6f|%s|%s"
+		% [
+			reason,
+			str(
+				producer_report.get(
+					"projection_stage_id",
+					producer_report.get("stage_id", "")
+				)
+			),
+			float(
+				producer_report.get(
+					"projection_progress",
+					producer_report.get("progress", -1.0)
+				)
+			),
+			str(producer_report.get("pointer_core_hot", false)),
+			str(
+				producer_report.get(
+					"main_tab_surface_deck_hot",
+					false
+				)
+			)
+		]
+	)
+	var stagnant_attempt_count: int = 0
+
+	if progress_token == str(
+		row.get(
+			"background_progress_token",
+			""
+		)
+	):
+		stagnant_attempt_count = int(
+			row.get(
+				"background_stagnant_attempt_count",
+				0
+			)
+		) + 1
+
+	row ["background_attempt_count"] = attempt_count
+	row ["background_progress_token"] = progress_token
+	row [
+		"background_stagnant_attempt_count"
+	] = stagnant_attempt_count
+	row ["ready_gate_member"] = false
+
+	var exhaustion_reason: String = ""
+
+	if attempt_count >= MAX_SWITCH_DESTINATION_UPGRADE_ATTEMPTS:
+		exhaustion_reason = (
+			"switch_destination_upgrade_attempt_budget_exhausted"
+		)
+	elif (
+		stagnant_attempt_count
+		>= MAX_SWITCH_DESTINATION_UPGRADE_STAGNANT_ATTEMPTS
+	):
+		exhaustion_reason = (
+			"switch_destination_upgrade_stagnation_budget_exhausted"
+		)
+
+	if exhaustion_reason == "":
+		return {
+			"exhausted": false,
+			"attempt_count": attempt_count,
+			"stagnant_attempt_count": stagnant_attempt_count
+		}
+
+	switch_destination_upgrade_seen.erase(target_id)
+
+	if (
+		gs != null
+		and typeof(gs.scenario_state) == TYPE_DICTIONARY
+	):
+		gs.scenario_state [
+			"relationship_switch_destination_upgrade_background_tail_degraded"
+		] = true
+		gs.scenario_state [
+			"relationship_switch_destination_upgrade_background_tail_failure_reason"
+		] = exhaustion_reason
+		gs.scenario_state [
+			"relationship_switch_destination_upgrade_background_tail_failed_actor_id"
+		] = target_id
+		gs.scenario_state [
+			"relationship_switch_destination_upgrade_ready_gate_member"
+		] = false
+		gs.scenario_state [
+			"relationship_surface_authority_preserved"
+		] = true
+
+	EraLog.truth(
+		"SWITCH_DESTINATION_UPGRADE_BACKGROUND_TAIL_GAVE_UP"
+		+ "|actor_id=" + str(target_id)
+		+ "|reason=" + exhaustion_reason
+		+ "|last_reason=" + reason
+		+ "|attempts=" + str(attempt_count)
+		+ "|stagnant_attempts=" + str(stagnant_attempt_count)
+		+ "|relationship_surface_authority_preserved=true"
+		+ "|ready_gate_member=false"
+	)
+
+	return {
+		"exhausted": true,
+		"target_id": target_id,
+		"reason": exhaustion_reason,
+		"last_reason": reason,
+		"retryable": false,
+		"attempt_count": attempt_count,
+		"stagnant_attempt_count": stagnant_attempt_count,
+		"background_tail_degraded": true,
+		"relationship_surface_authority_preserved": true,
+		"ready_gate_member": false
+	}
 func flush_switch_destination_upgrade_queue(
 	max_count: int = 1,
 	context: Dictionary = {}
@@ -10182,6 +10518,25 @@ func flush_switch_destination_upgrade_queue(
 		row [
 			"ready_gate_member"
 		] = false
+		var destination_retry_budget: Dictionary = (
+			_advance_switch_destination_upgrade_retry_budget(
+				row,
+				target_id,
+				failure_reason,
+				shell
+			)
+		)
+
+		if bool(
+			destination_retry_budget.get(
+				"exhausted",
+				false
+			)
+		):
+			failures.append(
+				destination_retry_budget
+			)
+			continue
 
 		delayed_rows.append(
 			row
@@ -10649,16 +11004,79 @@ func _queue_switch_shell_stage_for_target(
 	)
 
 	_arm_switch_shell_stage_pump()
+func _switch_shell_stage_pump_delay_seconds() -> float:
+	if switch_shell_stage_queue.is_empty():
+		return SWITCH_SHELL_STAGE_PUMP_MIN_DELAY_SECONDS
+
+	var now_ms: int = int(
+		Time.get_ticks_msec()
+	)
+	var earliest_allowed_ms: int = now_ms
+	var found_row: bool = false
+
+	for raw_row in switch_shell_stage_queue:
+		var row: Dictionary = _shallow_dictionary(
+			raw_row
+		)
+		var target_id: int = int(
+			row.get(
+				"target_id",
+				-1
+			)
+		)
+
+		if target_id <= 0:
+			continue
+
+		var row_allowed_ms: int = int(
+			row.get(
+				"next_allowed_at_ms",
+				now_ms
+			)
+		)
+
+		if not found_row:
+			earliest_allowed_ms = row_allowed_ms
+			found_row = true
+		else:
+			earliest_allowed_ms = mini(
+				earliest_allowed_ms,
+				row_allowed_ms
+			)
+
+	if not found_row:
+		return SWITCH_SHELL_STAGE_PUMP_MIN_DELAY_SECONDS
+
+	var remaining_ms: int = maxi(
+		0,
+		earliest_allowed_ms - now_ms
+	)
+
+	if remaining_ms <= 0:
+		return 0.0
+
+	return clampf(
+		float(remaining_ms) / 1000.0,
+		SWITCH_SHELL_STAGE_PUMP_MIN_DELAY_SECONDS,
+		SWITCH_SHELL_STAGE_PUMP_MAX_DELAY_SECONDS
+	)
 func _arm_switch_shell_stage_pump() -> void:
 	if switch_shell_stage_queue.is_empty():
 		switch_shell_stage_pump_armed = false
 		return
 
+	if switch_shell_stage_pump_armed:
+		return
 
+	var delay_seconds: float = (
+		_switch_shell_stage_pump_delay_seconds()
+	)
 
+	switch_shell_stage_pump_generation += 1
 
-
-
+	var generation: int = (
+		switch_shell_stage_pump_generation
+	)
 
 	switch_shell_stage_pump_armed = true
 
@@ -10674,15 +11092,117 @@ func _arm_switch_shell_stage_pump() -> void:
 		] = "RelationshipsHubContractEngine"
 		gs.scenario_state [
 			"relationship_switch_shell_stage_service_lane"
-		] = "detached_resident_projection_worker"
+		] = "independent_background_pump"
 		gs.scenario_state [
 			"relationship_switch_shell_stage_scene_tree_service_forbidden"
-		] = true
+		] = false
 		gs.scenario_state [
 			"relationship_switch_shell_stage_ui_interaction_pauses_service"
 		] = false
+		gs.scenario_state [
+			"relationship_switch_shell_stage_pump_generation"
+		] = generation
+		gs.scenario_state [
+			"relationship_switch_shell_stage_pump_delay_ms"
+		] = int(
+			round(
+				delay_seconds * 1000.0
+			)
+		)
+		gs.scenario_state [
+			"relationship_switch_shell_stage_pump_one_quantum"
+		] = true
+		gs.scenario_state [
+			"relationship_switch_shell_stage_ready_gate_member"
+		] = false
+
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		if (
+			gs != null
+			and typeof(gs.scenario_state) == TYPE_DICTIONARY
+		):
+			gs.scenario_state [
+				"relationship_switch_shell_stage_main_thread_handoff_pending"
+			] = true
+
+		call_deferred(
+			"_resume_switch_shell_stage_pump_on_main_thread",
+			generation
+		)
+		return
+
+	if delay_seconds <= 0.0:
+		call_deferred(
+			"_switch_shell_stage_pump_frame",
+			generation
+		)
+		return
+
+	var tree:= Engine.get_main_loop() as SceneTree
+
+	if tree == null:
+		call_deferred(
+			"_switch_shell_stage_pump_frame",
+			generation
+		)
+		return
+
+	var timer:= tree.create_timer(
+		delay_seconds,
+		true,
+		false,
+		true
+	)
+	var callback: Callable = Callable(
+		self,
+		"_switch_shell_stage_pump_frame"
+	).bind(
+		generation
+	)
+	var connection_error: int = timer.timeout.connect(
+		callback,
+		CONNECT_ONE_SHOT
+	)
+
+	if connection_error != OK:
+		switch_shell_stage_pump_armed = false
+		call_deferred(
+			"_arm_switch_shell_stage_pump"
+		)
+func _resume_switch_shell_stage_pump_on_main_thread(
+	generation: int
+) -> void:
+	if generation != switch_shell_stage_pump_generation:
+		return
+
+	switch_shell_stage_pump_armed = false
+
+	if (
+		gs != null
+		and typeof(gs.scenario_state) == TYPE_DICTIONARY
+	):
+		gs.scenario_state [
+			"relationship_switch_shell_stage_main_thread_handoff_pending"
+		] = false
+
+	_arm_switch_shell_stage_pump()
+func _switch_shell_stage_pump_frame(
+	generation: int
+) -> void:
+	if generation != switch_shell_stage_pump_generation:
+		return
+
+	_service_switch_shell_stage_pump_quantum()
 func _service_switch_shell_stage_pump_quantum() -> void:
 	switch_shell_stage_pump_armed = false
+
+	if (
+		gs != null
+		and typeof(gs.scenario_state) == TYPE_DICTIONARY
+	):
+		gs.scenario_state [
+			"relationship_switch_shell_stage_pump_armed"
+		] = false
 
 	if switch_shell_stage_queue.is_empty():
 		return

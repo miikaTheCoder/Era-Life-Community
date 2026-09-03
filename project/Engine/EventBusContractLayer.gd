@@ -955,7 +955,7 @@ func _check_duplicate(
 	)
 
 	if (
-		last_seen_ms > 0
+		duplicate_window.has(signature)
 		and now_ms - last_seen_ms <= ttl_ms
 	):
 		return {

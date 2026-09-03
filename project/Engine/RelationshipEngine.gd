@@ -577,7 +577,21 @@ func crime_target_relationship_contract(
 				" "
 			).capitalize()
 
-	if OS.is_debug_build():
+	var verbose_candidate_probe: bool = (
+		gs != null
+		and typeof(gs.scenario_state) == TYPE_DICTIONARY
+		and bool(
+			gs.scenario_state.get(
+				"crime_target_verbose_candidate_probe",
+				false
+			)
+		)
+	)
+
+	# One line per stranger turns a large-world cache refresh into thousands of
+	# synchronous debug writes. Keep meaningful relationship evidence by default;
+	# exhaustive candidate tracing remains available through the scenario flag.
+	if OS.is_debug_build() and (allowed_family_role or verbose_candidate_probe):
 		EraLog.truth(
 			"ERALIFE_CRIME_PIPELINE_TRUTH"
 			+ "|authority=RelationshipEngine"

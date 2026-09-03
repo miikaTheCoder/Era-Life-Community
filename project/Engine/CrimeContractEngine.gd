@@ -1154,10 +1154,10 @@ func _on_crime_target_realtime_tick(
 				!= queued_source_signature
 			):
 				state [
-					"restart_requested"
+					"followup_requested"
 				] = true
 				state [
-					"restart_reason"
+					"followup_reason"
 				] = (
 					event_name
 					if event_name != ""
@@ -1294,6 +1294,13 @@ func _drive_crime_target_refresh_process_frame() -> void:
 				)
 			}
 		)
+		return
+
+	# Target cards are a derived UI projection. Let the authoritative yearly
+	# transaction finish before spending frame time rebuilding them; queued
+	# invalidations remain coalesced in the resident refresh state below.
+	if _crime_target_yearly_runtime_hot():
+		crime_target_refresh_service_active = true
 		return
 
 	var actor_id: int = int(
@@ -1447,6 +1454,7 @@ func queue_crime_target_cache_refresh(
 	] = {
 		"actor_id": actor_id,
 		"cursor": 0,
+		"candidate_ids": _crime_target_candidate_ids_snapshot(),
 		"relationship_rows": [],
 		"stranger_candidates": [],
 		"generation": crime_target_refresh_generation,
@@ -1456,8 +1464,8 @@ func queue_crime_target_cache_refresh(
 				actor
 			)
 		),
-		"restart_requested": false,
-		"restart_reason": "",
+		"followup_requested": false,
+		"followup_reason": "",
 		"started_at_ms": int(
 			Time.get_ticks_msec()
 		)
@@ -1595,6 +1603,18 @@ func _service_crime_target_refresh_queue() -> void:
 			0
 		)
 	)
+	var candidate_ids_raw: Variant = state.get(
+		"candidate_ids",
+		[]
+	)
+	var candidate_ids: Array = (
+		candidate_ids_raw as Array
+		if typeof(candidate_ids_raw) == TYPE_ARRAY
+		else []
+	)
+	if not state.has("candidate_ids"):
+		candidate_ids = _crime_target_candidate_ids_snapshot()
+		state ["candidate_ids"] = candidate_ids
 
 	var relationship_rows_raw: Variant = state.get(
 		"relationship_rows",
@@ -1626,51 +1646,8 @@ func _service_crime_target_refresh_queue() -> void:
 
 
 
-	var restart_requested: bool = bool(
-		state.get(
-			"restart_requested",
-			false
-		)
-	)
-
-	if (
-		restart_requested
-		or stranger_candidates.size()
-		> CRIME_TARGET_STRANGER_COUNT
-	):
-		cursor = 0
-		relationship_rows = []
-		stranger_candidates = []
-		generation += 1
-
-		state [
-			"generation"
-		] = generation
-		state [
-			"source_signature"
-		] = _crime_target_source_signature(
-			actor
-		)
-		state [
-			"restart_requested"
-		] = false
-		state [
-			"restart_reason"
-		] = ""
-		state [
-			"started_at_ms"
-		] = int(
-			Time.get_ticks_msec()
-		)
-
-
-
-	# FIX: these two lines clamped the tuned constants down to 4 NPCs and 250us per
-	# quantum, which made CRIME_TARGET_SCAN_BUDGET_PER_QUANTUM (32) and
-	# CRIME_TARGET_WORK_BUDGET_USEC (1250) dead values. With a 40-NPC population a
-	# full scan needed ~10 quanta instead of ~2, and because every npc_born restarts
-	# the scan from cursor 0, world generation could never converge -- it just
-	# restarted and republished partial snapshots over and over.
+	# Keep each frame bounded while still making useful progress through the frozen
+	# candidate snapshot.
 	var scan_budget_this_quantum: int = CRIME_TARGET_SCAN_BUDGET_PER_QUANTUM
 	var work_budget_usec: int = CRIME_TARGET_WORK_BUDGET_USEC
 
@@ -1681,7 +1658,7 @@ func _service_crime_target_refresh_queue() -> void:
 	)
 
 	while (
-		cursor < gs.npcs.size()
+		cursor < candidate_ids.size()
 		and scanned_this_quantum
 		< scan_budget_this_quantum
 	):
@@ -1697,19 +1674,12 @@ func _service_crime_target_refresh_queue() -> void:
 		):
 			break
 
-		var raw_person: Variant = gs.npcs [
-			cursor
-		]
+		var target_id: int = int(candidate_ids [cursor])
 
 		cursor += 1
 		scanned_this_quantum += 1
 
-		if not (
-			raw_person is Person
-		):
-			continue
-
-		var target: Person = raw_person as Person
+		var target: Person = _resident_actor_by_id(target_id)
 
 		if (
 			target == null
@@ -1855,8 +1825,10 @@ func _service_crime_target_refresh_queue() -> void:
 	] = state
 
 	var complete: bool = (
-		cursor >= gs.npcs.size()
+		cursor >= candidate_ids.size()
 	)
+	var followup_requested: bool = false
+	var followup_reason: String = ""
 
 	if complete:
 		var current_source_signature: String = (
@@ -1873,59 +1845,18 @@ func _service_crime_target_refresh_queue() -> void:
 
 
 
-		if (
-			bool(
-				state.get(
-					"restart_requested",
-					false
-				)
-			)
-			or current_source_signature
-			!= scanned_source_signature
-		):
-			generation += 1
-
-			state [
-				"cursor"
-			] = 0
-			state [
-				"relationship_rows"
-			] = []
-			state [
-				"stranger_candidates"
-			] = []
-			state [
-				"generation"
-			] = generation
-			state [
-				"source_signature"
-			] = current_source_signature
-			state [
-				"restart_requested"
-			] = false
-			state [
-				"restart_reason"
-			] = ""
-			state [
-				"started_at_ms"
-			] = int(
-				Time.get_ticks_msec()
-			)
-
-			crime_target_refresh_state_by_actor [
-				actor_key
-			] = state
-
-			var restart_queue_id: int = (
-				crime_target_refresh_queue_tail
-			)
-			crime_target_refresh_queue_tail += 1
-			crime_target_refresh_queue [
-				restart_queue_id
-			] = actor_id
-
-			_arm_crime_target_refresh_service()
-			return
+		# Finish the frozen snapshot even when annual events changed the live
+		# population. Restarting at cursor zero on every mutation could never
+		# converge in a large world. One coalesced follow-up below catches up.
+		state ["followup_requested"] = bool(
+			state.get("followup_requested", false)
+		) or current_source_signature != scanned_source_signature
+		followup_requested = bool(
+			state.get("followup_requested", false)
+		)
+		followup_reason = str(
+			state.get("followup_reason", "")
+		).strip_edges()
 
 
 
@@ -1962,6 +1893,29 @@ func _service_crime_target_refresh_queue() -> void:
 		)
 
 	if complete:
+		# Publication is synchronous for immediate subscribers. Re-read the state
+		# after it returns so an extension that invalidated the projection from its
+		# callback cannot have that follow-up erased below.
+		var published_state_raw: Variant = (
+			crime_target_refresh_state_by_actor.get(actor_key, state)
+		)
+		var published_state: Dictionary = (
+			published_state_raw as Dictionary
+			if typeof(published_state_raw) == TYPE_DICTIONARY
+			else state
+		)
+		followup_requested = (
+			followup_requested
+			or bool(published_state.get("followup_requested", false))
+			or _crime_target_source_signature(actor)
+			!= str(state.get("source_signature", ""))
+		)
+		var published_followup_reason: String = str(
+			published_state.get("followup_reason", "")
+		).strip_edges()
+		if published_followup_reason != "":
+			followup_reason = published_followup_reason
+
 		crime_target_last_partial_publish_ms_by_actor.erase(
 			actor_id
 		)
@@ -1989,6 +1943,16 @@ func _service_crime_target_refresh_queue() -> void:
 		] = int(
 			Time.get_ticks_msec()
 		)
+
+		if followup_requested:
+			queue_crime_target_cache_refresh(
+				actor,
+				(
+					"coalesced:%s" % followup_reason
+					if followup_reason != ""
+					else "coalesced:source_changed"
+				)
+			)
 	else:
 		var next_queue_id: int = (
 			crime_target_refresh_queue_tail
@@ -2000,6 +1964,51 @@ func _service_crime_target_refresh_queue() -> void:
 		] = actor_id
 
 	_arm_crime_target_refresh_service()
+
+func _crime_target_candidate_ids_snapshot() -> Array:
+	var ids: Array = []
+	var seen: Dictionary = {}
+	if gs == null:
+		return ids
+
+	for raw_person in gs.npcs:
+		if not (raw_person is Person):
+			continue
+		var person: Person = raw_person as Person
+		if person == null or int(person.id) <= 0:
+			continue
+		var person_id: int = int(person.id)
+		if seen.has(person_id):
+			continue
+		seen [person_id] = true
+		ids.append(person_id)
+
+	return ids
+
+func _crime_target_yearly_runtime_hot() -> bool:
+	if gs == null or typeof(gs.scenario_state) != TYPE_DICTIONARY:
+		return false
+
+	if bool(gs.scenario_state.get("age_up_tail_runtime_pending", false)):
+		return true
+
+	var loading_raw: Variant = gs.scenario_state.get("loading_runtime", {})
+	if typeof(loading_raw) != TYPE_DICTIONARY:
+		return false
+	var loading: Dictionary = loading_raw as Dictionary
+	if loading.is_empty():
+		return false
+	if str(loading.get("completion_state", "")).strip_edges() == "complete":
+		return false
+
+	return bool(loading.get("active", false)) or str(
+		loading.get("session_stage", "")
+	).strip_edges() in [
+		"boot",
+		"running",
+		"settling_previous_year",
+		"settling_current_year"
+	]
 func _publish_crime_target_cache_snapshot(
 	actor: Person,
 	state: Dictionary,
@@ -2197,11 +2206,18 @@ func _publish_crime_target_cache_snapshot(
 		and gs != null
 		and gs.event_bus != null
 	):
+		var publication_payload: Dictionary = (
+			resident_contract.duplicate(false)
+		)
+		# The EventBus fallback duplicate identity only includes broad fields such
+		# as actor/year. A changed partial snapshot must not suppress the complete
+		# snapshot that follows it in the same year.
+		publication_payload ["duplicate_key"] = (
+			"crime_target_resident_projection:%s" % signature
+		)
 		gs.event_bus.emit(
 			"crime.target.resident_projection.published",
-			resident_contract.duplicate(
-				false
-			)
+			publication_payload
 		)
 
 

@@ -4343,32 +4343,22 @@ or visible_runtime_hot
 			return _build_phase_step_result("player_phase_contract", lane_name, false, 7.0 / total_lanes)
 
 		7:
-			lane_name = "relationship_target_bootstrap"
-			var relationship_targets: Array = _collect_player_phase_relationship_targets()
-			if bool(state.get("auto_stability_mode", false)) and relationship_targets.size() > 4:
-				relationship_targets = relationship_targets.slice(0, 4)
-			state ["relationship_targets"] = relationship_targets
+			lane_name = "relationship_projection_skipped"
+			# update_relationship() is an observational score projection. This
+			# phase discarded its return value, so collecting and walking every
+			# player relationship could not change authoritative state.
+			state ["relationship_targets"] = []
 			state ["relationship_cursor"] = 0
-			state ["micro_lane_cursor"] = 8
+			state ["micro_lane_cursor"] = 9
 			_set_phase_walker_state("player_phase_contract", state)
-			return _build_phase_step_result("player_phase_contract", lane_name, false, 8.0 / total_lanes)
+			return _build_phase_step_result("player_phase_contract", lane_name, false, 9.0 / total_lanes)
 
 		8:
-			lane_name = "relationship_updates"
-			var relationship_targets: Array = _phase_state_array(state, "relationship_targets")
-			var relationship_cursor: int = int(state.get("relationship_cursor", 0))
-			if relationship_cursor < relationship_targets.size():
-				var target = relationship_targets [relationship_cursor]
-				if gs.relationship_engine != null and target != null:
-					gs.relationship_engine.update_relationship(player, target)
-				relationship_cursor += 1
-				state ["relationship_cursor"] = relationship_cursor
-				if relationship_cursor >= relationship_targets.size():
-					state ["micro_lane_cursor"] = 9
-				_set_phase_walker_state("player_phase_contract", state)
-				var relationship_total: float = max(1.0, float(relationship_targets.size()))
-				var relationship_progress: float = float(relationship_cursor) / relationship_total
-				return _build_phase_step_result("player_phase_contract", lane_name, false, (8.0 + relationship_progress) / total_lanes)
+			# Older in-flight checkpoints can resume on the former relationship
+			# lane. Advance them without replaying its no-op projection loop.
+			lane_name = "relationship_projection_skipped"
+			state ["relationship_targets"] = []
+			state ["relationship_cursor"] = 0
 			state ["micro_lane_cursor"] = 9
 			_set_phase_walker_state("player_phase_contract", state)
 			return _build_phase_step_result("player_phase_contract", lane_name, false, 9.0 / total_lanes)
@@ -4530,11 +4520,62 @@ func _collect_player_phase_relationship_targets() -> Array:
 		return gs.life_engine._collect_player_relationship_targets()
 	return []
 
+func _capture_narrative_source_rows(source: Array, cursor: int) -> Dictionary:
+	var start: int = clampi(cursor, 0, source.size())
+	var high_water: int = source.size()
+	return {
+		"start": start,
+		"high_water": high_water,
+		"rows": source.slice(start, high_water).duplicate(true)
+	}
+
+func _initialize_narrative_drain_snapshot(narrative_progress: Dictionary) -> void:
+	if bool(narrative_progress.get("drain_snapshot_initialized", false)):
+		return
+
+	# Narrative presentation owns a fixed view of this year's outputs. Source
+	# arrays remain authoritative and untouched, while rows appended after this
+	# point are not allowed to move the completion target on every frame.
+	var direct_packets: Array = _collect_direct_delta_packets()
+	narrative_progress ["direct_packets_snapshot"] = direct_packets
+
+	var world_feed_snapshot: Dictionary = _capture_narrative_source_rows(
+		gs.world_feed,
+		int(active_year_context.get("world_feed_cursor", 0))
+	)
+	narrative_progress ["world_feed_start"] = int(world_feed_snapshot.get("start", 0))
+	narrative_progress ["world_feed_high_water"] = int(world_feed_snapshot.get("high_water", 0))
+	narrative_progress ["world_feed_rows_snapshot"] = world_feed_snapshot.get("rows", [])
+
+	var death_snapshot: Dictionary = _capture_narrative_source_rows(
+		gs.pending_death_messages,
+		int(active_year_context.get("death_cursor", 0))
+	)
+	narrative_progress ["death_start"] = int(death_snapshot.get("start", 0))
+	narrative_progress ["death_high_water"] = int(death_snapshot.get("high_water", 0))
+	narrative_progress ["death_rows_snapshot"] = death_snapshot.get("rows", [])
+
+	var inheritance_snapshot: Dictionary = _capture_narrative_source_rows(
+		gs.pending_inheritance_messages,
+		int(active_year_context.get("inheritance_cursor", 0))
+	)
+	narrative_progress ["inheritance_start"] = int(inheritance_snapshot.get("start", 0))
+	narrative_progress ["inheritance_high_water"] = int(inheritance_snapshot.get("high_water", 0))
+	narrative_progress ["inheritance_rows_snapshot"] = inheritance_snapshot.get("rows", [])
+
+	var popup_snapshot: Dictionary = _capture_narrative_source_rows(
+		gs.pending_year_resolution_popups,
+		int(active_year_context.get("popup_cursor", 0))
+	)
+	narrative_progress ["popup_start"] = int(popup_snapshot.get("start", 0))
+	narrative_progress ["popup_high_water"] = int(popup_snapshot.get("high_water", 0))
+	narrative_progress ["popup_rows_snapshot"] = popup_snapshot.get("rows", [])
+	narrative_progress ["drain_snapshot_initialized"] = true
+
 func _run_narrative_and_presentation() -> void:
 	if gs == null:
 		return
 
-	var direct_packets: Array = _collect_direct_delta_packets()
 	var narrative_step_budget: int = 24
 	var budget_override: int = int(
 		active_year_context.get(
@@ -4569,31 +4610,49 @@ func _run_narrative_and_presentation() -> void:
 		"typed_chronicle_done": false,
 		"year_commit_complete_queued": false
 	}
+	_initialize_narrative_drain_snapshot(narrative_progress)
+	var direct_packets: Array = _phase_state_array(
+		narrative_progress,
+		"direct_packets_snapshot"
+	)
 
 	var rows_remaining: int = narrative_step_budget
 
 	if rows_remaining > 0 and not bool(narrative_progress.get("typed_world_feed_done", false)):
 		if gs.world_feed_engine != null and gs.world_feed_engine.has_method("build_runtime_mailbox_entries_from_typed_packets"):
-			var typed_world_feed_rows: Array = gs.world_feed_engine.build_runtime_mailbox_entries_from_typed_packets(direct_packets)
+			if not narrative_progress.has("typed_world_feed_rows"):
+				var built_world_feed_rows: Array = gs.world_feed_engine.build_runtime_mailbox_entries_from_typed_packets(direct_packets)
+				narrative_progress ["typed_world_feed_rows"] = built_world_feed_rows.duplicate(true)
+			var typed_world_feed_rows: Array = _phase_state_array(narrative_progress, "typed_world_feed_rows")
 			var typed_world_feed_cursor: int = int(narrative_progress.get("typed_world_feed_cursor", 0))
 			typed_world_feed_cursor = clamp(typed_world_feed_cursor, 0, typed_world_feed_rows.size())
 			while rows_remaining > 0 and typed_world_feed_cursor < typed_world_feed_rows.size():
 				var raw_row = typed_world_feed_rows [typed_world_feed_cursor]
 				typed_world_feed_cursor += 1
+				rows_remaining -= 1
 				if typeof(raw_row) != TYPE_DICTIONARY:
 					continue
 				_queue_mailbox("world_feed", raw_row)
-				rows_remaining -= 1
 			narrative_progress ["typed_world_feed_cursor"] = typed_world_feed_cursor
 			narrative_progress ["typed_world_feed_done"] = typed_world_feed_cursor >= typed_world_feed_rows.size()
 		else:
 			narrative_progress ["typed_world_feed_done"] = true
 
 	if rows_remaining > 0:
-		var wf_start: int = int(active_year_context.get("world_feed_cursor", 0))
-		wf_start = clamp(wf_start, 0, gs.world_feed.size())
-		while rows_remaining > 0 and wf_start < gs.world_feed.size():
-			var entry = gs.normalize_world_feed_entry(gs.world_feed [wf_start])
+		var wf_origin: int = int(narrative_progress.get("world_feed_start", 0))
+		var wf_high_water: int = int(narrative_progress.get("world_feed_high_water", wf_origin))
+		var wf_rows: Array = _phase_state_array(narrative_progress, "world_feed_rows_snapshot")
+		var wf_start: int = clampi(
+			int(active_year_context.get("world_feed_cursor", wf_origin)),
+			wf_origin,
+			wf_high_water
+		)
+		while rows_remaining > 0 and wf_start < wf_high_water:
+			var wf_snapshot_index: int = wf_start - wf_origin
+			if wf_snapshot_index < 0 or wf_snapshot_index >= wf_rows.size():
+				wf_start = wf_high_water
+				break
+			var entry = gs.normalize_world_feed_entry(wf_rows [wf_snapshot_index])
 			_queue_mailbox("world_feed", {
 				"type": "world_feed_entry",
 				"entry": entry
@@ -4604,72 +4663,108 @@ func _run_narrative_and_presentation() -> void:
 
 	if rows_remaining > 0 and not bool(narrative_progress.get("typed_popups_done", false)):
 		if gs.has_method("build_runtime_popup_mailbox_entries_from_typed_packets"):
-			var typed_popup_rows: Array = gs.build_runtime_popup_mailbox_entries_from_typed_packets(direct_packets)
+			if not narrative_progress.has("typed_popup_rows"):
+				var built_popup_rows: Array = gs.build_runtime_popup_mailbox_entries_from_typed_packets(direct_packets)
+				narrative_progress ["typed_popup_rows"] = built_popup_rows.duplicate(true)
+			var typed_popup_rows: Array = _phase_state_array(narrative_progress, "typed_popup_rows")
 			var typed_popup_cursor: int = int(narrative_progress.get("typed_popup_cursor", 0))
 			typed_popup_cursor = clamp(typed_popup_cursor, 0, typed_popup_rows.size())
 			while rows_remaining > 0 and typed_popup_cursor < typed_popup_rows.size():
 				var raw_popup_row = typed_popup_rows [typed_popup_cursor]
 				typed_popup_cursor += 1
+				rows_remaining -= 1
 				if typeof(raw_popup_row) != TYPE_DICTIONARY:
 					continue
 				_queue_mailbox("popups", raw_popup_row)
-				rows_remaining -= 1
 			narrative_progress ["typed_popup_cursor"] = typed_popup_cursor
 			narrative_progress ["typed_popups_done"] = typed_popup_cursor >= typed_popup_rows.size()
 		else:
 			narrative_progress ["typed_popups_done"] = true
 
 	if rows_remaining > 0:
-		var death_start: int = int(active_year_context.get("death_cursor", 0))
-		death_start = clamp(death_start, 0, gs.pending_death_messages.size())
-		while rows_remaining > 0 and death_start < gs.pending_death_messages.size():
+		var death_origin: int = int(narrative_progress.get("death_start", 0))
+		var death_high_water: int = int(narrative_progress.get("death_high_water", death_origin))
+		var death_rows: Array = _phase_state_array(narrative_progress, "death_rows_snapshot")
+		var death_start: int = clampi(
+			int(active_year_context.get("death_cursor", death_origin)),
+			death_origin,
+			death_high_water
+		)
+		while rows_remaining > 0 and death_start < death_high_water:
+			var death_snapshot_index: int = death_start - death_origin
+			if death_snapshot_index < 0 or death_snapshot_index >= death_rows.size():
+				death_start = death_high_water
+				break
 			_queue_mailbox("popups", {
 				"type": "death_notice",
-				"text": str(gs.pending_death_messages [death_start])
+				"text": str(death_rows [death_snapshot_index])
 			})
 			death_start += 1
 			rows_remaining -= 1
 		active_year_context ["death_cursor"] = death_start
 
 	if rows_remaining > 0:
-		var inheritance_start: int = int(active_year_context.get("inheritance_cursor", 0))
-		inheritance_start = clamp(inheritance_start, 0, gs.pending_inheritance_messages.size())
-		while rows_remaining > 0 and inheritance_start < gs.pending_inheritance_messages.size():
+		var inheritance_origin: int = int(narrative_progress.get("inheritance_start", 0))
+		var inheritance_high_water: int = int(narrative_progress.get("inheritance_high_water", inheritance_origin))
+		var inheritance_rows: Array = _phase_state_array(narrative_progress, "inheritance_rows_snapshot")
+		var inheritance_start: int = clampi(
+			int(active_year_context.get("inheritance_cursor", inheritance_origin)),
+			inheritance_origin,
+			inheritance_high_water
+		)
+		while rows_remaining > 0 and inheritance_start < inheritance_high_water:
+			var inheritance_snapshot_index: int = inheritance_start - inheritance_origin
+			if inheritance_snapshot_index < 0 or inheritance_snapshot_index >= inheritance_rows.size():
+				inheritance_start = inheritance_high_water
+				break
 			_queue_mailbox("popups", {
 				"type": "inheritance_notice",
-				"text": str(gs.pending_inheritance_messages [inheritance_start])
+				"text": str(inheritance_rows [inheritance_snapshot_index])
 			})
 			inheritance_start += 1
 			rows_remaining -= 1
 		active_year_context ["inheritance_cursor"] = inheritance_start
 
 	if rows_remaining > 0:
-		var popup_start: int = int(active_year_context.get("popup_cursor", 0))
-		popup_start = clamp(popup_start, 0, gs.pending_year_resolution_popups.size())
-		while rows_remaining > 0 and popup_start < gs.pending_year_resolution_popups.size():
-			var popup_entry = gs.pending_year_resolution_popups [popup_start]
+		var popup_origin: int = int(narrative_progress.get("popup_start", 0))
+		var popup_high_water: int = int(narrative_progress.get("popup_high_water", popup_origin))
+		var popup_rows: Array = _phase_state_array(narrative_progress, "popup_rows_snapshot")
+		var popup_start: int = clampi(
+			int(active_year_context.get("popup_cursor", popup_origin)),
+			popup_origin,
+			popup_high_water
+		)
+		while rows_remaining > 0 and popup_start < popup_high_water:
+			var popup_snapshot_index: int = popup_start - popup_origin
+			if popup_snapshot_index < 0 or popup_snapshot_index >= popup_rows.size():
+				popup_start = popup_high_water
+				break
+			var popup_entry = popup_rows [popup_snapshot_index]
 			popup_start += 1
+			rows_remaining -= 1
 			if typeof(popup_entry) != TYPE_DICTIONARY:
 				continue
 			_queue_mailbox("popups", {
 				"type": "year_resolution_popup",
 				"entry": popup_entry.duplicate(true)
 			})
-			rows_remaining -= 1
 		active_year_context ["popup_cursor"] = popup_start
 
 	if rows_remaining > 0 and not bool(narrative_progress.get("typed_chronicle_done", false)):
 		if gs.world_chronicle_engine != null and gs.world_chronicle_engine.has_method("build_runtime_mailbox_entries_from_typed_packets"):
-			var typed_chronicle_rows: Array = gs.world_chronicle_engine.build_runtime_mailbox_entries_from_typed_packets(direct_packets)
+			if not narrative_progress.has("typed_chronicle_rows"):
+				var built_chronicle_rows: Array = gs.world_chronicle_engine.build_runtime_mailbox_entries_from_typed_packets(direct_packets)
+				narrative_progress ["typed_chronicle_rows"] = built_chronicle_rows.duplicate(true)
+			var typed_chronicle_rows: Array = _phase_state_array(narrative_progress, "typed_chronicle_rows")
 			var typed_chronicle_cursor: int = int(narrative_progress.get("typed_chronicle_cursor", 0))
 			typed_chronicle_cursor = clamp(typed_chronicle_cursor, 0, typed_chronicle_rows.size())
 			while rows_remaining > 0 and typed_chronicle_cursor < typed_chronicle_rows.size():
 				var raw_chronicle_row = typed_chronicle_rows [typed_chronicle_cursor]
 				typed_chronicle_cursor += 1
+				rows_remaining -= 1
 				if typeof(raw_chronicle_row) != TYPE_DICTIONARY:
 					continue
 				_queue_mailbox("chronicle", raw_chronicle_row)
-				rows_remaining -= 1
 			narrative_progress ["typed_chronicle_cursor"] = typed_chronicle_cursor
 			narrative_progress ["typed_chronicle_done"] = typed_chronicle_cursor >= typed_chronicle_rows.size()
 		else:
@@ -4695,19 +4790,31 @@ func _narrative_and_presentation_complete() -> bool:
 	if not bool(narrative_progress.get("typed_world_feed_done", false)):
 		return false
 
-	if int(active_year_context.get("world_feed_cursor", 0)) < int(gs.world_feed.size()):
+	var world_feed_high_water: int = int(
+		narrative_progress.get("world_feed_high_water", gs.world_feed.size())
+	)
+	if int(active_year_context.get("world_feed_cursor", 0)) < world_feed_high_water:
 		return false
 
 	if not bool(narrative_progress.get("typed_popups_done", false)):
 		return false
 
-	if int(active_year_context.get("death_cursor", 0)) < int(gs.pending_death_messages.size()):
+	var death_high_water: int = int(
+		narrative_progress.get("death_high_water", gs.pending_death_messages.size())
+	)
+	if int(active_year_context.get("death_cursor", 0)) < death_high_water:
 		return false
 
-	if int(active_year_context.get("inheritance_cursor", 0)) < int(gs.pending_inheritance_messages.size()):
+	var inheritance_high_water: int = int(
+		narrative_progress.get("inheritance_high_water", gs.pending_inheritance_messages.size())
+	)
+	if int(active_year_context.get("inheritance_cursor", 0)) < inheritance_high_water:
 		return false
 
-	if int(active_year_context.get("popup_cursor", 0)) < int(gs.pending_year_resolution_popups.size()):
+	var popup_high_water: int = int(
+		narrative_progress.get("popup_high_water", gs.pending_year_resolution_popups.size())
+	)
+	if int(active_year_context.get("popup_cursor", 0)) < popup_high_water:
 		return false
 
 	if not bool(narrative_progress.get("typed_chronicle_done", false)):

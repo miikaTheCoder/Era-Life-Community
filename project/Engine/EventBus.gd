@@ -23,6 +23,10 @@ var _deferred_delivery_tail: int = 0
 const _DEFERRED_BATCH_PREVIEW_LIMIT:= 6
 const _MAX_DEFERRED_HANDLERS_PER_FLUSH:= 64
 const _DEFERRED_QUEUE_SOFT_LIMIT:= 96
+const _DEFERRED_SERVICE_HANDLERS_PER_FRAME:= 4
+const _DEFERRED_SERVICE_PRESSURE_HANDLERS_PER_FRAME:= 16
+const _DEFERRED_DRAIN_USEC_PER_HANDLER:= 250
+const _DEFERRED_DRAIN_MAX_TIME_BUDGET_USEC:= 2000
 
 func _init(_gs):
 	gs = _gs
@@ -1218,14 +1222,14 @@ func _service_deferred_delivery_quantum() -> void:
 	if not has_pending_deferred_deliveries():
 		return
 
-
-
-
-
-
-
+	var handler_budget: int = (
+		_DEFERRED_SERVICE_PRESSURE_HANDLERS_PER_FRAME
+		if get_pending_deferred_delivery_count()
+		>= _DEFERRED_QUEUE_SOFT_LIMIT
+		else _DEFERRED_SERVICE_HANDLERS_PER_FRAME
+	)
 	_drain_deferred_deliveries(
-		1,
+		handler_budget,
 		false
 	)
 
@@ -1459,6 +1463,7 @@ func _drain_deferred_deliveries(
 		return
 
 	var pending_count: int = _deferred_deliveries.size()
+	var entry_tail_high_water: int = _deferred_delivery_tail
 	var budget: int = max_handlers
 
 	if budget < 0:
@@ -1468,13 +1473,17 @@ func _drain_deferred_deliveries(
 			else 4
 		)
 
-	budget = min(
-		max(
-			0,
-			budget
-		),
-		pending_count
-	)
+	if force_all:
+		# A negative handler cap drains every delivery that existed on entry. An
+		# explicit non-negative cap still wins (the UI uses `(1, true)`), while
+		# force_all bypasses the wall-clock cutoff. The tail high-water mark prevents
+		# subscriber callbacks from extending this synchronous pass forever.
+		budget = mini(maxi(0, budget), pending_count)
+	else:
+		budget = mini(
+			maxi(0, budget),
+			mini(pending_count, _MAX_DEFERRED_HANDLERS_PER_FLUSH)
+		)
 
 	if budget <= 0:
 		return
@@ -1482,10 +1491,12 @@ func _drain_deferred_deliveries(
 
 
 
-	var work_budget_usec: int = (
-		500
-		if force_all
-		else 250
+	var work_budget_usec: int = mini(
+		_DEFERRED_DRAIN_MAX_TIME_BUDGET_USEC,
+		maxi(
+			_DEFERRED_DRAIN_USEC_PER_HANDLER,
+			budget * _DEFERRED_DRAIN_USEC_PER_HANDLER
+		)
 	)
 
 	var started_usec: int = int(
@@ -1495,10 +1506,15 @@ func _drain_deferred_deliveries(
 
 	while (
 		delivered_count < budget
-		and _deferred_delivery_head < _deferred_delivery_tail
+		and _deferred_delivery_head < (
+			entry_tail_high_water
+			if force_all
+			else _deferred_delivery_tail
+		)
 	):
 		if (
-			delivered_count > 0
+			not force_all
+			and delivered_count > 0
 			and int(
 				Time.get_ticks_usec()
 			) - started_usec >= work_budget_usec
@@ -1592,14 +1608,6 @@ func flush_deferred(
 	max_handlers: int = -1,
 	force_all: bool = false
 ) -> void:
-
-
-	if (
-		_deferred_delivery_service_armed
-		and not force_all
-	):
-		return
-
 	_drain_deferred_deliveries(
 		max_handlers,
 		force_all

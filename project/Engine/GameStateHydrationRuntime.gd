@@ -30,14 +30,6 @@ var last_background_hydration_report: Dictionary = {}
 
 
 
-var background_authority_thread: Thread = null
-var background_authority_context: Dictionary = {}
-
-
-
-var background_hydration_service_thread: Thread = null
-var background_hydration_service_mutex: Mutex = Mutex.new()
-var background_hydration_service_state: Dictionary = {}
 func _init(_gs = null):
 	gs = _gs
 
@@ -61,12 +53,20 @@ func hydrate_from_path(path: String = "user://savegame.bin", options: Dictionary
 	hydration_options ["format"] = decoded.get("format", "unknown")
 
 	return hydrate_from_payload(payload, hydration_options)
-func _run_background_authority_call_on_worker(
+func _run_background_authority_call_on_main_thread(
 	target: Variant,
 	method_name: String,
 	arguments: Array,
 	validate_after: bool = false
 ) -> Dictionary:
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return {
+			"success": false,
+			"reason": "live_authority_call_requires_main_thread",
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false,
+		}
+
 	if (
 		target == null
 		or typeof(target) != TYPE_OBJECT
@@ -75,7 +75,8 @@ func _run_background_authority_call_on_worker(
 		return {
 			"success": false,
 			"reason": "background_authority_target_invalid",
-			"worker_thread_used": true,
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false,
 		}
 
 	if (
@@ -88,7 +89,8 @@ func _run_background_authority_call_on_worker(
 			"success": false,
 			"reason": "background_authority_method_unavailable",
 			"method_name": method_name,
-			"worker_thread_used": true,
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false,
 		}
 
 	var call_result: Variant = (
@@ -117,7 +119,8 @@ func _run_background_authority_call_on_worker(
 		"call_result": call_result,
 		"validation_performed": validation_performed,
 		"validation": validation,
-		"worker_thread_used": true,
+		"worker_thread_used": false,
+		"main_thread_live_state_commit": true,
 		"completed_at_ms": int(
 			Time.get_ticks_msec()
 		)
@@ -140,68 +143,15 @@ func _service_background_authority_call(
 			"reason": "background_authority_task_id_missing"
 		}
 
-	if background_authority_thread != null:
-		var active_thread: Thread = (
-			background_authority_thread
-		)
-		var active_task_id: String = str(
-			background_authority_context.get(
-				"task_id",
-				""
-			)
-		)
-
-		if active_thread.is_alive():
-			return {
-				"success": true,
-				"complete": false,
-				"state": "running",
-				"task_id": active_task_id,
-				"requested_task_id": clean_task_id,
-				"worker_thread_used": true,
-				"renderer_thread_poll_only": true
-			}
-
-		var worker_result_raw: Variant = (
-			active_thread.wait_to_finish()
-		)
-
-		background_authority_thread = null
-		background_authority_context = {}
-
-
-
-		if active_task_id != clean_task_id:
-			return {
-				"success": true,
-				"complete": false,
-				"state": "stale_worker_discarded",
-				"task_id": clean_task_id,
-				"discarded_task_id": active_task_id,
-				"worker_thread_used": true
-			}
-
-		var worker_result: Dictionary = (
-			worker_result_raw as Dictionary
-			if typeof(
-				worker_result_raw
-			) == TYPE_DICTIONARY
-			else {
-				"success": false,
-				"reason": (
-					"background_authority_worker_return_invalid"
-				)
-			}
-		)
-
-		worker_result ["complete"] = true
-		worker_result ["task_id"] = clean_task_id
-		worker_result ["worker_thread_used"] = true
-		worker_result [
-			"renderer_thread_poll_only"
-		] = true
-
-		return worker_result
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return {
+			"success": false,
+			"complete": true,
+			"task_id": clean_task_id,
+			"reason": "live_authority_call_requires_main_thread",
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false,
+		}
 
 	if (
 		target == null
@@ -229,49 +179,19 @@ func _service_background_authority_call(
 			"method_name": method_name
 		}
 
-	var worker:= Thread.new()
-	var worker_error: int = worker.start(
-		Callable(
-			self,
-			"_run_background_authority_call_on_worker"
-		).bind(
-			target,
-			method_name,
-			arguments,
-			validate_after
-		),
-		Thread.PRIORITY_LOW
+	var result: Dictionary = _run_background_authority_call_on_main_thread(
+		target,
+		method_name,
+		arguments,
+		validate_after
 	)
-
-	if worker_error != OK:
-		return {
-			"success": false,
-			"complete": true,
-			"task_id": clean_task_id,
-			"reason": "background_authority_worker_start_failed",
-			"worker_error": worker_error,
-			"method_name": method_name
-		}
-
-	background_authority_thread = worker
-	background_authority_context = {
-		"task_id": clean_task_id,
-		"method_name": method_name,
-		"started_at_ms": int(
-			Time.get_ticks_msec()
-		),
-		"worker_thread_used": true,
-	}
-
-	return {
-		"success": true,
-		"complete": false,
-		"state": "running",
-		"task_id": clean_task_id,
-		"method_name": method_name,
-		"worker_thread_used": true,
-		"renderer_thread_poll_only": true
-	}
+	result ["complete"] = true
+	result ["task_id"] = clean_task_id
+	result ["worker_thread_used"] = false
+	result ["main_thread_live_state_commit"] = bool(
+		result.get("success", false)
+	)
+	return result
 func hydrate_playable_from_path(path: String = "user://savegame.bin", options: Dictionary = {}) -> Dictionary:
 	var normalized_path: String = str(path).strip_edges()
 	if normalized_path == "":
@@ -791,7 +711,13 @@ func begin_resident_checkpoint_spatial_hydration(
 			] as Array
 		).size(),
 		"strict_one_item_per_slice": true,
-		"strict_interactive_chunk_caps": true
+		"strict_interactive_chunk_caps": true,
+		"worker_thread_used": false,
+		"live_game_state_commit_thread": "main",
+		"controlled_actor_invariant_preserved": true,
+		"controlled_actor_drift_detected": false,
+		"controlled_actor_rollback_performed": false,
+		"controlled_actor_invariant_violations": [],
 	}
 
 	var npc_rows_raw: Variant = data.get(
@@ -824,8 +750,29 @@ func begin_resident_checkpoint_spatial_hydration(
 		"consciousness_chunk_cap": 1,
 		"strict_one_item_per_slice": true,
 		"strict_interactive_chunk_caps": true,
-		"complete_payload_deep_copy_performed": false
+		"complete_payload_deep_copy_performed": false,
+		"controlled_actor_ref": gs.player,
+		"controlled_actor_id": actor_id,
 	}
+	var controlled_actor_snapshot: Dictionary = (
+		_capture_controlled_actor_hydration_snapshot()
+	)
+	var controlled_actor_fingerprint: int = int(
+		controlled_actor_snapshot.get("fingerprint", 0)
+	)
+	active_hydration_session [
+		"controlled_actor_initial_fingerprint"
+	] = controlled_actor_fingerprint
+	active_hydration_session [
+		"controlled_actor_last_fingerprint"
+	] = controlled_actor_fingerprint
+	report [
+		"controlled_actor_initial_fingerprint"
+	] = controlled_actor_fingerprint
+	report [
+		"controlled_actor_last_fingerprint"
+	] = controlled_actor_fingerprint
+	active_hydration_session ["report"] = report.duplicate(false)
 
 	if typeof(gs.scenario_state) != TYPE_DICTIONARY:
 		gs.scenario_state = {}
@@ -937,6 +884,9 @@ func begin_resident_checkpoint_spatial_hydration(
 		"current_spatial_tier": "my_life",
 		"strict_one_item_per_slice": true,
 		"strict_interactive_chunk_caps": true,
+		"worker_thread_used": false,
+		"live_game_state_commit_thread": "main",
+		"controlled_actor_fingerprint": controlled_actor_fingerprint,
 		"complete_payload_deep_copy_performed": false,
 		"started_at_ms": started_at_ms
 	}
@@ -1390,17 +1340,248 @@ func _hydrate_checkpoint_non_npc_entity_state(
 	] = stage + 1
 
 	return stage >= 18
-func _run_background_hydration_worker_quantum(
+
+func _controlled_actor_snapshot_value(value: Variant) -> Variant:
+	match typeof(value):
+		TYPE_ARRAY, TYPE_DICTIONARY:
+			return value.duplicate(true)
+		TYPE_OBJECT, TYPE_CALLABLE, TYPE_SIGNAL, TYPE_RID:
+			return null
+		_:
+			return value
+
+func _capture_controlled_actor_hydration_snapshot() -> Dictionary:
+	if gs == null:
+		return {}
+
+	var actor = active_hydration_session.get(
+		"controlled_actor_ref",
+		gs.player
+	)
+	if actor == null or not is_instance_valid(actor):
+		return {}
+
+	var actor_state: Dictionary = {}
+	for property_raw in actor.get_property_list():
+		if typeof(property_raw) != TYPE_DICTIONARY:
+			continue
+
+		var property: Dictionary = property_raw as Dictionary
+		if (
+			int(property.get("usage", 0))
+			& PROPERTY_USAGE_SCRIPT_VARIABLE
+		) == 0:
+			continue
+
+		var property_name: String = str(property.get("name", ""))
+		if property_name == "" or property_name == "partner":
+			continue
+
+		var property_value: Variant = actor.get(property_name)
+		if typeof(property_value) in [
+			TYPE_OBJECT,
+			TYPE_CALLABLE,
+			TYPE_SIGNAL,
+			TYPE_RID,
+		]:
+			continue
+
+		actor_state [property_name] = (
+			_controlled_actor_snapshot_value(property_value)
+		)
+
+	var actor_id: int = int(actor.id)
+	var indexed_actor = null
+	if gs.has_method("get_npc_by_id") and actor_id > 0:
+		indexed_actor = gs.get_npc_by_id(actor_id, false)
+
+	var fingerprint_material: String = var_to_str(actor_state)
+	return {
+		"actor_ref": actor,
+		"actor_instance_id": actor.get_instance_id(),
+		"actor_id": actor_id,
+		"year": int(gs.year),
+		"player_id": int(gs.player_id),
+		"npc_position": gs.npcs.find(actor),
+		"player_identity_matches": gs.player == actor,
+		"npc_index_identity_matches": indexed_actor == actor,
+		"state": actor_state,
+		"fingerprint": hash(fingerprint_material),
+	}
+
+func _restore_controlled_actor_hydration_snapshot(
+	snapshot: Dictionary
+) -> void:
+	if gs == null:
+		return
+
+	var actor = snapshot.get("actor_ref", null)
+	if actor == null or not is_instance_valid(actor):
+		return
+
+	var actor_state_raw: Variant = snapshot.get("state", {})
+	var actor_state: Dictionary = (
+		actor_state_raw as Dictionary
+		if typeof(actor_state_raw) == TYPE_DICTIONARY
+		else {}
+	)
+	for property_name_raw in actor_state.keys():
+		var property_name: String = str(property_name_raw)
+		actor.set(
+			property_name,
+			_controlled_actor_snapshot_value(
+				actor_state [property_name_raw]
+			)
+		)
+
+	var actor_id: int = int(snapshot.get("actor_id", actor.id))
+	var actor_position: int = int(snapshot.get("npc_position", -1))
+	var repaired_npcs: Array = []
+	var actor_inserted: bool = false
+	for npc in gs.npcs:
+		if npc == actor:
+			if not actor_inserted:
+				repaired_npcs.append(actor)
+				actor_inserted = true
+			continue
+		if npc != null and int(npc.id) == actor_id:
+			continue
+		repaired_npcs.append(npc)
+
+	if not actor_inserted:
+		var insertion_index: int = clampi(
+			actor_position,
+			0,
+			repaired_npcs.size()
+		)
+		repaired_npcs.insert(insertion_index, actor)
+
+	gs.npcs = repaired_npcs
+	gs.player = actor
+	gs.year = int(snapshot.get("year", gs.year))
+	gs.player_id = int(snapshot.get("player_id", actor_id))
+	gs._rebuild_npc_index()
+
+func _verify_controlled_actor_after_hydration_item(
+	before: Dictionary,
+	item: Dictionary
+) -> Dictionary:
+	if before.is_empty():
+		return {
+			"preserved": true,
+			"before_fingerprint": 0,
+			"after_fingerprint": 0,
+		}
+
+	var after: Dictionary = _capture_controlled_actor_hydration_snapshot()
+	var reasons: Array = []
+	if after.is_empty():
+		reasons.append("controlled_actor_unavailable")
+	else:
+		if not bool(after.get("player_identity_matches", false)):
+			reasons.append("player_reference_changed")
+		if not bool(after.get("npc_index_identity_matches", false)):
+			reasons.append("npc_index_reference_changed")
+		if int(after.get("actor_instance_id", -1)) != int(
+			before.get("actor_instance_id", -2)
+		):
+			reasons.append("actor_instance_changed")
+		if int(after.get("player_id", -1)) != int(
+			before.get("player_id", -2)
+		):
+			reasons.append("player_id_changed")
+		if int(after.get("year", -1)) != int(
+			before.get("year", -2)
+		):
+			reasons.append("game_year_changed")
+		if after.get("state", {}) != before.get("state", {}):
+			reasons.append("controlled_actor_state_changed")
+
+	var before_fingerprint: int = int(before.get("fingerprint", 0))
+	var after_fingerprint: int = int(after.get("fingerprint", 0))
+	if reasons.is_empty():
+		active_hydration_session [
+			"controlled_actor_last_fingerprint"
+		] = after_fingerprint
+		return {
+			"preserved": true,
+			"before_fingerprint": before_fingerprint,
+			"after_fingerprint": after_fingerprint,
+		}
+
+	_restore_controlled_actor_hydration_snapshot(before)
+	var restored: Dictionary = _capture_controlled_actor_hydration_snapshot()
+	var restored_ok: bool = (
+		not restored.is_empty()
+		and bool(restored.get("player_identity_matches", false))
+		and bool(restored.get("npc_index_identity_matches", false))
+		and restored.get("state", {}) == before.get("state", {})
+	)
+	var violation: Dictionary = {
+		"item_kind": str(item.get("kind", "")),
+		"phase": str(item.get("phase", "")),
+		"reasons": reasons,
+		"before_fingerprint": before_fingerprint,
+		"after_fingerprint": after_fingerprint,
+		"restored_fingerprint": int(restored.get("fingerprint", 0)),
+		"rollback_performed": true,
+		"rollback_succeeded": restored_ok,
+	}
+
+	var report_raw: Variant = active_hydration_session.get("report", {})
+	var report: Dictionary = (
+		report_raw as Dictionary
+		if typeof(report_raw) == TYPE_DICTIONARY
+		else {}
+	)
+	var violations_raw: Variant = report.get(
+		"controlled_actor_invariant_violations",
+		[]
+	)
+	var violations: Array = (
+		violations_raw as Array
+		if typeof(violations_raw) == TYPE_ARRAY
+		else []
+	)
+	violations.append(violation)
+	report ["controlled_actor_invariant_violations"] = violations
+	report ["controlled_actor_drift_detected"] = true
+	report ["controlled_actor_rollback_performed"] = true
+	report ["controlled_actor_invariant_preserved"] = restored_ok
+	active_hydration_session ["report"] = report
+	active_hydration_session [
+		"controlled_actor_last_fingerprint"
+	] = int(restored.get("fingerprint", before_fingerprint))
+
+	return {
+		"preserved": restored_ok,
+		"before_fingerprint": before_fingerprint,
+		"after_fingerprint": after_fingerprint,
+		"violation": violation,
+	}
+
+func _run_background_hydration_main_thread_quantum(
 	max_budget_ms: int = 6
 ) -> Dictionary:
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return {
+			"success": false,
+			"active": background_hydration_active,
+			"complete": false,
+			"queue_remaining": background_hydration_queue.size(),
+			"reason": "live_hydration_commit_requires_main_thread",
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false,
+		}
+
 	if not background_hydration_active:
 		return {
 			"success": true,
 			"active": false,
 			"complete": true,
 			"queue_remaining": 0,
-			"worker_thread_used": true,
-			"renderer_thread_hydration_performed": false
+			"worker_thread_used": false,
+			"main_thread_live_state_commit": false
 		}
 
 	var started_at: int = int(
@@ -1465,12 +1646,19 @@ func _run_background_hydration_worker_quantum(
 			serviced_items += 1
 			continue
 
+		var controlled_actor_before: Dictionary = (
+			_capture_controlled_actor_hydration_snapshot()
+		)
 		var item_complete: bool = (
 			_run_background_hydration_item(
 				item,
 				budget_ms,
 				started_at
 			)
+		)
+		_verify_controlled_actor_after_hydration_item(
+			controlled_actor_before,
+			item
 		)
 		serviced_items += 1
 
@@ -1502,8 +1690,15 @@ func _run_background_hydration_worker_quantum(
 			strict_one_item_per_slice
 		),
 		"serviced_items": serviced_items,
-		"worker_thread_used": true,
-		"renderer_thread_hydration_performed": false,
+		"worker_thread_used": false,
+		"main_thread_live_state_commit": serviced_items > 0,
+		"live_game_state_commit_thread": "main",
+		"controlled_actor_fingerprint": int(
+			active_hydration_session.get(
+				"controlled_actor_last_fingerprint",
+				0
+			)
+		),
 		"ui_interaction_pauses_simulation": false,
 		"at_ms": int(
 			Time.get_ticks_msec()
@@ -1536,10 +1731,10 @@ func _run_background_hydration_worker_quantum(
 		)
 		gs.scenario_state [
 			"background_hydration_worker_thread_used"
-		] = true
-		gs.scenario_state [
-			"background_hydration_renderer_thread_work"
 		] = false
+		gs.scenario_state [
+			"background_hydration_main_thread_live_state_commit"
+		] = serviced_items > 0
 		gs.scenario_state [
 			"background_hydration_ui_interaction_pauses_simulation"
 		] = false
@@ -1551,238 +1746,23 @@ func _run_background_hydration_worker_quantum(
 func run_background_hydration_slice(
 	max_budget_ms: int = 6
 ) -> Dictionary:
-
-
-
-	if background_hydration_service_thread != null:
-		var existing_worker: Thread = (
-			background_hydration_service_thread
-		)
-
-		if existing_worker.is_alive():
-			return (
-				_background_hydration_service_state_snapshot()
-			)
-
-		var finished_raw: Variant = (
-			existing_worker.wait_to_finish()
-		)
-
-		background_hydration_service_thread = null
-
-		if typeof(
-			finished_raw
-		) == TYPE_DICTIONARY:
-			background_hydration_service_mutex.lock()
-			background_hydration_service_state = (
-				(
-					finished_raw as Dictionary
-				).duplicate(false)
-			)
-			background_hydration_service_mutex.unlock()
-
-	if not background_hydration_active:
-		var completed_state: Dictionary = (
-			_background_hydration_service_state_snapshot()
-		)
-
-		if not completed_state.is_empty():
-			completed_state ["active"] = false
-			completed_state ["complete"] = true
-			completed_state [
-				"renderer_thread_hydration_performed"
-			] = false
-			return completed_state
-
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
 		return {
-			"success": true,
-			"active": false,
-			"complete": true,
-			"queue_remaining": 0,
-			"worker_thread_used": true,
-			"renderer_thread_hydration_performed": false
-		}
-
-	return _start_background_hydration_service_worker(
-		maxi(
-			1,
-			max_budget_ms
-		)
-	)
-func _background_hydration_service_state_snapshot() -> Dictionary:
-	background_hydration_service_mutex.lock()
-
-	var snapshot: Dictionary = (
-		background_hydration_service_state
-		.duplicate(false)
-	)
-
-	background_hydration_service_mutex.unlock()
-
-	return snapshot
-func _start_background_hydration_service_worker(
-	max_budget_ms: int
-) -> Dictionary:
-	if not background_hydration_active:
-		return {
-			"success": true,
-			"active": false,
-			"complete": true,
-			"queue_remaining": 0,
-			"worker_thread_used": true,
-			"renderer_thread_hydration_performed": false
-		}
-
-	if background_hydration_service_thread != null:
-		var existing_worker: Thread = (
-			background_hydration_service_thread
-		)
-
-		if existing_worker.is_alive():
-			return (
-				_background_hydration_service_state_snapshot()
-			)
-
-		var finished_raw: Variant = (
-			existing_worker.wait_to_finish()
-		)
-
-		background_hydration_service_thread = null
-
-		if typeof(
-			finished_raw
-		) == TYPE_DICTIONARY:
-			background_hydration_service_mutex.lock()
-			background_hydration_service_state = (
-				(
-					finished_raw as Dictionary
-				).duplicate(false)
-			)
-			background_hydration_service_mutex.unlock()
-
-	var safe_budget_ms: int = maxi(
-		1,
-		max_budget_ms
-	)
-	var initial_state: Dictionary = {
-		"schema": "eralife.background_hydration_service_state",
-		"version": HYDRATION_RUNTIME_VERSION,
-		"success": true,
-		"active": true,
-		"complete": false,
-		"queue_remaining": (
-			background_hydration_queue.size()
-		),
-		"worker_thread_used": true,
-		"worker_thread_active": true,
-		"worker_priority": "low",
-		"renderer_thread_hydration_performed": false,
-		"ui_interaction_pauses_simulation": false,
-		"started_at_ms": int(
-			Time.get_ticks_msec()
-		)
-	}
-
-	background_hydration_service_mutex.lock()
-	background_hydration_service_state = (
-		initial_state.duplicate(false)
-	)
-	background_hydration_service_mutex.unlock()
-
-	var worker:= Thread.new()
-	var worker_error: int = worker.start(
-		Callable(
-			self,
-			"_run_background_hydration_service_worker"
-		).bind(
-			safe_budget_ms
-		),
-		Thread.PRIORITY_LOW
-	)
-
-	if worker_error != OK:
-		var failure: Dictionary = {
-			"schema": "eralife.background_hydration_service_state",
-			"version": HYDRATION_RUNTIME_VERSION,
 			"success": false,
-			"active": false,
+			"active": background_hydration_active,
 			"complete": false,
-			"reason": "background_hydration_service_worker_start_failed",
-			"worker_error": worker_error,
+			"queue_remaining": background_hydration_queue.size(),
+			"reason": "live_hydration_commit_requires_main_thread",
 			"worker_thread_used": false,
-			"renderer_thread_hydration_performed": false,
-			"failed_at_ms": int(
-				Time.get_ticks_msec()
-			)
+			"main_thread_live_state_commit": false,
 		}
 
-		background_hydration_service_mutex.lock()
-		background_hydration_service_state = (
-			failure.duplicate(false)
+	var report: Dictionary = (
+		_run_background_hydration_main_thread_quantum(
+			maxi(1, max_budget_ms)
 		)
-		background_hydration_service_mutex.unlock()
-
-		return failure
-
-	background_hydration_service_thread = worker
-
-	return initial_state
-func _run_background_hydration_service_worker(
-	max_budget_ms: int
-) -> Dictionary:
-	var safe_budget_ms: int = maxi(
-		1,
-		max_budget_ms
 	)
-	var final_report: Dictionary = {
-		"success": true,
-		"active": background_hydration_active,
-		"complete": not background_hydration_active,
-		"queue_remaining": 0
-	}
-
-	if background_hydration_active:
-		var quantum_report: Dictionary = (
-			_run_background_hydration_worker_quantum(
-				safe_budget_ms
-			)
-		)
-
-		final_report = (
-			quantum_report.duplicate(false)
-		)
-
-	final_report [
-		"worker_thread_used"
-	] = true
-	final_report [
-		"worker_thread_active"
-	] = false
-	final_report [
-		"renderer_thread_hydration_performed"
-	] = false
-	final_report [
-		"ui_interaction_pauses_simulation"
-	] = false
-	final_report [
-		"one_worker_quantum_per_service_invocation"
-	] = true
-	final_report [
-		"continuous_worker_loop_forbidden"
-	] = true
-	final_report [
-		"worker_thread_completed_at_ms"
-	] = int(
-		Time.get_ticks_msec()
-	)
-
-	background_hydration_service_mutex.lock()
-	background_hydration_service_state = (
-		final_report.duplicate(false)
-	)
-	background_hydration_service_mutex.unlock()
-
-	return final_report
+	return report
 
 func is_background_hydration_active() -> bool:
 	return background_hydration_active
@@ -1793,6 +1773,9 @@ func _schedule_background_hydration_after_playable(
 
 
 	active_hydration_session = session.duplicate(false)
+	if gs != null and gs.player != null:
+		active_hydration_session ["controlled_actor_ref"] = gs.player
+		active_hydration_session ["controlled_actor_id"] = int(gs.player.id)
 
 	if session.has(
 		"payload"
@@ -1802,6 +1785,32 @@ func _schedule_background_hydration_after_playable(
 		] = session.get(
 			"payload"
 		)
+
+	var controlled_actor_snapshot: Dictionary = (
+		_capture_controlled_actor_hydration_snapshot()
+	)
+	active_hydration_session [
+		"controlled_actor_initial_fingerprint"
+	] = int(controlled_actor_snapshot.get("fingerprint", 0))
+	active_hydration_session [
+		"controlled_actor_last_fingerprint"
+	] = int(controlled_actor_snapshot.get("fingerprint", 0))
+	var scheduled_report_raw: Variant = active_hydration_session.get(
+		"report",
+		{}
+	)
+	if typeof(scheduled_report_raw) == TYPE_DICTIONARY:
+		var scheduled_report: Dictionary = scheduled_report_raw as Dictionary
+		scheduled_report ["worker_thread_used"] = false
+		scheduled_report ["live_game_state_commit_thread"] = "main"
+		scheduled_report ["controlled_actor_invariant_preserved"] = true
+		scheduled_report ["controlled_actor_drift_detected"] = false
+		scheduled_report ["controlled_actor_rollback_performed"] = false
+		scheduled_report ["controlled_actor_invariant_violations"] = []
+		scheduled_report ["controlled_actor_initial_fingerprint"] = int(
+			controlled_actor_snapshot.get("fingerprint", 0)
+		)
+		active_hydration_session ["report"] = scheduled_report
 
 	background_hydration_queue.clear()
 
@@ -2271,6 +2280,12 @@ func _hydrate_pending_consciousness_chunk(
 		cursor += 1
 
 		if npc == null:
+			continue
+
+		if npc == active_hydration_session.get(
+			"controlled_actor_ref",
+			gs.player
+		):
 			continue
 
 		if gs.consciousness_engine != null:
@@ -3514,10 +3529,21 @@ func _complete_background_hydration() -> void:
 	] = false
 	report [
 		"worker_thread_used"
+	] = false
+	report [
+		"main_thread_live_state_commit"
 	] = true
 	report [
-		"renderer_thread_hydration_performed"
-	] = false
+		"live_game_state_commit_thread"
+	] = "main"
+	report [
+		"controlled_actor_last_fingerprint"
+	] = int(
+		active_hydration_session.get(
+			"controlled_actor_last_fingerprint",
+			0
+		)
+	)
 	report [
 		"ui_interaction_pauses_simulation"
 	] = false
@@ -3564,6 +3590,9 @@ func _complete_background_hydration() -> void:
 			] = false
 			gs.scenario_state [
 				"checkpoint_hydration_completed_off_renderer_thread"
+			] = false
+			gs.scenario_state [
+				"checkpoint_hydration_main_thread_live_state_commit"
 			] = true
 
 		if gs.has_method(
