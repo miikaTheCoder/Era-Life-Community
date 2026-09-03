@@ -2558,6 +2558,28 @@ func _step_world_movement(
 			"moves": 0
 		}
 	)
+	# Family/household contracts are authoritative, but they are expensive to
+	# rebuild. Freeze the player household once for this movement task and use a
+	# read-only custodial predicate for each NPC below.
+	if not state.has("household_member_ids"):
+		var household_member_ids: Dictionary = {}
+		if (
+			gs.family_control_engine != null
+			and gs.player != null
+			and gs.family_contract_engine != null
+			and gs.family_contract_engine.has_method("movement_household_member_ids")
+		):
+			household_member_ids = gs.family_contract_engine.movement_household_member_ids(gs.player)
+		state ["household_member_ids"] = household_member_ids
+	if not state.has("custodial_minor_ids"):
+		var custodial_minor_ids: Dictionary = {}
+		if (
+			gs.family_control_engine != null
+			and gs.family_contract_engine != null
+			and gs.family_contract_engine.has_method("movement_custodial_minor_ids")
+		):
+			custodial_minor_ids = gs.family_contract_engine.movement_custodial_minor_ids()
+		state ["custodial_minor_ids"] = custodial_minor_ids
 
 	var budget: Dictionary = (
 		_bounded_world_task_budget(
@@ -2597,20 +2619,12 @@ func _step_world_movement(
 			continue
 
 		if gs.family_control_engine != null:
-			if (
-				gs.family_control_engine
-				.is_in_player_household_cluster(
-					npc
-				)
-			):
+			var household_member_ids: Dictionary = state.get("household_member_ids", {})
+			if household_member_ids.has(int(npc.id)):
 				continue
 
-			if (
-				gs.family_control_engine
-				.is_minor_under_custodial_authority(
-					npc
-				)
-			):
+			var custodial_minor_ids: Dictionary = state.get("custodial_minor_ids", {})
+			if custodial_minor_ids.has(int(npc.id)):
 				continue
 
 		if randi() % 3000 == 1:

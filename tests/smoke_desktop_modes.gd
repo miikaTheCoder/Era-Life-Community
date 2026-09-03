@@ -295,6 +295,19 @@ func _advance_one_year() -> bool:
 	var old_year: int = state.year
 	if not _check(state.player.alive, "Life ended before requested duration; inspect the diary rather than starting a different life"):
 		return false
+	# A completed year can leave its informational result card on top of the
+	# navigation. Dismiss it before locating/clicking the next Age Up button so
+	# multi-year certification never spends a year click closing stale chrome.
+	var stale_result: Control = current_scene.get("action_result_popup")
+	var stale_card: Control = current_scene.get("action_result_popup_card")
+	if (
+		stale_result != null
+		and stale_result.is_visible_in_tree()
+		and stale_card != null
+		and stale_card.is_visible_in_tree()
+	):
+		await _click_at(stale_card.get_global_rect().get_center())
+		await create_timer(0.4).timeout
 	var age_button: Button = null
 	for button in current_scene.find_children("*", "Button", true, false):
 		if button.is_visible_in_tree() and button.text.to_upper().strip_edges() == "AGE UP":

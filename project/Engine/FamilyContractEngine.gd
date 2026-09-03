@@ -223,6 +223,67 @@ func get_household_members(person: Person, context: Dictionary = {}) -> Array:
 	return members
 
 
+## Returns the household membership used by bounded world-movement work.
+## Building the contract is intentionally done once by the caller per movement
+## year; individual NPC checks should only consult this immutable ID snapshot.
+func movement_household_member_ids(person: Person) -> Dictionary:
+	var member_ids: Dictionary = {}
+	if person == null or not person.alive:
+		return member_ids
+
+	var household_contract: Dictionary = get_household_contract(person, {
+		"source": "family_contract_engine_movement_household_snapshot"
+	})
+	for raw_id in _safe_array(household_contract.get("members", [])):
+		var member_id: int = int(raw_id)
+		if member_id > 0:
+			member_ids [member_id] = true
+
+	var person_id: int = int(person.id)
+	if person_id > 0:
+		member_ids [person_id] = true
+	return member_ids
+
+
+## Builds the custodial-minor membership used by bounded movement. This is a
+## single linear pass over the active population; movement then performs only
+## dictionary lookups and never reactivates parent records per NPC.
+func movement_custodial_minor_ids() -> Dictionary:
+	var minor_ids: Dictionary = {}
+	if gs == null:
+		return minor_ids
+
+	var active_by_id: Dictionary = {}
+	if gs.player != null and gs.player.alive:
+		active_by_id [int(gs.player.id)] = gs.player
+	for raw_person in gs.npcs:
+		if not raw_person is Person:
+			continue
+		var person: Person = raw_person
+		if person != null and person.alive and int(person.id) > 0:
+			active_by_id [int(person.id)] = person
+
+	for raw_person in gs.npcs:
+		if not raw_person is Person:
+			continue
+		var child: Person = raw_person
+		if child == null or not child.alive:
+			continue
+		var adulthood_age: int = _era_adulthood_age(child)
+		if int(child.age) >= adulthood_age:
+			continue
+
+		for raw_parent_id in _safe_array(child.parents):
+			var parent: Person = active_by_id.get(int(raw_parent_id), null)
+			if parent == null or not parent.alive:
+				continue
+			if int(parent.age) >= _era_adulthood_age(parent):
+				minor_ids [int(child.id)] = true
+				break
+
+	return minor_ids
+
+
 func get_custodial_contract(person: Person, context: Dictionary = {}) -> Dictionary:
 	if person == null:
 		return {}
@@ -255,6 +316,39 @@ func is_minor_under_authority(person: Person, context: Dictionary = {}) -> bool:
 		return false
 
 	return int(custodial_contract.get("custodian_id", -1)) > 0
+
+
+## Movement uses this read-only predicate after the yearly family snapshot.
+## It preserves the custodial rule without rebuilding a complete family,
+## household, and estate contract for every resident.
+func is_minor_under_authority_fast(person: Person) -> bool:
+	if person == null or not person.alive:
+		return false
+	var adulthood_age: int = _era_adulthood_age(person)
+	if int(person.age) >= adulthood_age:
+		return false
+
+	var parent_ids: Array = []
+	for raw_id in _safe_array(person.parents):
+		var parent_id: int = int(raw_id)
+		if parent_id > 0 and not parent_ids.has(parent_id):
+			parent_ids.append(parent_id)
+	# Population facts are the compatibility fallback for restored actors whose
+	# live Person arrays have not been hydrated yet.
+	if parent_ids.is_empty() and gs != null and gs.has_method("get_npc_facts_by_id"):
+		var facts: Dictionary = gs.get_npc_facts_by_id(int(person.id))
+		for raw_id in _safe_array(facts.get("parents", [])):
+			var parent_id: int = int(raw_id)
+			if parent_id > 0 and not parent_ids.has(parent_id):
+				parent_ids.append(parent_id)
+
+	for raw_parent_id in parent_ids:
+		var parent: Person = _person_by_id(int(raw_parent_id))
+		if parent == null or not parent.alive:
+			continue
+		if int(parent.age) >= _era_adulthood_age(parent):
+			return true
+	return false
 
 
 func build_estate_contract(owner: Person, context: Dictionary = {}) -> Dictionary:
