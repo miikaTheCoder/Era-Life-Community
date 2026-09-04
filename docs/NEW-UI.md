@@ -1,14 +1,17 @@
 # Era Life: life journal interface
 
-The `era-life-new-ui` branch replaces the reconstructed game's neon presentation
-with a permanent dark theme and a journal-oriented desktop layout. Gameplay
+The `era-life-new-ui` branch gives the reconstructed game a permanent dark theme,
+neon light-blue controls, and a journal-oriented desktop layout. Gameplay
 actions, entry contracts, and checkpoint formats retain their existing ownership.
 
 ## Design
 
-- Graphite canvas `#101211`, panel `#191c1a`, raised control `#242925`.
-- Ivory text `#eeeee7`, secondary text `#acb5ac`, sage actions `#b2c9a2`.
-- Amber year markers and keyboard focus `#ddbd83`; muted red for danger.
+- Graphite canvas `#101214`, panel `#191d20`, raised surface `#242b30`.
+- Cool white text `#edf5fa`, secondary text `#a8bac5`, cyan actions `#66dbff`.
+- Blue button fills `#102c39`, luminous borders, and stronger hover/selection glow.
+- Ice-blue keyboard focus `#d4f5ff`; amber year markers and muted red for danger.
+- Blue stat fills and slider tracks coordinate with the controls. Critical health
+  retains a red warning. Disabled actions have muted borders and no glow.
 - Bundled Liberation Sans for controls and prose; Liberation Serif for display
   headings. Font redistribution terms are included in `project/ui/fonts/LICENSE.txt`.
 - Branching paths on the start menu represent the three ways to enter a life.
@@ -22,8 +25,10 @@ displays, instead of shrinking the entire interface to a fixed reference stage.
 
 God Mode keeps preparation and entry controls outside its scrolling form. Menu
 bobbing, title glitches, household light sweeps, and glowing year text are removed.
-Selected navigation has a visible underline; keyboard focus uses a separate amber
-outline. Disabled gameplay actions remain disabled.
+Selected navigation has a visible underline; keyboard focus uses a separate bright
+outline. Menu cards illuminate when their action is hovered or keyboard-focused.
+Disabled gameplay actions remain disabled. Glow is static, without pulsing or
+moving hit targets.
 
 ## Implementation
 

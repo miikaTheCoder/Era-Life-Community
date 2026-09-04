@@ -1,13 +1,18 @@
 extends RefCounted
 ## Shared, permanent dark presentation. No simulation state belongs here.
 
-const CANVAS := Color("101211")
-const PANEL := Color("191c1a")
-const RAISED := Color("242925")
-const LINE := Color("3c443e")
-const TEXT := Color("eeeee7")
-const MUTED := Color("acb5ac")
-const ACCENT := Color("b2c9a2")
+const CANVAS := Color("101214")
+const PANEL := Color("191d20")
+const RAISED := Color("242b30")
+const LINE := Color("38454d")
+const TEXT := Color("edf5fa")
+const MUTED := Color("a8bac5")
+const ACCENT := Color("66dbff")
+const BUTTON := Color("102c39")
+const BUTTON_EDGE := Color("368baa")
+const BUTTON_TEXT := Color("bceeff")
+const FOCUS := Color("d4f5ff")
+const METRIC := Color("285a70")
 const AMBER := Color("ddbd83")
 const DANGER := Color("e99e96")
 const BODY = preload("res://ui/fonts/LiberationSans-Regular.ttf")
@@ -27,30 +32,45 @@ static func box(fill: Color, border: Color = LINE, radius: int = 6, padding: int
 	return style
 
 static func button(state: String, primary := false, selected := false) -> StyleBoxFlat:
-	var fill := RAISED
-	var border := LINE
+	var fill := BUTTON
+	var border := BUTTON_EDGE
+	var glow_strength := 0.12
+	var glow_size := 5
 	if primary:
 		fill = ACCENT
 		border = ACCENT
+		glow_strength = 0.24
+		glow_size = 10
 	elif selected:
-		fill = Color("2e3b30")
+		fill = Color("174558")
 		border = ACCENT
+		glow_strength = 0.22
+		glow_size = 8
 	match state:
 		"hover", "hover_pressed":
-			fill = Color("c6d9b8") if primary else Color("333c34")
+			fill = Color("a5edff") if primary else Color("1c4b60")
 			border = ACCENT
+			glow_strength = 0.36
+			glow_size = 12
 		"pressed":
-			fill = Color("9ab38a") if primary else Color("3a493c")
+			fill = Color("38b9e6") if primary else Color("0d3547")
 			border = ACCENT
+			glow_strength = 0.18
+			glow_size = 4
 		"disabled":
 			fill = PANEL
 			border = LINE
+			glow_strength = 0.0
+			glow_size = 0
 		"focus":
-			var focus := box(Color.TRANSPARENT, AMBER)
+			var focus := box(Color.TRANSPARENT, FOCUS)
 			focus.set_border_width_all(2)
 			focus.draw_center = false
+			focus.set_expand_margin_all(2)
 			return focus
 	var style := box(fill, border)
+	style.shadow_color = Color(ACCENT, glow_strength)
+	style.shadow_size = glow_size
 	if selected:
 		style.border_width_bottom = 3
 	return style
@@ -60,10 +80,11 @@ static func create() -> Theme:
 	result.default_font = BODY
 	result.default_font_size = 16
 	for type in ["Button", "OptionButton", "MenuButton", "CheckButton", "CheckBox"]:
+		result.set_font("font", type, BOLD)
 		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 			result.set_stylebox(state, type, button(state))
 		for role in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
-			result.set_color(role, type, TEXT)
+			result.set_color(role, type, BUTTON_TEXT)
 		result.set_color("font_disabled_color", type, MUTED)
 		result.set_color("font_outline_color", type, Color.TRANSPARENT)
 		result.set_constant("outline_size", type, 0)
@@ -76,7 +97,7 @@ static func create() -> Theme:
 		result.set_color("font_color", type, TEXT)
 		result.set_color("font_placeholder_color", type, MUTED)
 		result.set_color("caret_color", type, ACCENT)
-		result.set_color("selection_color", type, Color("415440"))
+		result.set_color("selection_color", type, Color("164659"))
 	for type in ["Label", "RichTextLabel", "TooltipLabel", "PopupMenu", "TabBar", "TabContainer"]:
 		result.set_color("font_color", type, TEXT)
 		result.set_color("default_color", type, TEXT)

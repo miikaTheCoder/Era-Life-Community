@@ -116,7 +116,20 @@ static func create_entry_card(contract: Dictionary) -> PanelContainer:
 	box.add_child(button)
 	card.set_meta("entry_button", button)
 	card.set_meta("accent", Design.ACCENT)
+	var refresh := refresh_entry_card.bind(card, button)
+	button.mouse_entered.connect(refresh)
+	button.mouse_exited.connect(refresh)
+	button.focus_entered.connect(refresh)
+	button.focus_exited.connect(refresh)
 	return card
+
+static func refresh_entry_card(card: PanelContainer, button: Button) -> void:
+	var active := button.is_hovered() or button.has_focus()
+	var surface := card.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	surface.border_color = Design.ACCENT if active else Design.LINE
+	surface.shadow_color = Color(Design.ACCENT, 0.14 if active else 0.0)
+	surface.shadow_size = 10 if active else 0
+	card.add_theme_stylebox_override("panel", surface)
 
 static func layout_menu(scene: Control) -> void:
 	var grid := scene.get("choose_adventure_entry_shell") as GridContainer

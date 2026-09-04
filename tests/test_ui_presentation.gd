@@ -50,7 +50,7 @@ func _run() -> void:
 	_check(button.disabled, "Styling enabled a gameplay-disabled action")
 	_check(button.get_meta("action_id") == "resolve_test_situation", "Action identity changed")
 	_check(legacy.bg_color == Color.MAGENTA and legacy.shadow_size == 30, "Shared legacy resources were mutated")
-	_check(button.get_theme_stylebox("normal").bg_color == Design.RAISED, "Late style override escaped the dark theme")
+	_check(button.get_theme_stylebox("normal").bg_color == Design.BUTTON, "Late style override escaped the dark theme")
 	_check(button.get_theme_stylebox("focus").border_width_left == 2, "Keyboard focus ring is missing")
 	button.disabled = false
 	button.grab_focus()

@@ -5073,7 +5073,7 @@ func _update_prewarm_button_visual(progress: float, lifecycle: String, _status_t
 		prewarm_button_fill.offset_bottom = 0.0
 
 	if prewarm_button_label != null and is_instance_valid(prewarm_button_label):
-		prewarm_button_label.add_theme_color_override("font_color", Color("acb5ac") if prewarm_button.disabled else Color("101211"))
+		prewarm_button_label.add_theme_color_override("font_color", Color("a8bac5") if prewarm_button.disabled else Color("101214"))
 		if prewarm_is_ready:
 			prewarm_button_label.text = "Begin life"
 		elif staging_door_latch:

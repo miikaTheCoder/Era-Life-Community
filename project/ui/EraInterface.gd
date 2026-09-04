@@ -66,13 +66,15 @@ func _style(control: Control) -> void:
 		control.theme = design_theme
 	if control is Label or control is BaseButton or control is LineEdit:
 		var text_color := Design.TEXT
+		if control is BaseButton:
+			text_color = Design.BUTTON_TEXT
 		if control is Label:
 			var original := control.get_theme_color("font_color")
 			if original == Design.DANGER or (original.r > 0.7 and original.g < 0.4 and original.b < 0.5):
 				text_color = Design.DANGER
 			elif original == Design.AMBER or (original.r > 0.7 and original.g > 0.55 and original.b < 0.35):
 				text_color = Design.AMBER
-		control.add_theme_font_override("font", Design.BODY)
+		control.add_theme_font_override("font", Design.BOLD if control is BaseButton else Design.BODY)
 		var font_size := clampi(control.get_theme_font_size("font_size"), 13, 28)
 		control.add_theme_font_size_override("font_size", font_size)
 		for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
@@ -101,6 +103,9 @@ func _style(control: Control) -> void:
 			control.add_theme_stylebox_override(key, design_theme.get_stylebox(key, control.get_class()))
 	elif control is ScrollBar:
 		for key in ["scroll", "grabber", "grabber_highlight", "grabber_pressed"]:
+			control.add_theme_stylebox_override(key, design_theme.get_stylebox(key, control.get_class()))
+	elif control is Slider:
+		for key in ["slider", "grabber_area", "grabber_area_highlight"]:
 			control.add_theme_stylebox_override(key, design_theme.get_stylebox(key, control.get_class()))
 	elif control is ProgressBar:
 		_style_progress(control)
@@ -192,4 +197,4 @@ func _style_progress(bar: ProgressBar) -> void:
 func _metric_color(bar: ProgressBar) -> Color:
 	if str(bar.get_meta("stat_title", "")).to_lower() == "health" and bar.value < 30:
 		return Color("804b46")
-	return Color("48664c")
+	return Design.METRIC
