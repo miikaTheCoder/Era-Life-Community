@@ -8,6 +8,40 @@ Desktop Narrative and Household entry flows are now connected to the simulation.
 See [desktop gameplay and validation](docs/DESKTOP-GAMEPLAY.md) for how to play,
 the entry/save repairs, repeatable checks, and remaining limitations.
 
+## Current project status (2026-09-04)
+
+The local `main` branch contains the Crime World foundation and the subsequent
+desktop-stability work. The working tree is clean.
+
+Implemented and checked:
+
+- Crime World factions, membership/ranks, reputation, territory, rackets,
+  extortion/narrative surfaces, and bounded target refresh.
+- Deferred EventBus servicing with deterministic duplicate suppression and FIFO
+  force-flush behavior.
+- Age-up and narrative processing with immutable high-water snapshots, bounded
+  yearly lanes, quiet-year diary finalization, and final-frame completion repair.
+- Main-thread hydration authority with actor fingerprints, relationship-score
+  protection, and bounded residency projection/retry behavior.
+- Household/God Mode movement checks using one household/custody snapshot per
+  movement year instead of rebuilding family contracts for every NPC.
+- Household, newborn Narrative, adult Narrative, and God Mode checkpoint paths,
+  including pet/relationship round-trip coverage.
+- A multi-year desktop smoke harness that dismisses stale year-result cards before
+  the next Age Up.
+
+Focused Godot 4.4.1 regression tests pass. Fresh graphical smoke checks pass for
+the short desktop routes. A clean 25-year certification is still pending: the
+adult route advanced four years in a five-year session before the process reached
+its existing resource ceiling. Native Windows and macOS gameplay has not been run
+on this Linux host; their release archives are built and checksum-verified, but
+remain platform-runtime checks rather than native certification.
+
+The Omarchy/Godot startup crash diagnosis was also accounted for: restricted
+headless runs use isolated writable XDG data/config/cache directories and the
+pinned Godot 4.4.1 binary, avoiding the inaccessible `user://` path that caused
+the null-pointer crash. No save or project data was lost by that crash.
+
 To publish from your own fork, follow the [desktop release checklist](docs/RELEASING.md).
 It covers preserving this checkout, connecting the correct upstream, publishing source,
 testing each platform, and drafting a GitHub prerelease.
