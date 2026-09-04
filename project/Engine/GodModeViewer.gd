@@ -41,7 +41,7 @@ var scrollbar_last_value: float = 0.0
 var scrollbar_last_activity_ms: int = 0
 
 var visual_phase: float = 0.0
-var title_base_text: String = "CHOOSE YOUR EREALITY"
+var title_base_text: String = "Shape your world"
 var title_glitch_next_ms: int = 0
 var title_glitch_until_ms: int = 0
 
@@ -471,10 +471,10 @@ func reset_runtime_seed_state(reason: String = "main_menu_return") -> void:
 		prewarm_button_fill.anchor_right = 0.0
 
 	if prewarm_button_label != null and is_instance_valid(prewarm_button_label):
-		prewarm_button_label.text = "Pre warm world seed"
+		prewarm_button_label.text = "Prepare world"
 
 	if prewarm_button != null and is_instance_valid(prewarm_button):
-		prewarm_button.text = "Pre warm world seed"
+		prewarm_button.text = "Prepare world"
 		prewarm_button.disabled = false
 		prewarm_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		prewarm_button.set_meta("viewer_ready_button_enabled", false)
@@ -1193,7 +1193,12 @@ func _build() -> void:
 	scroll.clip_contents = true
 	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 	scroll.gui_input.connect(_on_god_mode_scroll_gui_input)
-	margin.add_child(scroll)
+	var layout := VBoxContainer.new()
+	layout.name = "EraCreatorLayout"
+	layout.add_theme_constant_override("separation", 16)
+	margin.add_child(layout)
+	layout.add_child(scroll)
+	scroll.follow_focus = true
 
 	scroll_bar = scroll.get_v_scroll_bar()
 	if scroll_bar != null and is_instance_valid(scroll_bar):
@@ -1496,6 +1501,16 @@ func _build() -> void:
 		request_handoff_from_current_state("god_mode_viewer_ready_button_pressed")
 	)
 	root.add_child(ready_button)
+
+	# Preparation stays reachable while the long character form scrolls.
+	var footer := VBoxContainer.new()
+	footer.name = "EraCreatorFooter"
+	layout.add_child(footer)
+	status_label.reparent(footer)
+	prewarm_button.reparent(footer)
+	ready_button.reparent(footer)
+	prewarm_button.set_meta("era_primary", true)
+	ready_button.set_meta("era_primary", true)
 
 	_apply_palette(false)
 	_refresh_location_pickers()
@@ -4626,44 +4641,12 @@ func _tick_stat_slider_visuals() -> void:
 	_style_stat_sliders(Color(_palette().get("accent", Color(0.0, 0.95, 1.0, 1.0))))
 	_tick_stat_energy_bar_motion()
 func _tick_title_glitch() -> void:
-	if title_label == null or not is_instance_valid(title_label):
-		return
-
-	var now_ms: int = int(Time.get_ticks_msec())
-	var palette: Dictionary = _palette()
-	var accent: Color = Color(palette.get("accent", Color(0.0, 0.95, 1.0, 1.0)))
-
-	if title_glitch_next_ms <= 0:
-		title_glitch_next_ms = now_ms + GOD_MODE_VIEWER_TITLE_GLITCH_INTERVAL_MS
-
-	if now_ms >= title_glitch_next_ms:
-		title_glitch_until_ms = now_ms + GOD_MODE_VIEWER_TITLE_GLITCH_DURATION_MS
-		title_glitch_next_ms = now_ms + GOD_MODE_VIEWER_TITLE_GLITCH_INTERVAL_MS
-
-	if now_ms < title_glitch_until_ms:
-		var flicker: float = 0.5 + 0.5 * sin(float(now_ms) * 0.085)
-		title_label.text = "CHOOSE YOUR ERE∆LITY" if flicker > 0.5 else "CHOOSE YOUR EREALITY"
-		title_label.add_theme_color_override("font_color", accent.lerp(Color(1.0, 0.12, 0.42, 1.0), flicker))
-		title_label.add_theme_color_override("font_shadow_color", Color(1.0, 0.12, 0.42, 0.88))
-	else:
+	if is_instance_valid(title_label):
 		title_label.text = title_base_text
-		title_label.add_theme_color_override("font_color", Color(0.82, 1.0, 1.0, 1.0))
-		title_label.add_theme_color_override("font_shadow_color", Color(accent.r, accent.g, accent.b, 0.58))
-
 
 func _update_subtitle_rich_text() -> void:
-	if subtitle_label == null or not is_instance_valid(subtitle_label):
-		return
-
-	var era_color: Color = _era_word_color()
-	var blood_pulse: float = 0.55 + 0.45 * sin(visual_phase * 3.4)
-	var blood_color:= Color(1.0, 0.02 + blood_pulse * 0.1, 0.04 + blood_pulse * 0.08, 1.0)
-
-	subtitle_label.text = "[center]Shape your life, the [color=#%s]Era[/color], your [color=#%s]bloodline[/color], and the supernatural rules before your first breath.[/center]" % [
-		era_color.to_html(false),
-		blood_color.to_html(false)
-	]
-
+	if is_instance_valid(subtitle_label):
+		subtitle_label.text = "[center]Choose your character, their era, and the rules of the world they will call home.[/center]"
 
 func _era_word_color() -> Color:
 	var era: String = _selected_text(era_picker).strip_edges().to_lower()
@@ -4834,7 +4817,8 @@ func _style_mode_button(button: Button, mode: String, accent: Color, bg: Color) 
 	hover.shadow_size = 34 if selected else 18
 
 	button.custom_minimum_size = Vector2(0, GOD_MODE_VIEWER_MODE_SELECTED_HEIGHT if selected else GOD_MODE_VIEWER_MODE_NORMAL_HEIGHT)
-	button.scale = Vector2(1.025, 1.025) if selected else Vector2.ONE
+	button.set_meta("era_selected", selected)
+	button.scale = Vector2.ONE
 	button.pivot_offset = button.size * 0.5
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
@@ -5089,36 +5073,19 @@ func _update_prewarm_button_visual(progress: float, lifecycle: String, _status_t
 		prewarm_button_fill.offset_bottom = 0.0
 
 	if prewarm_button_label != null and is_instance_valid(prewarm_button_label):
+		prewarm_button_label.add_theme_color_override("font_color", Color("acb5ac") if prewarm_button.disabled else Color("101211"))
 		if prewarm_is_ready:
-			prewarm_button_label.text = "I’m ready to play EraLife"
+			prewarm_button_label.text = "Begin life"
 		elif staging_door_latch:
-			prewarm_button_label.text = "Staging playable shell..."
+			prewarm_button_label.text = "Getting your life ready…"
 		elif clean_progress > 0.001:
-			prewarm_button_label.text = "%d%%" % int(round(clean_progress * 100.0))
+			prewarm_button_label.text = "Preparing world · %d%%" % int(round(clean_progress * 100.0))
 		else:
-			prewarm_button_label.text = "Pre warm world seed"
+			prewarm_button_label.text = "Prepare world"
 
 func _tick_prewarm_button_energy() -> void:
-	if prewarm_button_fill == null or not is_instance_valid(prewarm_button_fill):
-		return
-
-	var palette: Dictionary = _palette()
-	var accent: Color = Color(palette.get("accent", Color(0.0, 0.95, 1.0, 1.0)))
-	var pulse: float = 0.5 + 0.5 * sin(visual_phase * 7.0)
-
-	prewarm_button_fill.color = Color(
-		accent.r,
-		accent.g,
-		accent.b,
-		0.26 + pulse * 0.18
-	)
-
-	if prewarm_button_label != null and is_instance_valid(prewarm_button_label):
-		prewarm_button_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.72, 1.0) if prewarm_visual_progress > 0.001 else Color(0.86, 1.0, 1.0, 1.0))
-		prewarm_button_label.add_theme_color_override("font_shadow_color", Color(accent.r, accent.g, accent.b, 0.42 + pulse * 0.28))
-		prewarm_button_label.add_theme_constant_override("shadow_offset_x", 0)
-		prewarm_button_label.add_theme_constant_override("shadow_offset_y", 0)
-
+	if is_instance_valid(prewarm_button_fill):
+		prewarm_button_fill.self_modulate.a = 0.0
 
 func _tick_preview_label_visuals() -> void:
 	if preview_label == null or not is_instance_valid(preview_label):

@@ -2,6 +2,8 @@
 
 
 extends Control
+const EraDesign = preload("res://ui/EraTheme.gd")
+const EraShell = preload("res://ui/EraShell.gd")
 var gs: GameState
 
 
@@ -995,7 +997,7 @@ const ERA_BORDER_PARTICLE_COUNT: int = 18
 
 var choose_adventure_entry_overlay: Control
 var choose_adventure_entry_dim: ColorRect
-var choose_adventure_entry_shell: BoxContainer
+var choose_adventure_entry_shell: Container
 var choose_adventure_entry_left_card: PanelContainer
 var choose_adventure_entry_middle_card: PanelContainer
 var choose_adventure_entry_right_card: PanelContainer
@@ -15632,115 +15634,12 @@ func _life_diary_age_tint_bbcode() -> String:
 	var age_color: Color = profile.get("age", Color(0.98, 0.92, 0.82, 1.0))
 	return "#%s" % age_color.to_html(false)
 
-func _format_life_diary_header_line_bbcode(
-	line: String
-) -> String:
-	var text_line: String = str(
-		line
-	).strip_edges()
-	var is_year_header: bool = (
-		_is_life_diary_year_header_line(
-			text_line
-		)
-	)
-
-	if is_year_header:
-
-
-
-		text_line = MainSceneHelpers._life_diary_year_header_text(
-			text_line
-		)
-
-	var profile: Dictionary = (
-		_life_diary_header_visual_profile()
-	)
-
-	if is_year_header:
-		var outer_glow_color: Color = profile.get(
-			"glow",
-			Color(
-				1.0,
-				0.98,
-				0.9,
-				1.0
-			)
-		)
-		var inner_outline_color: Color = profile.get(
-			"outline",
-			Color(
-				1.0,
-				0.9,
-				0.72,
-				1.0
-			)
-		)
-		var outer_glow_size: int = int(
-			profile.get(
-				"outer_glow_size",
-				8
-			)
-		)
-		var inner_outline_size: int = int(
-			profile.get(
-				"inner_outline_size",
-				2
-			)
-		)
-		var font_size: int = int(
-			profile.get(
-				"font_size",
-				30
-			)
-		)
-		var pulse_freq: float = float(
-			profile.get(
-				"pulse_freq",
-				1.35
-			)
-		)
-		var pulse_ease: float = float(
-			profile.get(
-				"pulse_ease",
-				-2.2
-			)
-		)
-		var pulse_color: Color = profile.get(
-			"pulse_color",
-			profile.get(
-				"header",
-				Color(
-					1.0,
-					0.94,
-					0.8,
-					1.0
-				)
-			)
-		)
-
-		return "[center][b][outline_size=%d][outline_color=#%s][outline_size=%d][outline_color=#%s][font_size=%d][color=%s][pulse freq=%.2f color=#%s ease=%.2f]%s[/pulse][/color][/font_size][/outline_color][/outline_size][/outline_color][/outline_size][/b][/center]" % [
-			outer_glow_size,
-			outer_glow_color.to_html(
-				false
-			),
-			inner_outline_size,
-			inner_outline_color.to_html(
-				false
-			),
-			font_size,
-			_life_diary_header_tint_bbcode(),
-			pulse_freq,
-			pulse_color.to_html(
-				false
-			),
-			pulse_ease,
-			text_line
-		]
-
-	return "[center][b][font_size=22][color=%s]%s[/color][/font_size][/b][/center]" % [
-		_life_diary_age_tint_bbcode(),
-		text_line
-	]
+func _format_life_diary_header_line_bbcode(line: String) -> String:
+	var text_line := line.strip_edges()
+	if _is_life_diary_year_header_line(text_line):
+		text_line = MainSceneHelpers._life_diary_year_header_text(text_line)
+		return "[font_size=26][color=#ddbd83]%s[/color][/font_size]" % text_line
+	return "[font_size=16][color=#acb5ac]%s[/color][/font_size]" % text_line
 
 func _append_formatted_life_diary_line(
 	target_label: RichTextLabel,
@@ -62090,59 +61989,7 @@ func _build_era_surface_panel_style(
 	style.content_margin_bottom = margin
 	return style
 func _build_era_background_fill_color() -> Color:
-	if _god_mode_ui_locked():
-		return Color(
-			0.1,
-			0.06,
-			0.16,
-			1.0
-		)
-
-	var theme_key: String = (
-		_current_era_ui_theme_key()
-	)
-
-	match theme_key:
-		"ancient":
-			return Color(
-				0.21,
-				0.16,
-				0.11,
-				1.0
-			)
-
-		"industrial":
-			return Color(
-				0.12,
-				0.105,
-				0.085,
-				1.0
-			)
-
-		"medieval":
-			return Color(
-				0.08,
-				0.1,
-				0.14,
-				1.0
-			)
-
-		"future":
-			return Color(
-				0.05,
-				0.08,
-				0.11,
-				1.0
-			)
-
-		_:
-			return Color(
-				0.1,
-				0.16,
-				0.28,
-				1.0
-			)
-
+	return EraDesign.CANVAS
 
 func _refresh_era_background_fill() -> void:
 	var ui_root:= self as Control
@@ -114620,6 +114467,8 @@ func _sync_era_border_theme_from_world() -> void:
 	era_border_target_pulse = float(theme_data ["pulse"])
 
 func _layout_era_border_overlay() -> void:
+	if is_instance_valid(era_border_overlay):
+		era_border_overlay.modulate.a = 0.0
 	if era_border_overlay == null or not is_instance_valid(era_border_overlay):
 		return
 
@@ -117406,334 +117255,8 @@ func _apply_fullscreen_god_mode_layout() -> void:
 		_apply_god_mode_start_panel_fullscreen_layout()
 
 func _apply_centered_live_layout() -> void:
-	if MobileSupport.is_enabled():
-		MobileSupport.layout_life(self)
-		return
-	var root:= get_node_or_null(
-		"UIContainer"
-	) as Control
+	EraShell.layout_live(self)
 
-	if root == null:
-		return
-
-	var viewport_size: Vector2 = (
-		get_viewport_rect().size
-	)
-
-	var density_contract: Dictionary = (
-		ui_presentation_density_contract
-	)
-
-	var logical_raw: Variant = (
-		density_contract.get(
-			"logical_viewport",
-			{}
-		)
-	)
-
-	if typeof(logical_raw) == TYPE_DICTIONARY:
-		var logical_viewport: Dictionary = (
-			logical_raw as Dictionary
-		)
-
-		var logical_width: float = float(
-			logical_viewport.get(
-				"width",
-				0.0
-			)
-		)
-
-		var logical_height: float = float(
-			logical_viewport.get(
-				"height",
-				0.0
-			)
-		)
-
-		if (
-			logical_width > 0.0
-			and logical_height > 0.0
-		):
-			viewport_size = Vector2(
-				logical_width,
-				logical_height
-			)
-
-	var composition_contract: Dictionary = (
-		ui_presentation_composition_contract
-	)
-
-	var shell_tokens_raw: Variant = (
-		composition_contract.get(
-			"root_shell",
-			{}
-		)
-	)
-
-	var shell_tokens: Dictionary = (
-		shell_tokens_raw as Dictionary
-		if typeof(
-			shell_tokens_raw
-		) == TYPE_DICTIONARY
-		else {}
-	)
-
-	var stats_safe_width: float = float(
-		shell_tokens.get(
-			"stats_safe_width",
-			126.0
-		)
-	)
-
-	var gutter: float = float(
-		shell_tokens.get(
-			"gutter",
-			18.0
-		)
-	)
-
-	var left_rail_reserve: float = float(
-		shell_tokens.get(
-			"left_rail_reserve",
-			303.0
-		)
-	)
-
-	var playable_border_pad: float = float(
-		shell_tokens.get(
-			"playable_border_pad",
-			18.0
-		)
-	)
-
-	var minimum_usable_width: float = float(
-		shell_tokens.get(
-			"minimum_usable_width",
-			360.0
-		)
-	)
-
-	var minimum_content_width: float = float(
-		shell_tokens.get(
-			"minimum_content_width",
-			860.0
-		)
-	)
-
-	var default_content_ratio: float = float(
-		shell_tokens.get(
-			"default_content_ratio",
-			0.68
-		)
-	)
-
-	var wide_content_ratio: float = float(
-		shell_tokens.get(
-			"wide_content_ratio",
-			0.74
-		)
-	)
-
-	var ultrawide_content_ratio: float = float(
-		shell_tokens.get(
-			"ultrawide_content_ratio",
-			0.78
-		)
-	)
-
-	var wide_breakpoint: float = float(
-		shell_tokens.get(
-			"wide_breakpoint",
-			1500.0
-		)
-	)
-
-	var ultrawide_breakpoint: float = float(
-		shell_tokens.get(
-			"ultrawide_breakpoint",
-			1900.0
-		)
-	)
-
-	var diary_horizontal_padding: float = float(
-		shell_tokens.get(
-			"diary_horizontal_padding",
-			24.0
-		)
-	)
-
-	var diary_minimum_height: float = float(
-		shell_tokens.get(
-			"diary_minimum_height",
-			360.0
-		)
-	)
-
-	var nav_button_height: float = float(
-		shell_tokens.get(
-			"nav_button_height",
-			30.0
-		)
-	)
-
-	var age_up_button_height: float = float(
-		shell_tokens.get(
-			"age_up_button_height",
-			34.0
-		)
-	)
-
-	var usable_left_edge: float = (
-		gutter
-		+ left_rail_reserve
-	)
-
-	var usable_right_edge: float = (
-		viewport_size.x
-		- stats_safe_width
-		- gutter
-	)
-
-	var usable_width: float = maxf(
-		minimum_usable_width,
-		usable_right_edge
-		- usable_left_edge
-	)
-
-	var preferred_width: float = (
-		viewport_size.x
-		* default_content_ratio
-	)
-
-	if viewport_size.x >= wide_breakpoint:
-		preferred_width = (
-			viewport_size.x
-			* wide_content_ratio
-		)
-
-	if viewport_size.x >= ultrawide_breakpoint:
-		preferred_width = (
-			viewport_size.x
-			* ultrawide_content_ratio
-		)
-
-	var content_width: float = clampf(
-		preferred_width,
-		minimum_content_width,
-		usable_width
-	)
-
-	var left: float = (
-		usable_left_edge
-		+ (
-			(usable_width - content_width)
-			* 0.5
-		)
-	)
-
-	var right: float = (
-		left
-		+ content_width
-	)
-
-	left = maxf(
-		playable_border_pad,
-		left
-	)
-
-	right = minf(
-		viewport_size.x
-		- playable_border_pad,
-		right
-	)
-
-	root.anchor_left = 0.0
-	root.anchor_right = 0.0
-	root.anchor_top = 0.0
-	root.anchor_bottom = 1.0
-
-	root.offset_left = left
-	root.offset_right = right
-	root.offset_top = gutter
-	root.offset_bottom = - gutter
-
-	root.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL
-	)
-
-	root.size_flags_vertical = (
-		Control.SIZE_EXPAND_FILL
-	)
-
-	var main_surface: Control = (
-		output_label.get_parent() as Control
-		if output_label != null
-		else null
-	)
-
-	if main_surface != null:
-		main_surface.size_flags_horizontal = (
-			Control.SIZE_EXPAND_FILL
-		)
-
-		main_surface.size_flags_vertical = (
-			Control.SIZE_EXPAND_FILL
-		)
-
-		main_surface.custom_minimum_size = (
-			Vector2.ZERO
-		)
-
-	if output_label != null:
-		output_label.size_flags_horizontal = (
-			Control.SIZE_EXPAND_FILL
-		)
-
-		output_label.size_flags_vertical = (
-			Control.SIZE_EXPAND_FILL
-		)
-
-		output_label.scroll_active = true
-
-		output_label.custom_minimum_size = Vector2(
-			maxf(
-				0.0,
-				content_width
-				- diary_horizontal_padding
-			),
-			diary_minimum_height
-		)
-
-	for button_value in ui_nav_buttons.values():
-		var nav_btn:= (
-			button_value as Button
-		)
-
-		if nav_btn == null:
-			continue
-
-		var nav_key:= (
-			MainSceneHelpers._normalize_ui_nav_button_text(
-				nav_btn.text
-			)
-		)
-
-		nav_btn.size_flags_horizontal = (
-			Control.SIZE_EXPAND_FILL
-		)
-
-		nav_btn.size_flags_vertical = (
-			Control.SIZE_SHRINK_CENTER
-		)
-
-		nav_btn.custom_minimum_size = Vector2(
-			0.0,
-			(
-				age_up_button_height
-				if nav_key == "age_up"
-				else nav_button_height
-			)
-		)
 func _presentation_composition_stage_rect() -> Rect2:
 	var viewport_size: Vector2 = (
 		get_viewport_rect().size
@@ -117995,79 +117518,7 @@ func _apply_presentation_composition_to_resident_surfaces(
 			stage_bottom - 28.0
 		)
 
-	if (
-		choose_adventure_entry_shell != null
-		and is_instance_valid(
-			choose_adventure_entry_shell
-		)
-	):
-		var menu_shell_size: Vector2 = (
-			_presentation_composition_choose_adventure_shell_size()
-		)
-
-		choose_adventure_entry_shell.custom_minimum_size = (
-			menu_shell_size
-		)
-
-		choose_adventure_entry_shell.size_flags_horizontal = (
-			Control.SIZE_SHRINK_CENTER
-		)
-
-		var menu_contract_raw: Variant = (
-			ui_presentation_composition_contract.get(
-				"choose_adventure_entry",
-				{}
-			)
-		)
-
-		var card_separation: float = 22.0
-
-		if typeof(menu_contract_raw) == TYPE_DICTIONARY:
-			card_separation = float(
-				(menu_contract_raw as Dictionary).get(
-					"card_separation",
-					22.0
-				)
-			)
-
-		var card_count: int = maxi(
-			1,
-			choose_adventure_entry_shell.get_child_count()
-		)
-
-		var card_measure: float = maxf(
-			1.0,
-			(
-				menu_shell_size.x
-				- (
-					card_separation
-					* float(
-						maxi(
-							0,
-							card_count - 1
-						)
-					)
-				)
-			)
-			/ float(card_count)
-		)
-
-		for child in choose_adventure_entry_shell.get_children():
-			var card:= (
-				child as Control
-			)
-
-			if card == null:
-				continue
-
-			card.size_flags_horizontal = (
-				Control.SIZE_EXPAND_FILL
-			)
-
-			card.custom_minimum_size = Vector2(
-				card_measure,
-				card.custom_minimum_size.y
-			)
+	EraShell.layout_menu(self)
 
 	if (
 		global_reality_intake_button != null
@@ -155850,33 +155301,10 @@ func _close_title_card_account_panel() -> void:
 	if title_card_account_popup != null and is_instance_valid(title_card_account_popup):
 		title_card_account_popup.visible = false
 func _start_startup_intro_title_pulse() -> void:
+	if is_instance_valid(startup_intro_title_label):
+		startup_intro_title_label.scale = Vector2.ONE
+		startup_intro_title_label.modulate = Color.WHITE
 
-	if startup_intro_overlay == null or not is_instance_valid(startup_intro_overlay):
-		return
-	if startup_intro_title_label == null or not is_instance_valid(startup_intro_title_label):
-		return
-	if startup_intro_title_tween != null:
-		startup_intro_title_tween.kill()
-		startup_intro_title_tween = null
-	_ensure_startup_intro_title_shine_material()
-	_set_startup_intro_title_shine_enabled(true)
-	startup_intro_title_label.scale = Vector2.ONE
-	startup_intro_title_tween = create_tween().bind_node(startup_intro_title_label)
-	startup_intro_title_tween.set_loops()
-	startup_intro_title_tween.set_trans(Tween.TRANS_SINE)
-	startup_intro_title_tween.set_ease(Tween.EASE_IN_OUT)
-	startup_intro_title_tween.tween_property(
-		startup_intro_title_label,
-		"scale",
-		Vector2(1.008, 1.008),
-		1.35
-	)
-	startup_intro_title_tween.tween_property(
-		startup_intro_title_label,
-		"scale",
-		Vector2.ONE,
-		1.35
-	)
 func _ensure_startup_intro_title_shine_material() -> void:
 	if startup_intro_title_label == null:
 		return
@@ -155930,22 +155358,9 @@ func _ensure_startup_intro_title_shine_material() -> void:
 	startup_intro_title_label.material = startup_intro_title_shine_material
 
 
-func _set_startup_intro_title_shine_enabled(enabled: bool) -> void:
-	if startup_intro_title_shine_material != null:
-		startup_intro_title_shine_material.set_shader_parameter(
-			"shine_enabled",
-			1.0 if enabled else 0.0
-		)
-
-	if startup_intro_title_label == null:
-		return
-
-	if enabled:
-		if startup_intro_title_shine_material != null:
-			startup_intro_title_label.material = startup_intro_title_shine_material
-	else:
+func _set_startup_intro_title_shine_enabled(_enabled: bool) -> void:
+	if is_instance_valid(startup_intro_title_label):
 		startup_intro_title_label.material = null
-
 
 func _start_startup_intro_prompt_pulse() -> void:
 
@@ -156370,44 +155785,7 @@ func _show_choose_adventure_entry_panel() -> void:
 		choose_adventure_entry_dim
 	)
 
-	var center: Container = ScrollContainer.new() if MobileSupport.is_enabled() else CenterContainer.new()
-	center.name = "ChooseAdventureEntryCenter"
-	center.set_anchors_preset(
-		Control.PRESET_FULL_RECT
-	)
-	center.mouse_filter = (
-		Control.MOUSE_FILTER_IGNORE
-	)
-	choose_adventure_entry_overlay.add_child(
-		center
-	)
-	if center is ScrollContainer:
-		center.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		center.follow_focus = true
-		center.mouse_filter = Control.MOUSE_FILTER_STOP
-		center.offset_left = 16
-		center.offset_right = -16
-		center.offset_top = 16
-		center.offset_bottom = -16
-
-	choose_adventure_entry_shell = VBoxContainer.new() if MobileSupport.is_enabled() else HBoxContainer.new()
-	choose_adventure_entry_shell.name = (
-		"ChooseAdventureEntryTripleShell"
-	)
-	choose_adventure_entry_shell.custom_minimum_size = Vector2(
-		1120,
-		620
-	)
-	if MobileSupport.is_enabled():
-		choose_adventure_entry_shell.custom_minimum_size = Vector2.ZERO
-		choose_adventure_entry_shell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	choose_adventure_entry_shell.add_theme_constant_override(
-		"separation",
-		22
-	)
-	center.add_child(
-		choose_adventure_entry_shell
-	)
+	EraShell.mount_menu(self)
 
 	var panels: Array = [
 		{
@@ -157032,453 +156410,15 @@ func _run_background_soul_seed_streaming_tick(reason: String = "runtime", pass_i
 		Callable(self, "_run_background_soul_seed_streaming_tick").bind(reason, pass_index + 1),
 		CONNECT_ONE_SHOT
 	)
-func _build_choose_adventure_entry_card(
-	card_contract: Dictionary
-) -> PanelContainer:
-	var card:= PanelContainer.new()
-	card.name = (
-		"ChooseAdventureEntryCard_%s"
-		% str(
-			card_contract.get(
-				"id",
-				"entry"
-			)
-		).strip_edges()
-	)
+func _build_choose_adventure_entry_card(card_contract: Dictionary) -> PanelContainer:
+	return EraShell.create_entry_card(card_contract)
 
-	var requested_width: float = float(
-		card_contract.get(
-			"min_width",
-			540.0
-		)
-	)
+func _start_choose_adventure_entry_button_motion(_button: Button, _accent: Color, _role: String) -> void:
+	# Stable hit targets; feedback comes from hover, press, and keyboard focus.
+	pass
 
-	var requested_height: float = float(
-		card_contract.get(
-			"min_height",
-			620.0
-		)
-	)
-
-	var menu_shell_size: Vector2 = (
-		_presentation_composition_choose_adventure_shell_size()
-	)
-
-	var menu_contract_raw: Variant = (
-		ui_presentation_composition_contract.get(
-			"choose_adventure_entry",
-			{}
-		)
-	)
-
-	var menu_contract: Dictionary = (
-		menu_contract_raw as Dictionary
-		if typeof(
-			menu_contract_raw
-		) == TYPE_DICTIONARY
-		else {}
-	)
-
-	var card_count: int = maxi(
-		1,
-		int(
-			menu_contract.get(
-				"card_count",
-				3
-			)
-		)
-	)
-
-	var card_separation: float = float(
-		menu_contract.get(
-			"card_separation",
-			22.0
-		)
-	)
-
-	var distributed_card_width: float = maxf(
-		1.0,
-		(
-			menu_shell_size.x
-			- (
-				card_separation
-				* float(
-					maxi(
-						0,
-						card_count - 1
-					)
-				)
-			)
-		)
-		/ float(card_count)
-	)
-
-	card.custom_minimum_size = Vector2(
-		maxf(
-			requested_width,
-			distributed_card_width
-		),
-		requested_height
-	)
-	if MobileSupport.is_enabled():
-		card.custom_minimum_size = Vector2(menu_shell_size.x, 0)
-
-	card.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL
-	)
-
-	card.mouse_filter = (
-		Control.MOUSE_FILTER_STOP
-	)
-
-	var accent_raw: Variant = (
-		card_contract.get(
-			"accent",
-			Color(
-				0.7,
-				0.45,
-				1.0
-			)
-		)
-	)
-
-	var accent: Color = (
-		accent_raw
-		if typeof(accent_raw) == TYPE_COLOR
-		else Color(
-			0.7,
-			0.45,
-			1.0
-		)
-	)
-
-	card.add_theme_stylebox_override(
-		"panel",
-		MainSceneHelpers._build_choose_adventure_entry_card_style(
-			accent,
-			false,
-			0.0
-		)
-	)
-
-	var margin:= MarginContainer.new()
-	margin.name = "EntryCardMargin"
-	margin.add_theme_constant_override(
-		"margin_left",
-		34
-	)
-	margin.add_theme_constant_override(
-		"margin_right",
-		34
-	)
-	margin.add_theme_constant_override(
-		"margin_top",
-		34
-	)
-	margin.add_theme_constant_override(
-		"margin_bottom",
-		34
-	)
-	card.add_child(margin)
-
-	var box:= VBoxContainer.new()
-	box.name = "EntryCardVBox"
-	box.add_theme_constant_override(
-		"separation",
-		18
-	)
-	margin.add_child(box)
-
-	var eyebrow:= Label.new()
-	eyebrow.name = "EntryCardEyebrow"
-	eyebrow.text = str(
-		card_contract.get(
-			"eyebrow",
-			"ERALIFE RUNTIME"
-		)
-	).to_upper()
-	eyebrow.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_CENTER
-	)
-	eyebrow.add_theme_font_size_override(
-		"font_size",
-		14
-	)
-	eyebrow.add_theme_color_override(
-		"font_color",
-		accent.lightened(0.15)
-	)
-	box.add_child(eyebrow)
-
-	var title:= Label.new()
-	title.name = "EntryCardTitle"
-	title.text = str(
-		card_contract.get(
-			"title",
-			"Choose"
-		)
-	)
-	title.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_CENTER
-	)
-	title.vertical_alignment = (
-		VERTICAL_ALIGNMENT_CENTER
-	)
-	title.autowrap_mode = (
-		TextServer.AUTOWRAP_WORD_SMART
-	)
-	title.add_theme_font_size_override(
-		"font_size",
-		42
-	)
-	title.add_theme_color_override(
-		"font_color",
-		Color(
-			1.0,
-			0.96,
-			1.0,
-			1.0
-		)
-	)
-	box.add_child(title)
-
-	var divider:= ColorRect.new()
-	divider.name = "EntryCardDivider"
-	divider.custom_minimum_size = Vector2(
-		1,
-		3
-	)
-	divider.color = accent
-	box.add_child(divider)
-
-	var subtitle:= Label.new()
-	subtitle.name = "EntryCardSubtitle"
-	subtitle.text = str(
-		card_contract.get(
-			"subtitle",
-			""
-		)
-	)
-	subtitle.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_CENTER
-	)
-	subtitle.autowrap_mode = (
-		TextServer.AUTOWRAP_WORD_SMART
-	)
-	subtitle.add_theme_font_size_override(
-		"font_size",
-		18
-	)
-	subtitle.add_theme_color_override(
-		"font_color",
-		Color(
-			0.84,
-			0.8,
-			0.92,
-			1.0
-		)
-	)
-	box.add_child(subtitle)
-
-	var spacer:= Control.new()
-	spacer.name = "EntryCardSpacer"
-	spacer.size_flags_vertical = (
-		Control.SIZE_EXPAND_FILL
-	)
-	box.add_child(spacer)
-
-	var button:= Button.new()
-	button.name = "EntryCardButton"
-	button.text = str(
-		card_contract.get(
-			"button_text",
-			"Continue"
-		)
-	)
-	button.custom_minimum_size = Vector2(
-		0,
-		64
-	)
-	button.focus_mode = (
-		Control.FOCUS_ALL
-	)
-	button.mouse_filter = (
-		Control.MOUSE_FILTER_STOP
-	)
-
-	var button_role: String = str(
-		card_contract.get(
-			"button_role",
-			card_contract.get(
-				"id",
-				"entry"
-			)
-		)
-	).strip_edges().to_lower()
-
-	button.set_meta(
-		"entry_role",
-		button_role
-	)
-	button.set_meta(
-		"entry_accent",
-		accent
-	)
-
-	button.add_theme_font_size_override(
-		"font_size",
-		22
-	)
-	button.add_theme_color_override(
-		"font_color",
-		Color(
-			1.0,
-			1.0,
-			1.0,
-			1.0
-		)
-	)
-	button.add_theme_stylebox_override(
-		"normal",
-		MainSceneHelpers._build_choose_adventure_entry_button_style(
-			accent,
-			false,
-			button_role
-		)
-	)
-	button.add_theme_stylebox_override(
-		"hover",
-		MainSceneHelpers._build_choose_adventure_entry_button_style(
-			accent,
-			true,
-			button_role
-		)
-	)
-	button.add_theme_stylebox_override(
-		"pressed",
-		MainSceneHelpers._build_choose_adventure_entry_button_style(
-			accent.darkened(0.18),
-			true,
-			button_role
-		)
-	)
-
-	if button.get_parent() != null:
-		button.get_parent().remove_child(
-			button
-		)
-
-	box.add_child(button)
-
-	_start_choose_adventure_entry_button_motion(
-		button,
-		accent,
-		button_role
-	)
-
-	var footer:= Label.new()
-	footer.name = "EntryCardFooter"
-	footer.text = str(
-		card_contract.get(
-			"footer",
-			""
-		)
-	)
-	footer.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_CENTER
-	)
-	footer.autowrap_mode = (
-		TextServer.AUTOWRAP_WORD_SMART
-	)
-	footer.add_theme_font_size_override(
-		"font_size",
-		13
-	)
-	footer.add_theme_color_override(
-		"font_color",
-		Color(
-			0.62,
-			0.58,
-			0.72,
-			1.0
-		)
-	)
-	box.add_child(footer)
-
-	button.mouse_entered.connect(
-		func () -> void:
-			card.add_theme_stylebox_override(
-				"panel",
-				MainSceneHelpers._build_choose_adventure_entry_card_style(
-					accent,
-					true,
-					1.0
-				)
-			)
-	)
-
-	button.mouse_exited.connect(
-		func () -> void:
-			card.add_theme_stylebox_override(
-				"panel",
-				MainSceneHelpers._build_choose_adventure_entry_card_style(
-					accent,
-					false,
-					0.0
-				)
-			)
-	)
-
-	card.set_meta(
-		"entry_button",
-		button
-	)
-	card.set_meta(
-		"accent",
-		accent
-	)
-
-	return card
-func _start_choose_adventure_entry_button_motion(button: Button, _accent: Color, role: String) -> void:
-	if button == null or not is_instance_valid(button):
-		return
-	var tween:= create_tween().bind_node(button)
-	tween.set_loops()
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_IN_OUT)
-	if role == "narrative_alive" or role == "choose_adventure":
-		tween.tween_property(button, "scale", Vector2(1.045, 1.045), 0.72)
-		tween.parallel().tween_property(button, "modulate", Color(1.0, 0.92, 1.0, 1.0), 0.72)
-		tween.tween_property(button, "scale", Vector2.ONE, 0.72)
-		tween.parallel().tween_property(button, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.72)
-	else:
-		tween.tween_property(button, "scale", Vector2(1.025, 1.025), 1.25)
-		tween.parallel().tween_property(button, "modulate", Color(0.88, 1.0, 1.0, 1.0), 1.25)
-		tween.tween_property(button, "scale", Vector2.ONE, 1.25)
-		tween.parallel().tween_property(button, "modulate", Color(1.0, 1.0, 1.0, 1.0), 1.25)
-	choose_adventure_entry_tweens.append(tween)
-
-func _start_choose_adventure_entry_card_motion(card: PanelContainer, delay: float = 0.0) -> void:
-	# The mobile VBox owns each card's position; a desktop bobbing tween would
-	# move all three cards back to y=0 and make the first two unclickable.
-	if MobileSupport.is_enabled():
-		return
-	if card == null or not is_instance_valid(card):
-		return
-
-	var tween:= create_tween().bind_node(card)
-	tween.set_loops()
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_IN_OUT)
-
-	if delay > 0.0:
-		tween.tween_interval(delay)
-
-	tween.tween_property(card, "position:y", card.position.y - 8.0, 1.4)
-	tween.tween_property(card, "position:y", card.position.y + 8.0, 1.4)
-
-	choose_adventure_entry_tweens.append(tween)
-
+func _start_choose_adventure_entry_card_motion(_card: PanelContainer, _delay: float = 0.0) -> void:
+	pass
 
 func _clear_choose_adventure_entry_tweens() -> void:
 	for raw_tween in choose_adventure_entry_tweens:
@@ -157491,30 +156431,7 @@ func _clear_choose_adventure_entry_tweens() -> void:
 
 func _restart_choose_adventure_entry_panel_motion() -> void:
 	_clear_choose_adventure_entry_tweens()
-
-	var cards: Array = [
-		choose_adventure_entry_left_card,
-		choose_adventure_entry_middle_card,
-		choose_adventure_entry_right_card
-	]
-
-	for i in range(cards.size()):
-		var card:= cards [i] as PanelContainer
-		if card == null or not is_instance_valid(card):
-			continue
-
-		card.position.y = 0.0
-		card.scale = Vector2.ONE
-		card.modulate = Color(1.0, 1.0, 1.0, 1.0)
-		_start_choose_adventure_entry_card_motion(card, float(i) * 0.24)
-
-		var button:= card.get_meta("entry_button", null) as Button
-		if button != null and is_instance_valid(button):
-			button.scale = Vector2.ONE
-			button.modulate = Color(1.0, 1.0, 1.0, 1.0)
-			var role: String = str(button.get_meta("entry_role", "")).strip_edges().to_lower()
-			var accent: Color = Color(button.get_meta("entry_accent", Color(0.24, 0.86, 1.0)))
-			_start_choose_adventure_entry_button_motion(button, accent, role)
+	EraShell.layout_menu(self)
 
 func _choose_adventure_surface_is_visibly_blocking_playable_entry() -> bool:
 	if current_panel == "choose_adventure_entry":
@@ -159558,7 +158475,7 @@ func _show_household_creator_panel(
 
 	var title:= Label.new()
 	title.name = "HouseholdCreatorTitle"
-	title.text = "🏡 Choose your own Household"
+	title.text = "Create a household"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_font_size_override("font_size", 34)
@@ -159808,7 +158725,7 @@ func _household_creator_render_world_setup() -> void:
 		return
 
 	var intro:= Label.new()
-	intro.text = "First, shape the household world seed. Era, house type, reality mode, class, year, country, and city are all part of the creation contract."
+	intro.text = "Choose when and where your household lives. Then add the people who will share it."
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.add_theme_font_size_override("font_size", 15)
 	intro.add_theme_color_override("font_color", Color(1.0, 0.76, 0.66, 0.94))
@@ -159820,13 +158737,13 @@ func _household_creator_render_world_setup() -> void:
 	family_layer.add_theme_color_override("font_color", Color(1.0, 0.48, 0.34, 0.92))
 	body.add_child(family_layer)
 
-	var family_policy_card:= MainSceneHelpers._household_creator_section_card("Family Spawn Policy")
+	var family_policy_card:= MainSceneHelpers._household_creator_section_card("Family connections")
 	body.add_child(family_policy_card)
 
 	var family_policy_body: VBoxContainer = family_policy_card.get_meta("body", null)
 	if family_policy_body != null:
 		var family_policy_text:= Label.new()
-		family_policy_text.text = "Choose whether this custom household is the full family truth, or whether EraLife should also generate outside parents / grandparents around them."
+		family_policy_text.text = "Use only the family you create, or include generated parents and grandparents."
 		family_policy_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		family_policy_text.add_theme_font_size_override("font_size", 14)
 		family_policy_text.add_theme_color_override("font_color", Color(1.0, 0.76, 0.66, 0.92))
@@ -159942,7 +158859,7 @@ func _household_creator_render_world_setup() -> void:
 	var reality_body: VBoxContainer = reality_card.get_meta("body", null)
 	if reality_body != null:
 		var reality_text:= Label.new()
-		reality_text.text = "Choose how hard this household world is allowed to bend reality before the seed is prewarmed."
+		reality_text.text = "Choose how closely this world follows the rules of everyday life."
 		reality_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		reality_text.add_theme_font_size_override("font_size", 14)
 		reality_text.add_theme_color_override("font_color", Color(1.0, 0.76, 0.66, 0.92))
@@ -161293,23 +160210,13 @@ func _household_creator_set_prewarm_feedback(progress_value: float, status_text:
 
 
 func _household_creator_start_living_background(dim: ColorRect) -> void:
-	if dim == null or not is_instance_valid(dim):
-		return
-
-	var tween:= create_tween().bind_node(dim)
-	tween.set_loops()
-	tween.tween_property(dim, "color", Color(0.06, 0.008, 0.004, 0.982), 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(dim, "color", Color(0.04, 0.005, 0.002, 0.968), 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
+	if is_instance_valid(dim):
+		dim.color = EraDesign.CANVAS
 
 func _household_creator_start_light_sweep(sweep: ColorRect) -> void:
-	if sweep == null or not is_instance_valid(sweep):
-		return
+	if is_instance_valid(sweep):
+		sweep.hide()
 
-	var tween:= create_tween().bind_node(sweep)
-	tween.set_loops()
-	tween.tween_property(sweep, "position", Vector2(2600, -260), 7.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(sweep, "position", Vector2(-420, -260), 0.01)
 func _household_creator_set_option_items(picker: Variant, options: Array, selected_text: String = "") -> void:
 	if picker == null:
 		return
@@ -161605,7 +160512,7 @@ func _household_creator_mark_world_dirty() -> void:
 		household_creator_prewarm_progress_bar.value = 0.0
 
 	if household_creator_status_label != null and is_instance_valid(household_creator_status_label):
-		household_creator_status_label.text = "World changed. Prewarm the world seed again before creating members."
+		household_creator_status_label.text = "World settings changed. Prepare this world before adding household members."
 
 
 func _household_creator_read_world_contract() -> Dictionary:
@@ -179674,6 +178581,10 @@ func _enter_tree() -> void:
 		true
 	)
 func _ready():
+	if get_node_or_null("EraInterface") == null:
+		var interface := preload("res://ui/EraInterface.gd").new()
+		interface.name = "EraInterface"
+		add_child(interface)
 	if gs != null:
 		return
 

@@ -48,8 +48,8 @@ func _run() -> void:
 		"physical_viewport_height": 1080.0,
 		"desktop_presentation": true,
 	})
-	_check(is_equal_approx(float(desktop.logical_viewport.width), 1440.0), "Desktop width changed")
-	_check(is_equal_approx(float(desktop.logical_viewport.height), 810.0), "Desktop height changed")
+	_check(is_equal_approx(float(desktop.logical_viewport.width), 1920.0), "Desktop should retain readable native density")
+	_check(is_equal_approx(float(desktop.logical_viewport.height), 1080.0), "Desktop should retain readable native density")
 
 	var shop_button := Button.new()
 	root.add_child(shop_button)

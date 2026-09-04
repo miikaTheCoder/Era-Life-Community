@@ -5278,6 +5278,7 @@ func _refresh_tab_selection_styles() -> void:
 
 
 func _style_tab_button(button: Button, tab: Dictionary, selected: bool) -> void:
+	button.set_meta("era_selected", selected)
 	var palette: Dictionary = _dict(tab.get("palette", {}))
 
 	if palette.is_empty():

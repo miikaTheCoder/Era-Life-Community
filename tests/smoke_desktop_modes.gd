@@ -35,6 +35,38 @@ func _capture(label: String) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(directory.path_join(mode + "-" + label + ".png"))
+	if OS.get_environment("ERA_UI_GALLERY") == "1" and label in ["menu", "life"]:
+		await _capture_ui_sizes(label, directory)
+
+func _capture_ui_sizes(label: String, directory: String) -> void:
+	var old_scale_size := root.content_scale_size
+	var old_aspect := root.content_scale_aspect
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
+	for dimensions in [Vector2i(768, 1024), Vector2i(1280, 800), Vector2i(1920, 1080)]:
+		root.content_scale_size = dimensions
+		await create_timer(0.5).timeout
+		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
+		root.content_scale_size = dimensions
+		await create_timer(0.5).timeout
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png(directory.path_join("%s-%s-%d.png" % [mode, label, dimensions.x]))
+		if label == "life":
+			var age_up: Button = current_scene.get("ui_nav_buttons").get("age_up")
+			var diary: RichTextLabel = current_scene.get("output_label")
+			print("DESKTOP UI SIZE: requested=", dimensions, " viewport=", current_scene.get_viewport_rect().size, " age_up=", age_up.get_global_rect(), " diary=", diary.get_global_rect())
+			_check(age_up != null and age_up.get_global_rect().end.x <= dimensions.x + 1 and age_up.get_global_rect().end.y <= dimensions.y + 1, "Age Up leaves the viewport at " + str(dimensions))
+			_check(diary.size.x >= 280 and diary.size.y >= 200, "Diary became unusably small at " + str(dimensions))
+			if dimensions.x < 1000:
+				var shell: Node = current_scene.get_node("EraShell")
+				await _click(shell.stats_toggle)
+				_check(current_scene.get("player_stats_overlay").is_visible_in_tree(), "Character drawer did not open")
+				await _click(shell.stats_toggle)
+				_check(not current_scene.get("player_stats_overlay").is_visible_in_tree(), "Character drawer did not close")
+	root.content_scale_size = old_scale_size
+	root.content_scale_aspect = old_aspect
+	current_scene.set("ui_presentation_density_applied_signature", "")
+	current_scene.call("_repair_playable_life_shell_after_viewport_resize", "ui_gallery_restore")
+	await create_timer(0.5).timeout
 
 func _click_at(point: Vector2) -> void:
 	var position := root.get_final_transform() * point
@@ -97,6 +129,7 @@ func _run() -> void:
 	await create_timer(3).timeout
 	current_scene.call("_skip_startup_intro_to_title_card")
 	await create_timer(2).timeout
+	await _capture("title")
 	if mode == "restore":
 		await _restore()
 		await _capture("restored")
@@ -163,6 +196,7 @@ func _god() -> void:
 	if not _check(await _wait_for(func(): return is_instance_valid(current_scene.get("god_mode_viewer")) and current_scene.get("god_mode_viewer").is_visible_in_tree()), "God Mode did not open"):
 		return
 	var viewer = current_scene.get("god_mode_viewer")
+	await _capture("creator")
 	if not await _click(viewer.prewarm_button):
 		return
 	if not _check(await _wait_for(func(): return viewer.engine.current_state().get("viewer_ready_button_enabled", false), 100), "God Mode did not become ready"):

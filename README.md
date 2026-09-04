@@ -8,6 +8,9 @@ Desktop Narrative and Household entry flows are now connected to the simulation.
 See [desktop gameplay and validation](docs/DESKTOP-GAMEPLAY.md) for how to play,
 the entry/save repairs, repeatable checks, and remaining limitations.
 
+The `era-life-new-ui` branch introduces the dark life-journal interface. See
+[UI design and validation](docs/NEW-UI.md) for layout, implementation, and checks.
+
 ## Current project status (2026-09-04)
 
 The local `main` branch contains the Crime World foundation and the subsequent

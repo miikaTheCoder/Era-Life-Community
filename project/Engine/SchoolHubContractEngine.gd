@@ -830,7 +830,7 @@ func _overview_rows(
 		if not available_contracts.is_empty():
 			var options_title: String = "Schools You Can Attend"
 			var options_subtitle: String = (
-				"Available SchoolEngine contracts for %s's "
+				"Schools available for %s's "
 				+ "current era and life stage."
 			) % _person_name(actor)
 
@@ -1649,7 +1649,7 @@ func _school_header_chip(active_school: Dictionary, snapshot: Dictionary) -> Str
 
 func _status_text(snapshot: Dictionary, section_id: String) -> String:
 	if not bool(snapshot.get("active", false)):
-		return "Choose an available learning contract."
+		return "Choose a school to explore your options."
 
 	if section_id == "meal":
 		return (
