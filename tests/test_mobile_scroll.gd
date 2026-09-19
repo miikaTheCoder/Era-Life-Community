@@ -34,8 +34,8 @@ func _swipe(control: Control, movement := Vector2(0, -120), canceled := false) -
 	await create_timer(0.05).timeout
 
 func _run() -> void:
-	root.size = Vector2i(960, 540)
-	root.content_scale_size = Vector2i(960, 540)
+	root.size = Vector2i(420, 840)
+	root.content_scale_size = Vector2i(420, 840)
 	screen = Control.new()
 	root.add_child(screen)
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -43,8 +43,8 @@ func _run() -> void:
 	if "--without-mobile-scroll" not in OS.get_cmdline_user_args():
 		MobileSupport.configure(screen)
 	scroll = ScrollContainer.new()
-	scroll.position = Vector2(40, 40)
-	scroll.size = Vector2(500, 420)
+	scroll.position = Vector2(24, 40)
+	scroll.size = Vector2(372, 680)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	screen.add_child(scroll)
 	var content := VBoxContainer.new()
@@ -92,8 +92,8 @@ func _run() -> void:
 			_check(not edit.is_editing(), "A name-field swipe entered text editing")
 			_check(edit.virtual_keyboard_enabled, "Swipe left the keyboard disabled")
 		# End any flick before positioning the next test's target.
-		await _touch(Vector2(900, 500), true)
-		await _touch(Vector2(900, 500), false)
+		await _touch(Vector2(404, 800), true)
+		await _touch(Vector2(404, 800), false)
 	# A genuine tap still takes the native input path exactly once.
 	scroll.scroll_vertical = 0
 	await create_timer(0.1).timeout
@@ -130,9 +130,10 @@ func _run() -> void:
 	await process_frame
 	_check(clicks == 1, "Canceled touch activated a button")
 	# The gameplay diary is itself a scrollable RichTextLabel, without a container.
+	scroll.hide()
 	var diary := RichTextLabel.new()
-	diary.position = Vector2(580, 40)
-	diary.size = Vector2(330, 420)
+	diary.position = Vector2(24, 40)
+	diary.size = Vector2(372, 680)
 	diary.selection_enabled = true
 	diary.text = "Swipe the diary text\n".repeat(100)
 	screen.add_child(diary)

@@ -1,6 +1,16 @@
 extends Node
 const Design = preload("res://ui/EraTheme.gd")
 const BranchMark = preload("res://ui/EraBranchMark.gd")
+const TOOL_SIZE := Vector2(112, 46)
+const TOOL_GAP := 12.0
+const TOOL_RIGHT := 20.0
+const TOOL_BOTTOM := 88.0
+const TOOL_TOP := 84.0
+# Match the runtime stack order; gameplay still owns availability and modal layering.
+const TOOL_LABELS := {
+	"boxing": "Boxing", "belongings": "Belongings", "food_lifestyle": "Food",
+	"restaurant_lifestyle": "Dining", "rick_weapon_shop": "Weapons", "bending": "Bending",
+	"crown": "Realm", "superpower": "Superpowers", "power": "Powers", "wizard": "Magic"}
 var host: Control
 var navigation: HBoxContainer
 var navigation_scroll: ScrollContainer
@@ -84,24 +94,26 @@ static func create_entry_card(contract: Dictionary) -> PanelContainer:
 	card.name = "ChooseAdventureEntryCard_" + str(contract.get("id", "entry"))
 	card.set_meta("era_owned", true)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var surface := Design.box(Design.PANEL, Design.LINE, 6, 24)
-	surface.content_margin_top = 24
-	surface.content_margin_bottom = 24
+	var mobile := MobileSupport.is_enabled()
+	var surface := Design.box(Design.PANEL, Design.LINE, 6, 16 if mobile else 24)
+	surface.content_margin_top = 16 if mobile else 24
+	surface.content_margin_bottom = 16 if mobile else 24
 	card.add_theme_stylebox_override("panel", surface)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 18)
+	box.add_theme_constant_override("separation", 10 if mobile else 18)
 	card.add_child(box)
 	var eyebrow := label("0%d  /  %s" % [index + 1, details[index]], 13, Design.AMBER)
 	eyebrow.name = "EntryCardEyebrow"
 	box.add_child(eyebrow)
 	var mark := BranchMark.new()
 	mark.branch = index
+	mark.visible = not mobile
 	box.add_child(mark)
-	var title := label(titles[index], 32, Design.TEXT, true)
+	var title := label(titles[index], 24 if mobile else 32, Design.TEXT, true)
 	title.name = "EntryCardTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
-	var subtitle := label(descriptions[index], 17, Design.MUTED)
+	var subtitle := label(descriptions[index], 15 if mobile else 17, Design.MUTED)
 	subtitle.name = "EntryCardSubtitle"
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	subtitle.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -111,6 +123,7 @@ static func create_entry_card(contract: Dictionary) -> PanelContainer:
 	button.text = str(contract.get("button_text", "Continue"))
 	button.custom_minimum_size.y = 48
 	button.set_meta("entry_role", role)
+	button.disabled = bool(contract.get("demo_temporarily_unavailable", false))
 	button.set_meta("entry_accent", Design.ACCENT)
 	button.tooltip_text = descriptions[index]
 	box.add_child(button)
@@ -141,14 +154,21 @@ static func layout_menu(scene: Control) -> void:
 	grid.custom_minimum_size = Vector2.ZERO
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for card in grid.get_children():
-		card.custom_minimum_size = Vector2(0, 340 if narrow else 420)
+		card.custom_minimum_size = Vector2(0, 220 if MobileSupport.is_enabled() else (340 if narrow else 420))
 	var scroll := scene.get("choose_adventure_entry_overlay").get_node("ChooseAdventureEntryCenter") as ScrollContainer
 	var margin := scroll.get_child(0) as MarginContainer
 	var side := 20 if narrow else int(maxf(40, (viewport.x - 1320) * 0.5))
 	margin.add_theme_constant_override("margin_left", side)
 	margin.add_theme_constant_override("margin_right", side)
 	var heading := margin.find_child("EraMenuHeading", true, false) as Label
-	heading.add_theme_font_size_override("font_size", 36 if narrow else 48)
+	heading.add_theme_font_size_override("font_size", 28 if MobileSupport.is_enabled() else (36 if narrow else 48))
+	if MobileSupport.is_enabled():
+		var safe := MobileSupport.safe_viewport_rect(scene)
+		scroll.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		scroll.position = safe.position
+		scroll.size = safe.size
+		margin.add_theme_constant_override("margin_top", 16)
+		margin.add_theme_constant_override("margin_bottom", 16)
 
 func _ready() -> void:
 	host = get_parent() as Control
@@ -236,6 +256,7 @@ func _process(_delta: float) -> void:
 			button.set_meta("era_selected_panel", last_panel)
 			host.get_node("EraInterface")._queue(button.get_instance_id())
 	root.move_child(footer, root.get_child_count() - 1)
+	_layout_tools()
 	layout_live(host)
 	identity.text = "%s  /  Age %d" % [gs.player._display_name(), gs.player.age]
 	identity.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -244,38 +265,92 @@ func _process(_delta: float) -> void:
 	year_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	year_label.clip_text = true
 	chapter.text = "Life journal" if last_panel == "life" else last_panel.capitalize()
-	_layout_tools()
 
 func _layout_tools() -> void:
-	var labels := {
-		"belongings": "Belongings", "food_lifestyle": "Food", "restaurant_lifestyle": "Dining",
-		"bending": "Bending", "crown": "Realm", "boxing": "Boxing", "superpower": "Superpowers",
-		"power": "Powers", "wizard": "Magic", "rick_weapon_shop": "Weapons"}
-	for key in labels:
+	var stack_index := 0
+	var adapter := host.get_node("EraInterface")
+	for key in TOOL_LABELS:
 		var button := host.get(key + "_hud_button") as Button
-		if not is_instance_valid(button) or not button.is_visible_in_tree():
+		if not is_instance_valid(button):
 			continue
-		button.text = labels[key]
-		button.add_theme_font_size_override("font_size", 13)
-		button.scale = Vector2.ONE
-		button.rotation = 0
-		button.modulate = Color.WHITE
-		button.custom_minimum_size.x = 104
-		button.offset_left = button.offset_right - 104
+		# Clip and set the font before replacing an icon with a word. Otherwise
+		# the old 28px font expands the minimum size and shifts right-anchored buttons.
+		adapter.style_tool_button(button, TOOL_LABELS[key])
 		button.focus_mode = Control.FOCUS_ALL
+		if not button.is_visible_in_tree():
+			continue
+		button.modulate = Color.WHITE
+		layout_tool_button(button, stack_index, host.get_viewport_rect().size)
+		stack_index += 1
+	var bending_border := host.get("bending_hud_button_border_overlay") as Control
+	if is_instance_valid(bending_border):
+		bending_border.hide()
 	var crime := host.get("crime_hud_button") as Button
 	if is_instance_valid(crime):
 		crime.text = "Crime & justice"
 		crime.custom_minimum_size.y = 40
 
+static func tool_rows_per_column(viewport: Vector2) -> int:
+	var usable_height := maxf(TOOL_SIZE.y, viewport.y - TOOL_BOTTOM - TOOL_TOP)
+	return maxi(1, int(floor((usable_height + TOOL_GAP) / (TOOL_SIZE.y + TOOL_GAP))))
+
+static func layout_tool_button(button: Button, stack_index: int, viewport: Vector2) -> void:
+	if not is_instance_valid(button):
+		return
+	if button.get_meta("era_mobile_tool", false):
+		return
+	var index := maxi(0, stack_index)
+	var rows := tool_rows_per_column(viewport)
+	var column := int(floor(float(index) / rows))
+	var row := index % rows
+	var right := -TOOL_RIGHT - column * (TOOL_SIZE.x + TOOL_GAP)
+	var bottom := -TOOL_BOTTOM - row * (TOOL_SIZE.y + TOOL_GAP)
+	button.clip_text = true
+	button.custom_minimum_size = TOOL_SIZE
+	button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	button.scale = Vector2.ONE
+	button.rotation = 0.0
+	button.pivot_offset = TOOL_SIZE * 0.5
+	# Assign size before position and restore the whole rectangle. Individual
+	# offset writes can retain shifts caused by a previous minimum-size change.
+	button.size = TOOL_SIZE
+	button.position = viewport + Vector2(right, bottom) - TOOL_SIZE
+	button.set_meta("runtime_floating_hud_stack_index", index)
+	button.set_meta("runtime_floating_hud_stack_row", row)
+	button.set_meta("runtime_floating_hud_stack_column", column)
+	button.set_meta("runtime_floating_hud_rows_per_column", rows)
+	button.set_meta("runtime_floating_hud_stack_slot_top", bottom - TOOL_SIZE.y)
+	button.set_meta("runtime_floating_hud_stack_slot_bottom", bottom)
+	button.set_meta("runtime_floating_hud_stack_horizontal_gap", TOOL_GAP)
+	button.set_meta("runtime_floating_hud_stack_vertical_gap", TOOL_GAP)
+	button.set_meta("runtime_floating_hud_stack_geometry_resolved", true)
+	button.set_meta("runtime_floating_hud_stack_geometry_resolved_at_ms", Time.get_ticks_msec())
+	button.set_meta("runtime_floating_hud_never_requires_fullscreen", true)
+	if MobileSupport.is_enabled():
+		button.set_meta("mobile_stack_viewport", viewport)
+		button.set_meta("mobile_stack_rect", button.get_rect())
+
 static func layout_live(scene: Control) -> void:
+	if MobileSupport.is_enabled():
+		var mobile := scene.get_node_or_null("EraShell")
+		if mobile != null and mobile.has_method("layout_mobile"):
+			mobile.layout_mobile()
+		return
 	var root := scene.get_node_or_null("UIContainer") as Control
 	if root == null:
 		return
 	var viewport := scene.get_viewport_rect().size
 	var narrow := viewport.x < 1000
 	var left := 16.0 if narrow else 288.0
-	var right := viewport.x - 132.0
+	var tool_count := 0
+	for key in TOOL_LABELS:
+		var button := scene.get(key + "_hud_button") as Button
+		if is_instance_valid(button) and button.is_visible_in_tree():
+			tool_count += 1
+	var columns := maxi(1, int(ceil(float(tool_count) / tool_rows_per_column(viewport))))
+	var right := viewport.x - TOOL_RIGHT - columns * (TOOL_SIZE.x + TOOL_GAP)
 	root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	root.position = Vector2(left, 18)
 	root.size = Vector2(maxf(280, right - left), viewport.y - 36)

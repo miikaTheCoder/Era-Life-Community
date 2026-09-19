@@ -3,44 +3,54 @@ extends Control
 ## Keep Android responsive while the reconstructed game's large script loads.
 ## No game state is created here; MainScene keeps ownership of initialization.
 const GAME_SCENE := "res://scenes/main.scn"
+const Design = preload("res://ui/EraTheme.gd")
 
 var status_label: Label
 var progress_bar: ProgressBar
 var started_at_ms := 0
+var loading_center: CenterContainer
+var loading_content: VBoxContainer
 
 func _ready() -> void:
 	set_process(false)
+	MobileSupport.configure_viewport(self)
+	theme = Design.create()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var background := ColorRect.new()
-	background.color = Color(0.025, 0.05, 0.06)
+	background.color = Design.CANVAS
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(background)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-	var box := VBoxContainer.new()
-	box.custom_minimum_size.x = 720
-	box.add_theme_constant_override("separation", 24)
-	center.add_child(box)
+	loading_center = CenterContainer.new()
+	add_child(loading_center)
+	loading_content = VBoxContainer.new()
+	loading_content.add_theme_constant_override("separation", 20)
+	loading_center.add_child(loading_content)
 	var title := Label.new()
-	title.text = "ERA LIFE"
+	title.text = "ERA / LIFE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 42)
-	box.add_child(title)
+	title.add_theme_font_override("font", Design.DISPLAY)
+	title.add_theme_font_size_override("font_size", 38)
+	title.add_theme_color_override("font_color", Design.ACCENT)
+	loading_content.add_child(title)
 	status_label = Label.new()
 	status_label.text = "Preparing your game…"
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_label.add_theme_font_size_override("font_size", 24)
-	box.add_child(status_label)
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.add_theme_font_size_override("font_size", 16)
+	loading_content.add_child(status_label)
 	progress_bar = ProgressBar.new()
-	progress_bar.custom_minimum_size.y = 24
+	progress_bar.custom_minimum_size.y = 8
 	progress_bar.show_percentage = false
-	box.add_child(progress_bar)
+	loading_content.add_child(progress_bar)
 	var hint := Label.new()
-	hint.text = "Loading the world scripts can take about a minute.\nPlease keep the app open."
+	hint.text = "Your world is getting ready. The first launch can take about a minute."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size", 20)
-	box.add_child(hint)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 15)
+	hint.add_theme_color_override("font_color", Design.MUTED)
+	loading_content.add_child(hint)
+	resized.connect(_layout_loading)
+	_layout_loading()
 	started_at_ms = Time.get_ticks_msec()
 	await get_tree().process_frame
 	var error := ResourceLoader.load_threaded_request(GAME_SCENE, "PackedScene", false)
@@ -48,6 +58,15 @@ func _ready() -> void:
 		status_label.text = "Could not start loading (%s). Please restart the app." % error_string(error)
 		return
 	set_process(true)
+
+func _layout_loading() -> void:
+	if loading_center == null:
+		return
+	var safe := MobileSupport.safe_viewport_rect(self)
+	loading_center.position = safe.position + Vector2(24, 24)
+	loading_center.size = Vector2(maxf(1.0, safe.size.x - 48), maxf(1.0, safe.size.y - 48))
+	loading_content.custom_minimum_size.x = loading_center.size.x
+
 
 func _process(_delta: float) -> void:
 	var progress: Array = []

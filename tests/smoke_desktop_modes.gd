@@ -3,7 +3,10 @@ extends SceneTree
 # Run with Godot 4.4.1, an isolated XDG_DATA_HOME and a graphical display.
 # ERA_MODE selects narrative-family, narrative-continue, household, god, or restore.
 # ERA_PREVIEW_DIR optionally records screenshots. No existing saves are used.
+# ERA_PORTRAIT=1 exercises the portrait shell with -- --mobile-preview.
 var mode := OS.get_environment("ERA_MODE")
+var portrait := OS.get_environment("ERA_PORTRAIT") == "1"
+var portrait_drawers_checked := false
 var failed := false
 var origin_mode := ""
 var years_per_run := 1
@@ -11,6 +14,11 @@ var years_completed := 0
 var checkpoints_restored := 0
 var choices_made := 0
 const PERSISTED_PLAYER_FIELDS := ["job", "income", "job_performance", "job_experience", "unemployed_years", "school_mode", "school_name", "school_status", "education_level", "health", "mental_health", "smarts", "friends", "children", "marital_status"]
+const RUNTIME_SHORTCUT_LABELS := {
+	"belongings": "Belongings", "food_lifestyle": "Food", "restaurant_lifestyle": "Dining",
+	"bending": "Bending", "crown": "Realm", "boxing": "Boxing", "superpower": "Superpowers",
+	"power": "Powers", "wizard": "Magic", "rick_weapon_shop": "Weapons",
+}
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -30,13 +38,132 @@ func _wait_for(predicate: Callable, seconds := 30.0) -> bool:
 	return predicate.call()
 
 func _capture(label: String) -> void:
+	if portrait and label == "life":
+		if not await _check_portrait_life():
+			return
 	var directory := OS.get_environment("ERA_PREVIEW_DIR")
-	if directory.is_empty() or DisplayServer.get_name() == "headless":
+	if not directory.is_empty() and DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png(directory.path_join(mode + "-" + label + ".png"))
+		if not portrait and OS.get_environment("ERA_UI_GALLERY") == "1" and label in ["menu", "life"]:
+			await _capture_ui_sizes(label, directory)
+	if portrait and label == "life" and not portrait_drawers_checked:
+		portrait_drawers_checked = true
+		await _check_portrait_drawers()
+
+func _portrait_shell() -> Node:
+	return current_scene.get_node_or_null("EraShell")
+
+func _check_portrait_life() -> bool:
+	if not _check(await _wait_for(func(): return _portrait_shell() != null and is_instance_valid(_portrait_shell().get("dock")), 10), "Portrait gameplay shell did not mount"):
+		return false
+	await create_timer(0.5).timeout
+	var shell := _portrait_shell()
+	var diary := current_scene.get("output_label") as Control
+	var safe := MobileSupport.safe_viewport_rect(current_scene)
+	var controls: Array[Control] = [shell.get("header"), diary, shell.get("metrics"), shell.get("dock")]
+	for index in controls.size():
+		var control := controls[index]
+		if not _check(is_instance_valid(control) and control.is_visible_in_tree(), "Portrait shell is missing a visible gameplay region"):
+			return false
+		var rect := control.get_global_rect()
+		_check(safe.grow(1).encloses(rect), "Portrait gameplay region leaves the safe viewport: " + str(control.name) + " " + str(rect))
+		for other_index in range(index):
+			_check(not rect.intersects(controls[other_index].get_global_rect()), "Portrait gameplay regions overlap: " + str(control.name))
+	_check(diary.size.x >= 350 and diary.size.y >= 160, "Portrait journal is too small to read")
+	var age := current_scene.get("ui_nav_buttons").get("age_up") as Button
+	_check(is_instance_valid(age) and age.is_visible_in_tree() and age.size.y >= 48 and safe.grow(1).encloses(age.get_global_rect()), "Portrait Age action must remain a reachable touch target")
+	var assets := shell.get("assets_button") as Button
+	_check(is_instance_valid(assets) and assets.is_visible_in_tree() and assets.size.y >= 48, "Portrait Assets action is missing from the dock")
+	print("PORTRAIT UI: viewport=", current_scene.get_viewport_rect().size, " safe=", safe, " diary=", diary.get_global_rect(), " dock=", shell.get("dock").get_global_rect())
+	return not failed
+
+func _portrait_back() -> void:
+	# Use the same notification Android sends; the scene owns dismissal routing.
+	current_scene.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+	await create_timer(0.5).timeout
+
+func _check_portrait_drawers() -> void:
+	var shell := _portrait_shell()
+	if not await _click(current_scene.find_child("EraMobileCharacter", true, false)):
 		return
-	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(directory.path_join(mode + "-" + label + ".png"))
-	if OS.get_environment("ERA_UI_GALLERY") == "1" and label in ["menu", "life"]:
-		await _capture_ui_sizes(label, directory)
+	var stats := current_scene.get("player_stats_overlay") as Control
+	_check(shell.get("drawer").is_visible_in_tree() and stats.is_visible_in_tree(), "Character tap did not reveal the existing stats")
+	_check(MobileSupport.safe_viewport_rect(current_scene).grow(1).encloses(shell.get("drawer").get_global_rect()), "Character drawer leaves the safe viewport")
+	await _capture("character")
+	await _portrait_back()
+	_check(not shell.get("drawer").visible, "Android Back did not close the Character drawer")
+	if not await _click(current_scene.find_child("EraMobileMenu", true, false)):
+		return
+	_check(shell.get("drawer").is_visible_in_tree(), "Menu tap did not open Explore")
+	var world := current_scene.get("ui_nav_buttons").get("world") as Button
+	_check(is_instance_valid(world) and world.is_visible_in_tree(), "Explore did not expose the original World action")
+	await _capture("explore")
+	await _portrait_back()
+	_check(not shell.get("drawer").visible, "Android Back did not close Explore")
+
+func _portrait_active_surface(tab: String) -> Control:
+	var fields: Dictionary = {
+		"activities": ["activities_hub_panel", "activities_action_panel", "standard_tab_popup"],
+		"relationships": ["institution_hub_overlay", "relationship_hub_panel", "standard_tab_popup"],
+		"career": ["career_hub_panel", "standard_tab_popup"],
+		"school": ["institution_hub_overlay", "school_hub_panel", "standard_tab_popup"],
+		"assets": ["belongings_hud_panel"],
+	}
+	for field in fields.get(tab, []):
+		var surface := current_scene.get(field) as Control
+		if is_instance_valid(surface) and surface.is_visible_in_tree():
+			return surface
+	return null
+
+func _check_portrait_surface(surface: Control, label: String) -> void:
+	var safe := MobileSupport.safe_viewport_rect(current_scene)
+	_check(safe.grow(1).encloses(surface.get_global_rect()), "Portrait " + label + " panel exceeds the safe viewport")
+	var reachable_buttons := 0
+	for raw in surface.find_children("*", "Button", true, false):
+		var button := raw as Button
+		if not button.is_visible_in_tree():
+			continue
+		var rect := button.get_global_rect()
+		_check(rect.size.x <= safe.size.x + 1, "Portrait " + label + " action retains desktop width: " + button.text)
+		if safe.intersects(rect) and not button.disabled:
+			reachable_buttons += 1
+			_check(rect.size.y >= 44, "Portrait " + label + " action is too small to tap: " + button.text)
+	_check(reachable_buttons > 0, "Portrait " + label + " panel has no reachable actions")
+
+func _inspect_portrait_gameplay() -> void:
+	var state: GameState = current_scene.get("gs")
+	var occupation := "school" if state.player.age < 18 else "career"
+	for tab in [occupation, "relationships", "activities"]:
+		if not await _click(_navigation_button(tab)):
+			return
+		if not _check(await _wait_for(func(): return _portrait_active_surface(tab) != null, 15), "Portrait navigation did not open " + tab):
+			return
+		await create_timer(0.5).timeout
+		var surface := _portrait_active_surface(tab)
+		_check_portrait_surface(surface, tab)
+		await _capture("inspect-" + tab)
+		await _portrait_back()
+		_check(not surface.is_visible_in_tree(), "Android Back did not close " + tab)
+		_check(current_scene.get("current_panel") == "life", "Portrait panel Back did not return to the journal")
+		if failed:
+			return
+	var shell := _portrait_shell()
+	var assets := shell.get("assets_button") as Button
+	if is_instance_valid(assets) and not assets.disabled:
+		if not await _click(assets):
+			return
+		if not _check(await _wait_for(func(): return _portrait_active_surface("assets") != null, 10), "Assets proxy did not open the original inventory"):
+			return
+		var inventory := _portrait_active_surface("assets")
+		_check_portrait_surface(inventory, "assets")
+		await _capture("inspect-assets")
+		await _portrait_back()
+		_check(not inventory.is_visible_in_tree(), "Android Back did not close Assets")
+	else:
+		print("PORTRAIT ASSETS: unavailable for the current actor")
+	await _check_portrait_life()
+
 
 func _capture_ui_sizes(label: String, directory: String) -> void:
 	var old_scale_size := root.content_scale_size
@@ -56,6 +183,7 @@ func _capture_ui_sizes(label: String, directory: String) -> void:
 			print("DESKTOP UI SIZE: requested=", dimensions, " viewport=", current_scene.get_viewport_rect().size, " age_up=", age_up.get_global_rect(), " diary=", diary.get_global_rect())
 			_check(age_up != null and age_up.get_global_rect().end.x <= dimensions.x + 1 and age_up.get_global_rect().end.y <= dimensions.y + 1, "Age Up leaves the viewport at " + str(dimensions))
 			_check(diary.size.x >= 280 and diary.size.y >= 200, "Diary became unusably small at " + str(dimensions))
+			await _check_runtime_shortcuts(dimensions, diary, age_up)
 			if dimensions.x < 1000:
 				var shell: Node = current_scene.get_node("EraShell")
 				await _click(shell.stats_toggle)
@@ -68,18 +196,81 @@ func _capture_ui_sizes(label: String, directory: String) -> void:
 	current_scene.call("_repair_playable_life_shell_after_viewport_resize", "ui_gallery_restore")
 	await create_timer(0.5).timeout
 
+func _check_runtime_shortcuts(dimensions: Vector2i, diary: Control, age_up: Control) -> void:
+	# Observe the real buttons through normal legacy refresh ticks. Available
+	# shortcuts can change as engines finish bootstrapping, so compare positions
+	# only while a button keeps its stack index; never create gameplay fixtures.
+	var previous: Dictionary = {}
+	var observed: Dictionary = {}
+	var samples := 0
+	var deadline := Time.get_ticks_msec() + 1000
+	while samples < 2 or Time.get_ticks_msec() < deadline:
+		await RenderingServer.frame_post_draw
+		samples += 1
+		var snapshot: Dictionary = {}
+		var columns: Dictionary = {}
+		var occupied: Dictionary = {}
+		var sample_ok := true
+		var overlay := current_scene.get("bending_hud_button_border_overlay") as Control
+		if is_instance_valid(overlay):
+			sample_ok = _check(not overlay.visible, "Legacy Bending border returned at " + str(dimensions)) and sample_ok
+		for key in RUNTIME_SHORTCUT_LABELS:
+			var button := current_scene.get(key + "_hud_button") as Button
+			if not is_instance_valid(button) or not button.is_visible_in_tree():
+				continue
+			var rect := button.get_global_rect()
+			var stack_index := int(button.get_meta("runtime_floating_hud_stack_index", -1))
+			var column := int(button.get_meta("runtime_floating_hud_stack_column", -1))
+			var context := "%s at %s (frame %d, stack %d): %s" % [key, dimensions, samples, stack_index, rect]
+			observed[key] = true
+			sample_ok = _check(button.text == RUNTIME_SHORTCUT_LABELS[key], "Shortcut label changed: " + context) and sample_ok
+			var text_width := button.get_theme_font("font").get_string_size(button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, button.get_theme_font_size("font_size")).x
+			var horizontal_padding := button.get_theme_stylebox("normal").get_minimum_size().x
+			sample_ok = _check(rect.size.x + 1 >= text_width + horizontal_padding, "Shortcut label is clipped: " + context) and sample_ok
+			sample_ok = _check(stack_index >= 0 and column >= 0, "Shortcut has no stack slot: " + context) and sample_ok
+			sample_ok = _check(rect.position.x >= -1 and rect.position.y >= -1 and rect.end.x <= dimensions.x + 1 and rect.end.y <= dimensions.y + 1, "Shortcut leaves the viewport: " + context) and sample_ok
+			sample_ok = _check(not rect.intersects(diary.get_global_rect()), "Shortcut overlaps the diary: " + context) and sample_ok
+			sample_ok = _check(not rect.intersects(age_up.get_global_rect()), "Shortcut overlaps Age Up: " + context) and sample_ok
+			if columns.has(column):
+				var column_rect: Rect2 = columns[column]
+				sample_ok = _check(absf(rect.position.x - column_rect.position.x) <= 1 and absf(rect.end.x - column_rect.end.x) <= 1, "Shortcut column is misaligned: " + context) and sample_ok
+			else:
+				columns[column] = rect
+			for other_key in occupied:
+				sample_ok = _check(not rect.intersects(occupied[other_key]), "Shortcuts overlap (%s): %s" % [other_key, context]) and sample_ok
+			occupied[key] = rect
+			if previous.has(key):
+				var before: Dictionary = previous[key]
+				if before["instance_id"] == button.get_instance_id() and before["stack_index"] == stack_index:
+					var previous_rect: Rect2 = before["rect"]
+					sample_ok = _check(rect.is_equal_approx(previous_rect), "Shortcut moved between rendered frames: " + context + "; previous=" + str(previous_rect)) and sample_ok
+			snapshot[key] = {"instance_id": button.get_instance_id(), "stack_index": stack_index, "rect": rect}
+		previous = snapshot
+		if not sample_ok:
+			return
+	_check(not observed.is_empty(), "No visible runtime shortcuts were checked at " + str(dimensions))
+	print("DESKTOP UI SHORTCUTS: viewport=", dimensions, " rendered_frames=", samples, " observed=", observed.keys())
+
 func _click_at(point: Vector2) -> void:
 	var position := root.get_final_transform() * point
-	var motion := InputEventMouseMotion.new()
-	motion.position = position
-	Input.parse_input_event(motion)
-	for pressed in [true, false]:
-		var event := InputEventMouseButton.new()
-		event.position = position
-		event.button_index = MOUSE_BUTTON_LEFT
-		event.pressed = pressed
-		Input.parse_input_event(event)
-		await create_timer(0.12).timeout
+	if portrait:
+		for pressed in [true, false]:
+			var touch := InputEventScreenTouch.new()
+			touch.position = position
+			touch.pressed = pressed
+			Input.parse_input_event(touch)
+			await create_timer(0.12).timeout
+	else:
+		var motion := InputEventMouseMotion.new()
+		motion.position = position
+		Input.parse_input_event(motion)
+		for pressed in [true, false]:
+			var event := InputEventMouseButton.new()
+			event.position = position
+			event.button_index = MOUSE_BUTTON_LEFT
+			event.pressed = pressed
+			Input.parse_input_event(event)
+			await create_timer(0.12).timeout
 	await create_timer(0.25).timeout
 
 func _click(control: Control) -> bool:
@@ -104,6 +295,14 @@ func _entry_button(role: String) -> Button:
 	return null
 
 func _navigation_button(tab: String) -> Button:
+	if portrait:
+		var key := "age_up" if tab in ["age up", "age_up"] else tab
+		var button := current_scene.get("ui_nav_buttons").get(key) as Button
+		if is_instance_valid(button) and not button.is_visible_in_tree():
+			var shell := _portrait_shell()
+			if shell != null:
+				shell.call("open_drawer", "explore")
+		return button
 	# Age transitions can rebuild the navigation. Use the current visible
 	# control rather than a cached reference to an earlier layout.
 	for control in current_scene.find_children("*", "Button", true, false):
@@ -121,10 +320,14 @@ func _run() -> void:
 	if not _check(not OS.get_environment("XDG_DATA_HOME").is_empty(), "Use scripts/test-desktop-modes.sh to isolate test saves"):
 		quit(1)
 		return
-	root.size = Vector2i(1440, 900)
+	if portrait and not _check(MobileSupport.is_enabled(), "ERA_PORTRAIT requires -- --mobile-preview"):
+		quit(1)
+		return
+	var dimensions := Vector2i(420, 900) if portrait else Vector2i(1440, 900)
+	root.size = dimensions
 	root.unresizable = true
-	root.min_size = Vector2i(1440, 900)
-	root.max_size = Vector2i(1440, 900)
+	root.min_size = dimensions
+	root.max_size = dimensions
 	change_scene_to_file("res://scenes/main.scn")
 	await create_timer(3).timeout
 	current_scene.call("_skip_startup_intro_to_title_card")
@@ -285,11 +488,14 @@ func _age_and_save() -> void:
 			return
 		print("DESKTOP YEAR: ", JSON.stringify({"mode": origin_mode, "years_completed": years_completed, "age": state.player.age, "year": state.year, "alive": state.player.alive, "health": state.player.health, "money": state.player.bank_balance, "job": state.player.job, "school_status": state.player.school_status, "education_level": state.player.education_level, "friends": state.player.friends.size(), "children": state.player.children.size()}))
 	await _capture("aged-%d" % state.player.age)
-	if OS.get_environment("ERA_EXPLORE") == "1":
+	if portrait or OS.get_environment("ERA_EXPLORE") == "1":
 		await _inspect_gameplay()
 	await _save(previous_entries)
 
 func _inspect_gameplay() -> void:
+	if portrait:
+		await _inspect_portrait_gameplay()
+		return
 	for tab in ["school", "career", "relationships"]:
 		var button: Button = _navigation_button(tab)
 		if not await _click(button):
@@ -342,11 +548,12 @@ func _advance_one_year() -> bool:
 	):
 		await _click_at(stale_card.get_global_rect().get_center())
 		await create_timer(0.4).timeout
-	var age_button: Button = null
-	for button in current_scene.find_children("*", "Button", true, false):
-		if button.is_visible_in_tree() and button.text.to_upper().strip_edges() == "AGE UP":
-			age_button = button
-			break
+	var age_button: Button = _navigation_button("age_up") if portrait else null
+	if not portrait:
+		for button in current_scene.find_children("*", "Button", true, false):
+			if button.is_visible_in_tree() and button.text.to_upper().strip_edges() == "AGE UP":
+				age_button = button
+				break
 	if not await _click(age_button):
 		return false
 	var deadline := Time.get_ticks_msec() + 90000
@@ -357,7 +564,7 @@ func _advance_one_year() -> bool:
 			if not _check(prompt_count <= 12, "Choices keep returning without allowing the year to advance"):
 				return false
 			if state.year <= old_year:
-				await _click(age_button)
+				await _click(_navigation_button("age_up") if portrait else age_button)
 		await create_timer(0.2).timeout
 	if not _check(state.year > old_year and state.player.age > old_age, "Age Up did not advance the simulation"):
 		await _capture("age-stalled")
@@ -462,12 +669,17 @@ func _restore() -> void:
 	choices_made = int(expected.get("choices_made", 0))
 	if not _check(await _wait_for(func(): return current_scene.call("_title_card_continue_available"), 60), "Saved life is not available from the title screen"):
 		return
-	for pressed in [true, false]:
-		var key := InputEventKey.new()
-		key.keycode = KEY_C
-		key.pressed = pressed
-		Input.parse_input_event(key)
-		await process_frame
+	if portrait:
+		var overlay := current_scene.get("startup_intro_overlay") as Control
+		if not await _click(overlay.get_node_or_null("MobileAccountActions/Continue")):
+			return
+	else:
+		for pressed in [true, false]:
+			var key := InputEventKey.new()
+			key.keycode = KEY_C
+			key.pressed = pressed
+			Input.parse_input_event(key)
+			await process_frame
 	if not _check(await _wait_for(func(): return current_scene.call("_playable_life_shell_has_visible_sovereignty"), 125), "Continue did not restore gameplay"):
 		return
 	var first_frame_state: GameState = current_scene.get("gs")

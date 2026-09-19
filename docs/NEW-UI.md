@@ -30,6 +30,12 @@ outline. Menu cards illuminate when their action is hovered or keyboard-focused.
 Disabled gameplay actions remain disabled. Glow is static, without pulsing or
 moving hit targets.
 
+Runtime shortcuts share one compact stack layout in `EraShell.gd`, including
+the legacy scene's layout calls. Labels use their final font before sizing, and
+the full rectangle is restored after updates so old icon fonts cannot shift the
+right edge. The old Weapons pulse and Bending border decoration yield to the
+shared theme. Shorter windows reserve space for additional shortcut columns.
+
 ## Implementation
 
 - `project/ui/EraTheme.gd`: palette, bundled typography, and shared control states.
@@ -64,11 +70,22 @@ ERA_EXPLORE=1 bash scripts/test-desktop-modes.sh household /tmp/era-ui-household
 
 `test_ui_presentation.gd` checks late theme replacement, shared-resource isolation,
 disabled action preservation, keyboard activation, selected states, embedded
-window theming, and menu bounds at 480, 768, 1440, and 1920 logical pixels.
+window theming, and menu bounds at 480, 768, 1440, and 1920 logical pixels. It also
+replays legacy shortcut styling over repeated frames and resizes, checking
+stable geometry, hidden/disabled actions, and keyboard activation.
 `ERA_UI_GALLERY=1` adds gameplay captures and layout assertions at 768×1024,
 1280×800, and 1920×1080 to the desktop smoke harness. These change the logical
 viewport for inspection; the window manager can still determine the physical
 screenshot size. The harness also captures the title and God Mode form.
+At each gameplay size it samples rendered shortcut positions through runtime
+refreshes and checks label fit, alignment, overlap, and Bending border removal.
+
+The shortcut stability fix was verified on 2026-09-18 with Godot 4.4.1: import
+and all 17 headless regressions passed (`build/tests/headless-v6b11lpv/`). The
+Household graphical gallery passed at 768×1024, 1280×800, and 1920×1080, then
+completed one year of aging and saving. Weapons and Belongings remained stable
+across sampled rendered frames; the focused presentation regression exercises
+all ten shortcuts, repeated legacy style changes, and two-column layouts.
 
 Graphical creation, aging, and saving have been exercised in Household, God Mode,
 and both Narrative entry routes. School, Career, and Relationships are included in

@@ -43,10 +43,16 @@ export ERA_MODE="$mode"
 export ERA_YEARS="$years"
 echo "Test profile: $profile_dir"
 echo "Log: $profile_dir/$run_label.log"
-echo "Use a graphical desktop; the test requests a 1440×900 window. Existing game saves are not used."
+extra_args=()
+if [[ "${ERA_PORTRAIT:-0}" == 1 ]]; then
+    extra_args=(-- --mobile-preview)
+    echo "Portrait touch smoke: 420×900 window, isolated game saves."
+else
+    echo "Use a graphical desktop; the test requests a 1440×900 window. Existing game saves are not used."
+fi
 timeout -k 5s 900s "$godot_bin" --path "$repo_root/project" \
     --rendering-method gl_compatibility \
-    --script "$repo_root/tests/smoke_desktop_modes.gd" > "$profile_dir/$run_label.log" 2>&1
+    --script "$repo_root/tests/smoke_desktop_modes.gd" "${extra_args[@]}" > "$profile_dir/$run_label.log" 2>&1
 rg 'DESKTOP (MODES|SAVED|RESTORED|YEAR):' "$profile_dir/$run_label.log"
 if ! rg -q "^DESKTOP MODES: $mode PASS$" "$profile_dir/$run_label.log"; then
     echo "The game exited without completing the test; inspect $profile_dir/$run_label.log" >&2

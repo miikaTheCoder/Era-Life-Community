@@ -13,10 +13,15 @@ if [[ -n "${GODOT_BIN:-}" ]]; then
     godot_bin="$GODOT_BIN"
 elif [[ -x "$bundled_editor" ]]; then
     godot_bin="$bundled_editor"
-    export XDG_DATA_HOME="$repo_root/build/tools/data"
-    export XDG_CONFIG_HOME="$repo_root/build/tools/config"
-    export XDG_CACHE_HOME="$repo_root/build/tools/cache"
-    mkdir -p -- "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+    # Keep the shared editor/templates read-only in a fork with a tools symlink.
+    # Editor profiles and export settings belong to this checkout.
+    export XDG_DATA_HOME="$repo_root/build/tool-profile/data"
+    export XDG_CONFIG_HOME="$repo_root/build/tool-profile/config"
+    export XDG_CACHE_HOME="$repo_root/build/tool-profile/cache"
+    mkdir -p -- "$XDG_DATA_HOME/godot" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+    if [[ ! -e "$XDG_DATA_HOME/godot/export_templates" ]]; then
+        ln -s -- "$repo_root/build/tools/data/godot/export_templates" "$XDG_DATA_HOME/godot/export_templates"
+    fi
 else
     godot_bin="godot"
 fi
@@ -86,14 +91,14 @@ if [[ "$target" == android ]]; then
             -validity 10000 -dname "CN=Android Debug,O=Android,C=US")
     fi
     python3 "$repo_root/scripts/configure-android.py" > "$repo_root/build/logs/configure-android.log"
-    run_godot export-android --export-debug Android "$repo_root/build/android/EraLife-android-debug.apk"
+    run_godot export-android --export-debug Android "$repo_root/build/android/EraLife-portrait-android-debug.apk"
     # Godot can return success after an unsigned export. Independently require
     # a valid signature before reporting an installable APK.
-    "$apksigner" verify --verbose "$repo_root/build/android/EraLife-android-debug.apk" > "$repo_root/build/logs/verify-android.log"
+    "$apksigner" verify --verbose "$repo_root/build/android/EraLife-portrait-android-debug.apk" > "$repo_root/build/logs/verify-android.log"
     "$ANDROID_SDK_ROOT/build-tools/34.0.0/aapt" dump badging \
-        "$repo_root/build/android/EraLife-android-debug.apk" > "$repo_root/build/logs/android-manifest.log"
-    (cd -- "$repo_root/build/android" && sha256sum EraLife-android-debug.apk > SHA256SUMS.txt)
-    echo "Signed test APK ready: $repo_root/build/android/EraLife-android-debug.apk"
+        "$repo_root/build/android/EraLife-portrait-android-debug.apk" > "$repo_root/build/logs/android-manifest.log"
+    (cd -- "$repo_root/build/android" && sha256sum EraLife-portrait-android-debug.apk > SHA256SUMS.txt)
+    echo "Signed test APK ready: $repo_root/build/android/EraLife-portrait-android-debug.apk"
     exit 0
 fi
 

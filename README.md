@@ -11,6 +11,24 @@ the entry/save repairs, repeatable checks, and remaining limitations.
 The `era-life-new-ui` branch introduces the dark life-journal interface. See
 [UI design and validation](docs/NEW-UI.md) for layout, implementation, and checks.
 
+## Working on the code
+
+Start with [architecture and ownership](docs/ARCHITECTURE.md), then use the
+[code map](docs/CODE-MAP.md) to find a script. Gameplay lives under
+`project/systems/<feature>/`, shared runtime code under `project/core/`, and
+panels under `project/ui/panels/<feature>/`.
+
+```sh
+python3 scripts/code_map.py crime
+python3 scripts/code_map.py --symbols checkpoint restore
+python3 scripts/check-structure.py
+python3 scripts/test-headless.py
+```
+
+The regression runner uses Godot 4.4.1 and isolated test profiles. See the
+[organization validation notes](docs/ORGANIZATION-VALIDATION.md) for the scope
+and limits of the repository reorganization.
+
 ## Current project status (2026-09-04)
 
 The local `main` branch contains the Crime World foundation and the subsequent

@@ -3,6 +3,8 @@ extends Node
 ## Controls keep their signals, values, visibility authority, and gameplay ownership.
 const Design = preload("res://ui/EraTheme.gd")
 const Shell = preload("res://ui/EraShell.gd")
+const MobileShell = preload("res://ui/EraMobileShell.gd")
+const MobilePanels = preload("res://ui/EraMobilePanels.gd")
 var host: Control
 var design_theme: Theme
 var pending: Dictionary = {}
@@ -18,9 +20,13 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(Design.CANVAS)
 	get_tree().node_added.connect(_observe)
 	_observe_tree(host)
-	shell = Shell.new()
+	shell = MobileShell.new() if MobileSupport.is_enabled() else Shell.new()
 	shell.name = "EraShell"
 	host.add_child.call_deferred(shell)
+	if MobileSupport.is_enabled():
+		var panels := MobilePanels.new()
+		panels.name = "EraMobilePanels"
+		host.add_child.call_deferred(panels)
 
 func _observe_tree(node: Node) -> void:
 	_observe(node)
@@ -56,6 +62,23 @@ func _process(_delta: float) -> void:
 			_style(control)
 	applying = false
 
+func style_tool_button(button: Button, text: String) -> void:
+	var id := button.get_instance_id()
+	var changed: bool = button.get_meta("era_tool_label", "") != text
+	var font_size := 15 if MobileSupport.is_enabled() else 13
+	button.set_meta("era_tool_label", text)
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Flush a legacy theme replacement before the shell assigns its rectangle.
+	# Waiting for the next adapter frame lets the old padding/font enlarge it.
+	if changed or pending.has(id) or button.get_theme_font_size("font_size") != font_size:
+		var was_applying := applying
+		applying = true
+		_style(button)
+		applying = was_applying
+		pending.erase(id)
+	button.text = text
+
 func _style(control: Control) -> void:
 	if control.has_meta("era_owned"):
 		return
@@ -76,6 +99,10 @@ func _style(control: Control) -> void:
 				text_color = Design.AMBER
 		control.add_theme_font_override("font", Design.BOLD if control is BaseButton else Design.BODY)
 		var font_size := clampi(control.get_theme_font_size("font_size"), 13, 28)
+		if control.has_meta("era_tool_label"):
+			font_size = 15 if MobileSupport.is_enabled() else 13
+		if control.get_meta("era_mobile_nav", false):
+			font_size = 12
 		control.add_theme_font_size_override("font_size", font_size)
 		for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 			control.add_theme_color_override(key, text_color)
@@ -89,8 +116,8 @@ func _style(control: Control) -> void:
 		control.add_theme_font_override("normal_font", Design.BODY)
 		control.add_theme_font_override("bold_font", Design.BOLD)
 		control.add_theme_color_override("default_color", Design.TEXT)
-		control.add_theme_font_size_override("normal_font_size", 16)
-		control.add_theme_font_size_override("bold_font_size", 16)
+		control.add_theme_font_size_override("normal_font_size", 15 if MobileSupport.is_enabled() else 16)
+		control.add_theme_font_size_override("bold_font_size", 15 if MobileSupport.is_enabled() else 16)
 		control.add_theme_constant_override("line_separation", 7)
 	if control is Button:
 		_style_button(control)
@@ -121,7 +148,7 @@ func _style(control: Control) -> void:
 		control.scale = Vector2.ONE
 	if control == host.get("startup_intro_title_label"):
 		control.add_theme_font_override("font", Design.DISPLAY)
-		control.add_theme_font_size_override("font_size", 80)
+		control.add_theme_font_size_override("font_size", 42 if MobileSupport.is_enabled() else 80)
 		control.add_theme_color_override("font_color", Design.ACCENT)
 		control.material = null
 	if control is Label and control.name == "ValueLabel":
@@ -144,9 +171,13 @@ func _style_button(button: Button) -> void:
 	var selected := (not key.is_empty() and key == str(host.get("current_panel"))) or bool(button.get_meta("era_selected", false)) or button.button_pressed
 	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 		var old := button.get_theme_stylebox(state)
-		var signature := "%s:%s:%s" % [state, primary, selected]
+		var compact := bool(button.get_meta("era_mobile_nav", false))
+		var signature := "%s:%s:%s:%s" % [state, primary, selected, compact]
 		if old.get_meta("era_button", "") != signature:
 			var style := Design.button(state, primary, selected)
+			if compact:
+				style.content_margin_left = 4
+				style.content_margin_right = 4
 			style.set_meta("era_button", signature)
 			button.add_theme_stylebox_override(state, style)
 	if primary:
@@ -158,7 +189,7 @@ func _style_button(button: Button) -> void:
 		var names := {"×": "Close", "X": "Close", "↑": "Scroll up", "↓": "Scroll down"}
 		button.tooltip_text = names.get(button.text, "")
 	if not key.is_empty():
-		button.add_theme_font_size_override("font_size", 15)
+		button.add_theme_font_size_override("font_size", 12 if button.get_meta("era_mobile_nav", false) else 15)
 		button.scale = Vector2.ONE
 		button.rotation = 0.0
 

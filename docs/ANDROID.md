@@ -1,10 +1,12 @@
-# Android port (experimental)
+# Android portrait fork (experimental)
 
-The `mobile` branch adds an experimental Android sideload build. The default APK now uses **ARMv7 (32-bit ARM)** after the original ARM64 build failed during startup on the test phone. This is a compatibility workaround, not a Google Play release or a claim that every gameplay system works on a phone.
+See [the portrait branch guide](MOBILE-PORTRAIT.md) for the new layout, preview commands, and current validation limits.
+
+This fork builds **EraLife Portrait**, a separate Android app with a portrait interface. Its package is `org.eralife.community.portrait`; installing it leaves the earlier `org.eralife.community.mobile` app and that app's private saves in place. The two apps do not automatically share saves. The landscape mobile validation history below describes the earlier app, not a completed validation of this portrait fork. The default APK now uses **ARMv7 (32-bit ARM)** after the original ARM64 build failed during startup on the test phone. This is a compatibility workaround, not a Google Play release or a claim that every gameplay system works on a phone.
 
 ## Install and play
 
-Copy `build/android/EraLife-android-debug.apk` to your device, open it, and allow installation from that particular file manager/browser if Android requests it. The APK contains the game data; no separate PCK is needed. This build requires support for **armeabi-v7a apps**, Android 5.0/API 21 or newer, and OpenGL ES 3.0. It uses landscape orientation. A 64-bit processor alone is not enough: 64-bit-only Android devices cannot run this APK. These are manifest requirements, not a tested device compatibility range.
+Copy `build/android/EraLife-portrait-android-debug.apk` to your device, open it, and allow installation from that particular file manager/browser if Android requests it. The APK contains the game data; no separate PCK is needed. This build requires support for **armeabi-v7a apps**, Android 5.0/API 21 or newer, and OpenGL ES 3.0. It uses fixed portrait orientation and a 420-pixel logical width; the logical height follows the device aspect ratio. A 64-bit processor alone is not enough: 64-bit-only Android devices cannot run this APK. These are manifest requirements, not a tested device compatibility range.
 
 **Save warning:** versions through `0.1.2-mobile.6` could report a successful save while omitting ordinary character fields. Version 7 corrects the serializer, but cannot recover fields absent from old files. Version 9 has passed a phone cold-restart, Continue, and re-save check for the tested character and 19 lineage actors. This is not full-world save validation: the diary resumed with birth history and the World feed did not preserve the earlier event history. Those history paths still need work.
 
@@ -13,11 +15,11 @@ Android may display an ABI compatibility warning for this 32-bit build. This was
 With an authorized USB debugging connection, you can instead install using:
 
 ```sh
-adb install -r build/android/EraLife-android-debug.apk
-adb shell am start -n org.eralife.community.mobile/com.godot.game.GodotApp
+adb install -r build/android/EraLife-portrait-android-debug.apk
+adb shell am start -n org.eralife.community.portrait/com.godot.game.GodotApp
 ```
 
-The package ID is `org.eralife.community.mobile`, separate from any original release. Install updates over the existing app to preserve its data; do not uninstall first. Local saves live in Android's private app storage, which uninstalling removes. Preserve `build/keys/android-debug.keystore` locally to update this test installation with the same signer; do not commit the key. This is a development key, not a production signing identity.
+The launcher label is **EraLife Portrait**, and its package ID is `org.eralife.community.portrait`. Install portrait updates over the existing portrait app to preserve its data; do not uninstall first. The older mobile app remains a separate installation. Local saves live in Android's private app storage, which uninstalling removes. Preserve `build/keys/android-debug.keystore` locally to update this test installation with the same signer; do not commit the key. This is a development key, not a production signing identity.
 
 **16 KB page-size limitation:** both architectures in Godot 4.4.1's prebuilt templates contain native libraries with 4 KB ELF load-segment alignment. This port does not provide native 16 KB page support. Some Android versions offer a compatibility mode, but successful installation or operation on those devices is not established. Supporting them reliably requires rebuilding or upgrading the engine templates and repeating compatibility tests; APK ZIP alignment alone is insufficient. See [Android's page-size guidance](https://developer.android.com/guide/practices/page-sizes).
 
@@ -38,31 +40,34 @@ ANDROID_SDK_ROOT=/absolute/path/to/android-sdk \
   ./scripts/build.sh android
 ```
 
-The build script can also discover an existing SDK under `build/tools/android-sdk`, `~/Android/Sdk`, `~/Android/LocalSdk`, or `/opt/android-sdk`. It generates a local debug key if needed, exports the APK, independently verifies the signature, and records the manifest and checksum. With the bundled editor, SDK settings are saved under `build/tools/config`. `GODOT_BIN` selects an external editor and uses its normal Linux editor-settings location instead. The `all` target retains its original meaning: Linux and Windows desktop builds.
+The build script can also discover an existing SDK under `build/tools/android-sdk`, `~/Android/Sdk`, `~/Android/LocalSdk`, or `/opt/android-sdk`. It generates a local debug key if needed, exports the APK, independently verifies the signature, and records the manifest and checksum. With the bundled editor, writable profiles and SDK settings are saved under this checkout's `build/tool-profile/`. Export templates are read through a symlink to `build/tools/data/godot/export_templates`, so a shared toolchain does not change the original checkout. `GODOT_BIN` selects an external editor and uses its normal Linux editor-settings location instead. The `all` target retains its original meaning: Linux and Windows desktop builds.
 
 The Android setup follows [Godot 4.4's export documentation](https://docs.godotengine.org/en/4.4/tutorials/export/exporting_for_android.html). Debug signing is intentionally separate from production signing. Publishing would require a release key, an appropriate AAB/export pipeline, and a fresh review of store SDK requirements and native-library compatibility, including 16 KB page sizes.
 
 ## Changes for Android
 
 - OpenGL compatibility renderer on mobile; the desktop renderer is unchanged.
-- A 960×540 reference canvas fitted to the display, with Android sensor-landscape orientation, a 60 FPS cap, and immersive fullscreen. Android can temporarily reveal system bars for gestures or the on-screen keyboard.
+- A 420-pixel-wide logical canvas with proportional height, fixed Android portrait orientation, a 60 FPS cap, and immersive fullscreen. The shell receives safe display bounds in logical coordinates, keeping controls away from display cutouts and system gesture areas. Android can temporarily reveal system bars for gestures or the on-screen keyboard.
 - A lightweight Android loading scene that loads MainScene in the background, shows elapsed time, and leaves game-state initialization with MainScene. The desktop entry scene is unchanged.
-- Touch buttons for account creation, login, Continue, and disconnect, replacing keyboard-only access on the title screen.
+- A two-column touch grid for account creation, login, Continue, and disconnect, replacing keyboard-only access on the title screen.
 - A scrollable single-column mode menu with the currently playable God Mode first. Desktop card-position animations are disabled in this layout because they conflict with vertical container positioning.
 - Larger character-creation inputs and picker items, focus-following scrolling, and a scrollable account form.
 - Touch gestures inside scrollable content distinguish taps from swipes before activating child controls. Swipes can start over fields, buttons, dropdowns, stat rows, or diary text, with flick scrolling; horizontal slider drags and mouse/keyboard input retain their native behavior. Name fields defer opening Android's keyboard until a tap is confirmed. Dynamically created panels are included.
-- A compact gameplay navigation grid, with the diary fitted between the existing stats and action rails instead of overlapping them.
+- A dedicated portrait gameplay shell owns mobile navigation, the journal and progression controls; it replaces the desktop stats/action rails.
 - Steady phone stat/shop/bending glows instead of continuously rebuilding their themes. Stat content refreshes when values, range, context, or theme change, and stat graphics also refresh on resize or hover. Floating HUD theme overrides are batched and unchanged HUD geometry is retained. Read-only incarceration lookups copy only the returned lens rather than four complete tab contracts.
 - Hidden crime-target decorations are created when targeting needs them, with target data retained while browsing. The phone retains eight phase-overflow diagnostic reports instead of 80; every overflow still reaches the existing runtime guard and simulation policy is unchanged.
 - The World action sidebar scrolls on phones, making the Save/Load buttons and their status messages reachable.
 - The resident startup pipeline initializes the existing save/checkpoint services before the Save action can route to them. Existing identity and intent checks remain in place.
 - Character snapshots include ordinary `Person` script variables, not just exported Resource properties. Loading another checkpoint wakes the scheduler even when the active life is idle; the older checkpoint decode path also initializes its engine graph worker. The existing transaction retains the active life until the new one can attach.
-- Android Back dismisses the keyboard, embedded menus, account form, or an active panel through its existing close signal. At the root it asks before quitting.
+- Android Back dismisses the keyboard, embedded menus, account form, portrait shell drawers, or an active panel through its existing close signal. At the root it opens a portrait-sized exit confirmation.
+- The portrait fork disables upstream runtime updates. Install a newly built portrait APK to update this app; upstream stable bundles cannot replace its presentation contracts.
 - The existing mobile performance profile is retained. No simulation rules were rewritten.
 
 Android Back is not a new general-purpose popup system: legacy overlays without close signals still use their on-screen Back/Close controls. No new background autosave was added. Use the game's Save action before leaving the app, subject to the save warning above; version 9 preserves the tested character and family values, but diary/world-history restoration remains incomplete.
 
 ## Validation and remaining checks
+
+The device history in this section belongs to the earlier landscape mobile app. Repeat portrait layout, touch navigation, save/reload and device checks before treating this fork as a validated phone release. The automated mobile tests cover logical density, display-safe-area projection, Back routing, touch gestures and preservation of the existing action callbacks.
 
 The APK signature and manifest are checked by `scripts/build.sh android`. Inspect `build/logs/verify-android.log`, `android-manifest.log`, and `export-android.log`. Only the Internet permission is requested by this preset. `build/android/SHA256SUMS.txt` identifies the built artifact.
 
@@ -87,7 +92,7 @@ The **Android** export preset is the tested ARMv7 configuration. **Android ARM64
 Android development builds keep two rotating private Godot logs. On an authorized debugging connection, retrieve the current one without reading other apps' logs:
 
 ```sh
-adb shell run-as org.eralife.community.mobile cat files/logs/godot.log
+adb shell run-as org.eralife.community.portrait cat files/logs/godot.log
 ```
 
 The life-entry preview also logs an existing missing `luxury_exchange_shiny_audio_stream_cache` metadata error. The entry assertions can pass despite this error; the smoke result is not a claim of error-free gameplay. That audio-cache path and shutdown resource leaks remain unresolved. Secondary panels still need a broader mobile layout audit; some retain desktop sizing or visual overlap.
@@ -114,7 +119,7 @@ Use the same command with `tests/test_mobile_scroll.gd` for gesture regression c
 
 The same isolated headless invocation can run `tests/test_checkpoint_actor.gd`, `tests/test_checkpoint_schedule.gd`, `tests/test_checkpoint_progress.gd`, and `tests/test_checkpoint_market.gd` for character snapshot round trips, restore scheduling, progress under busy UI projection, and realm lookups during partial restore. They do not replace phone save/reload testing.
 
-For manual desktop layout/input testing, launch the pinned editor binary with `--path project --rendering-method gl_compatibility --resolution 960x540 -- --mobile-preview`. This activates the mobile adaptations and performance profile, but it is not an Android emulator.
+For manual desktop layout/input testing, launch the pinned editor binary with `--path project --rendering-method gl_compatibility --resolution 420x840 -- --mobile-preview`. This activates the mobile adaptations and performance profile, but it is not an Android emulator.
 
 The graphical smoke test records screenshots in an existing output directory and uses isolated save data. Screenshot capture requires a desktop display. Omit `--smoke-prewarm` for the shorter account/menu/character-form check. With that option, it additionally taps the world-generation button and attempts to enter the resulting life. Add `--smoke-loader` to exercise the Android loading scene and its handoff too:
 
@@ -123,10 +128,10 @@ mkdir -p build/mobile-preview build/smoke-data/mobile-ui
 ERA_PREVIEW_DIR="$PWD/build/mobile-preview" \
 XDG_DATA_HOME="$PWD/build/smoke-data/mobile-ui" \
   timeout 180s ./build/tools/godot-4.4.1/Godot_v4.4.1-stable_linux.x86_64 \
-  --path project --rendering-method gl_compatibility --resolution 960x540 \
+  --path project --rendering-method gl_compatibility --resolution 420x840 \
   --script "$PWD/tests/smoke_mobile_ui.gd" -- --mobile-preview --smoke-prewarm
 ```
 
 Require `MOBILE UI SMOKE: PASS` in the output; an early game exit alone is not a passing test. Neither smoke test covers aging, save/reload, online authentication, or a complete playthrough.
 
-Before treating the port as playable on a particular phone, test installation, launch time and memory use, touch scrolling, the on-screen keyboard, display cutouts/system bars, account/guest paths, world creation, aging, pending-situation choices, saving/reloading, and background/resume. Test both landscape rotations and check Back while a popup or keyboard is open. Existing resource-leak warnings on shutdown and the reconstruction's known gameplay issues are not resolved by this port.
+Before treating the port as playable on a particular phone, test installation, launch time and memory use, touch scrolling, the on-screen keyboard, display cutouts/system bars, account/guest paths, world creation, aging, pending-situation choices, saving/reloading, and background/resume. Verify the portrait orientation lock and check Back while a popup or keyboard is open. Existing resource-leak warnings on shutdown and the reconstruction's known gameplay issues are not resolved by this port.
