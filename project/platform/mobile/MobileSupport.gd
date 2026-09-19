@@ -109,6 +109,9 @@ static func handle_back(scene: Control) -> void:
 	for window in scene.get_viewport().get_embedded_subwindows():
 		if window.visible:
 			window.hide()
+			# Informational tooltips must not consume the panel Back action.
+			if window.unfocusable:
+				continue
 			return
 	var account := scene.get("title_card_account_popup") as Control
 	if is_instance_valid(account) and account.is_visible_in_tree():

@@ -150807,6 +150807,7 @@ func _show_startup_intro_final_card() -> void:
 
 	_start_startup_intro_title_pulse()
 	startup_intro_accepting_input = true
+	StartupTiming.mark("title_ready")
 	_enable_startup_intro_replay_button()
 	_start_startup_intro_prompt_pulse()
 
@@ -155433,6 +155434,7 @@ func _ensure_choose_adventure_preboot_engines_after_surface_assertion() -> void:
 	_ensure_choose_adventure_preboot_engines()
 
 func _show_choose_adventure_entry_panel() -> void:
+	StartupTiming.mark("creation_menu_requested")
 	var returning_to_main_menu_without_live_player: bool = (
 		_global_runtime_kill_current_runtime_domain() == "main_menu"
 		and (
@@ -155848,6 +155850,8 @@ func _set_choose_ereality_entry_button_hot_state(is_hot: bool, reason: String = 
 	button.mouse_filter = Control.MOUSE_FILTER_STOP if is_hot else Control.MOUSE_FILTER_IGNORE
 	button.focus_mode = Control.FOCUS_ALL if is_hot else Control.FOCUS_NONE
 	button.text = "Open God mode" if is_hot else "Preparing God mode..."
+	if is_hot:
+		StartupTiming.mark("creation_menu_ready")
 	button.tooltip_text = "" if is_hot else "God Mode is being staged behind the door. The button unlocks when it can open instantly."
 
 	set_meta("choose_ereality_entry_button_hot", is_hot)
@@ -178424,6 +178428,7 @@ func _enter_tree() -> void:
 		true
 	)
 func _ready():
+	StartupTiming.mark("main_ready_begin")
 	if get_node_or_null("EraInterface") == null:
 		var interface := preload("res://ui/EraInterface.gd").new()
 		interface.name = "EraInterface"
@@ -178433,7 +178438,9 @@ func _ready():
 
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
+	var state_started_ms := Time.get_ticks_msec()
 	gs = GameState.new()
+	StartupTiming.mark("game_state_created", {"create_ms": Time.get_ticks_msec() - state_started_ms})
 	_ensure_era_audio_engine()
 
 	gs.custom_mode = true
@@ -178557,6 +178564,7 @@ func _ready():
 
 	_startup_intro_begin_from_ready()
 	_capture_reality_residency_host()
+	StartupTiming.mark("main_ready_complete")
 
 	call_deferred(
 		"_finish_mainscene_ready_after_first_cinematic_paint"
@@ -178705,11 +178713,16 @@ func _service_startup_renderer_chassis_step(
 			"startup_intro_title_card_visible_surface",
 			false
 		)
-	):
+	) and not (MobileSupport.is_enabled() and str(get_meta("mobile_boot_entry", "")) == "new_life"):
 		_schedule_startup_renderer_chassis_step(
 			reason,
 			cursor
 		)
+		return
+
+	if MobileSupport.is_enabled() and cursor >= 11:
+		set_meta("mobile_optional_panel_prewarm_deferred", true)
+		_try_load_reality_capsule_from_browser_url()
 		return
 
 	set_meta(
@@ -181940,6 +181953,18 @@ func _startup_intro_begin_from_ready() -> void:
 
 
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# The independent mobile menu already owns the first choice. Only create
+	# the cinematic when requested; retain its existing desktop/replay route.
+	var mobile_entry := str(get_meta("mobile_boot_entry", ""))
+	if MobileSupport.is_enabled() and mobile_entry == "new_life":
+		call_deferred("_exit_startup_intro_to_god_mode")
+		return
+	if MobileSupport.is_enabled() and mobile_entry == "title":
+		_ensure_startup_intro_overlay()
+		startup_intro_overlay.visible = true
+		call_deferred("_show_startup_intro_final_card")
+		return
 
 	_prewarm_startup_intro_shell_for_replay()
 

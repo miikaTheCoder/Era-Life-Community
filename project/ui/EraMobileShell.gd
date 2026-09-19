@@ -186,6 +186,7 @@ func _process(_delta: float) -> void:
 		_build()
 	layout_mobile()
 	_update_summary(gs)
+	StartupTiming.mark("life_shell_visible")
 
 func layout_mobile() -> void:
 	if not is_instance_valid(header):

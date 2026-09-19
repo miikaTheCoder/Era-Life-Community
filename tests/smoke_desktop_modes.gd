@@ -328,19 +328,33 @@ func _run() -> void:
 	root.unresizable = true
 	root.min_size = dimensions
 	root.max_size = dimensions
-	change_scene_to_file("res://scenes/main.scn")
-	await create_timer(3).timeout
-	current_scene.call("_skip_startup_intro_to_title_card")
-	await create_timer(2).timeout
-	await _capture("title")
-	if mode == "restore":
-		await _restore()
-		await _capture("restored")
-		print("DESKTOP MODES: restore ", "FAIL" if failed else "PASS")
-		quit(1 if failed else 0)
-		return
-	await _click_at(root.get_visible_rect().get_center())
-	await create_timer(2).timeout
+	if portrait and mode != "restore":
+		change_scene_to_file("res://scenes/mobile_boot.tscn")
+		if not _check(await _wait_for(func(): return current_scene != null and current_scene.has_method("_choose_entry")), "Mobile entry menu did not appear"):
+			quit(1)
+			return
+		await _capture("early-menu")
+		var boot := current_scene
+		var boot_id := boot.get_instance_id()
+		await _click(boot.find_child("Boot_new_life", true, false))
+		if not _check(await _wait_for(func(): return current_scene != null and current_scene.get_instance_id() != boot_id and is_instance_valid(current_scene.get("choose_adventure_entry_overlay")), 120), "Mobile New life did not reach mode selection"):
+			quit(1)
+			return
+		await create_timer(2).timeout
+	else:
+		change_scene_to_file("res://scenes/main.scn")
+		await create_timer(3).timeout
+		current_scene.call("_skip_startup_intro_to_title_card")
+		await create_timer(2).timeout
+		await _capture("title")
+		if mode == "restore":
+			await _restore()
+			await _capture("restored")
+			print("DESKTOP MODES: restore ", "FAIL" if failed else "PASS")
+			quit(1 if failed else 0)
+			return
+		await _click_at(root.get_visible_rect().get_center())
+		await create_timer(2).timeout
 	await _capture("menu")
 	var role := "household_alive" if mode == "household" else "narrative_alive"
 	var button: Button = current_scene.call("_choose_ereality_entry_button") if mode == "god" else _entry_button(role)

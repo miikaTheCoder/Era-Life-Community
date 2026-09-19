@@ -74,6 +74,12 @@ arguments are literal stems, not wildcard patterns.
 on Android. Network and updater autoload names remain unchanged; their scripts
 live under `integrations/`.
 
+The mobile bootstrap owns the independent early menu and background scene request,
+then hands choices to existing MainScene routes. It must not preload GameState or
+gameplay classes. GameState owns lazy domain construction and residency ordering;
+`core/diagnostics/StartupTiming.gd` records readiness milestones without importing
+domain code. See [startup measurements](STARTUP-PERFORMANCE.md).
+
 The main scene coordinates the UI and a `GameState`. The state creates and owns
 the domain engines. `SimulationDirector` schedules runtime phases and
 `AgeUpRuntimeEngine` services year advancement. Engines publish contracts that

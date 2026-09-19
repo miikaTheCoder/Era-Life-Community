@@ -1679,9 +1679,12 @@ func prepare_resident_runtime_for_checkpoint_hydration(
 		] = "checkpoint_hydration_ready"
 
 	return report
+## Paths keep the ordered plan cheap to describe. Resolve scripts only in the
+## runner, and preserve registered class names even when file names differ.
 func _resident_engine_step(
 	property_name: StringName,
-	engine_class: GDScript
+	engine_class: Variant,
+	engine_class_name: StringName = &""
 ) -> Dictionary:
 	return {
 		"step_id": (
@@ -1697,14 +1700,15 @@ func _resident_engine_step(
 		),
 		"engine_property": property_name,
 		"engine_class_name": (
-			engine_class.get_global_name()
+			(engine_class_name
+			if engine_class is String else engine_class.get_global_name())
 			if engine_class != null
 			else StringName()
 		),
 	}
 func _resident_execute_engine_step(
 	property_name: StringName,
-	engine_class: GDScript
+	engine_class: Variant
 ) -> Dictionary:
 	var resident_instance: Variant = get(
 		property_name
@@ -1728,6 +1732,11 @@ func _resident_execute_engine_step(
 			"mode": "engine_already_resident",
 			"engine_property": property_name,
 		}
+
+	# Resolve only when this ordered residency step actually executes.
+	# Keep accepting GDScript callers alongside path-based built-in steps.
+	if engine_class is String:
+		engine_class = load(engine_class) as GDScript
 
 	if engine_class == null:
 		return {
@@ -1957,7 +1966,7 @@ func _resident_runtime_engine_steps() -> Array:
 	return [
 		_resident_engine_step(
 			"game_state_contract_engine",
-			GameStateContractEngine
+			"res://core/state/GameStateContractEngine.gd", &"GameStateContractEngine"
 		),
 		_resident_action_step(
 			"bind_contract_meta_governor",
@@ -1968,7 +1977,7 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"event_bus",
-			EventBus
+			"res://core/events/EventBus.gd", &"EventBus"
 		),
 		_resident_action_step(
 			"bind_event_bus_contract_layer",
@@ -1979,67 +1988,67 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"world_space_engine",
-			WorldSpaceEngine
+			"res://systems/world/WorldSpaceEngine.gd", &"WorldSpaceEngine"
 		),
 		_resident_engine_step(
 			"spatial_culling_engine",
-			SpatialCullingEngine
+			"res://systems/world/SpatialCullingEngine.gd", &"SpatialCullingEngine"
 		),
 		_resident_engine_step(
 			"emergent_story_engine",
-			EmergentNPCStoryEngine
+			"res://systems/narrative/EmergentNPCStoryEngine.gd", &"EmergentNPCStoryEngine"
 		),
 		_resident_engine_step(
 			"economy_engine",
-			EconomyEngine
+			"res://systems/economy/EconomyEngine.gd", &"EconomyEngine"
 		),
 		_resident_engine_step(
 			"bank_engine",
-			BankEngine
+			"res://systems/economy/BankEngine.gd", &"BankEngine"
 		),
 		_resident_engine_step(
 			"historical_timeline_engine",
-			HistoricalTimelineEngine
+			"res://systems/world/HistoricalTimelineEngine.gd", &"HistoricalTimelineEngine"
 		),
 		_resident_engine_step(
 			"global_market_engine",
-			GlobalMarketEngine
+			"res://systems/economy/GlobalMarketEngine.gd", &"GlobalMarketEngine"
 		),
 		_resident_engine_step(
 			"ecs_engine",
-			ECSEngine
+			"res://core/simulation/ECSEngine.gd", &"ECSEngine"
 		),
 		_resident_engine_step(
 			"chunk_simulation_engine",
-			ChunkSimulationEngine
+			"res://core/simulation/ChunkSimulationEngine.gd", &"ChunkSimulationEngine"
 		),
 		_resident_engine_step(
 			"population_shard_engine",
-			PopulationShardEngine
+			"res://systems/world/PopulationShardEngine.gd", &"PopulationShardEngine"
 		),
 		_resident_engine_step(
 			"population_lifecycle_manager",
-			PopulationLifecycleManager
+			"res://systems/world/PopulationLifecycleManager.gd", &"PopulationLifecycleManager"
 		),
 		_resident_engine_step(
 			"geo_engine",
-			GeoEngine
+			"res://systems/world/GeoEngine.gd", &"GeoEngine"
 		),
 		_resident_engine_step(
 			"settlement_presence_engine",
-			SettlementPresenceEngine
+			"res://systems/world/SettlementPresenceEngine.gd", &"SettlementPresenceEngine"
 		),
 		_resident_engine_step(
 			"migration_engine",
-			MigrationEngine
+			"res://systems/world/MigrationEngine.gd", &"MigrationEngine"
 		),
 		_resident_engine_step(
 			"place_influence_engine",
-			PlaceInfluenceEngine
+			"res://systems/world/PlaceInfluenceEngine.gd", &"PlaceInfluenceEngine"
 		),
 		_resident_engine_step(
 			"seed_engine",
-			SeedEngine
+			"res://core/simulation/SeedEngine.gd", &"SeedEngine"
 		),
 		_resident_action_step(
 			"initialize_seed_authority",
@@ -2050,261 +2059,261 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"soul_seed_engine",
-			SoulSeedEngine
+			"res://systems/characters/SoulSeedEngine.gd", &"SoulSeedEngine"
 		),
 		_resident_engine_step(
 			"consciousness_engine",
-			ConsciousnessEngine
+			"res://systems/characters/ConsciousnessEngine.gd", &"ConsciousnessEngine"
 		),
 		_resident_engine_step(
 			"willpower_engine",
-			WillpowerEngine
+			"res://systems/characters/WillpowerEngine.gd", &"WillpowerEngine"
 		),
 		_resident_engine_step(
 			"social_graph_engine",
-			SocialGraphEngine
+			"res://systems/relationships/SocialGraphEngine.gd", &"SocialGraphEngine"
 		),
 		_resident_engine_step(
 			"workplace_engine",
-			WorkplaceEngine
+			"res://systems/careers/WorkplaceEngine.gd", &"WorkplaceEngine"
 		),
 		_resident_engine_step(
 			"player_action_engine",
-			PlayerActionEngine
+			"res://core/events/PlayerActionEngine.gd", &"PlayerActionEngine"
 		),
 		_resident_engine_step(
 			"npc_memory_web_engine",
-			NPCMemoryWebEngine
+			"res://systems/relationships/NPCMemoryWebEngine.gd", &"NPCMemoryWebEngine"
 		),
 		_resident_engine_step(
 			"agent_memory_propagation_engine",
-			AgentMemoryPropagationEngine
+			"res://systems/relationships/AgentMemoryPropagationEngine.gd", &"AgentMemoryPropagationEngine"
 		),
 		_resident_engine_step(
 			"dynamic_world_event_engine",
-			DynamicWorldEventEngine
+			"res://systems/narrative/DynamicWorldEventEngine.gd", &"DynamicWorldEventEngine"
 		),
 		_resident_engine_step(
 			"action_discovery_engine",
-			ActionDiscoveryEngine
+			"res://core/events/ActionDiscoveryEngine.gd", &"ActionDiscoveryEngine"
 		),
 		_resident_engine_step(
 			"names_db",
-			NamesDB
+			"res://data/NamesDB.gd", &"NamesDB"
 		),
 		_resident_engine_step(
 			"npc_factory",
-			NPCFactory
+			"res://data/NPCFactory.gd", &"NPCFactory"
 		),
 		_resident_engine_step(
 			"character_creator",
-			CharacterCreator
+			"res://systems/characters/CharacterCreator.gd", &"CharacterCreator"
 		),
 		_resident_engine_step(
 			"legacy_memory_engine",
-			LegacyMemoryEngine
+			"res://systems/relationships/LegacyMemoryEngine.gd", &"LegacyMemoryEngine"
 		),
 		_resident_engine_step(
 			"legacy_echo_engine",
-			LegacyEchoEngine
+			"res://systems/relationships/LegacyEchoEngine.gd", &"LegacyEchoEngine"
 		),
 		_resident_engine_step(
 			"afterlife_influence_engine",
-			AfterlifeInfluenceEngine
+			"res://systems/supernatural/AfterlifeInfluenceEngine.gd", &"AfterlifeInfluenceEngine"
 		),
 		_resident_engine_step(
 			"scenario_resolver",
-			ScenarioResolver
+			"res://systems/narrative/ScenarioResolver.gd", &"ScenarioResolver"
 		),
 		_resident_engine_step(
 			"scenario_engine",
-			ScenarioEngine
+			"res://systems/narrative/ScenarioEngine.gd", &"ScenarioEngine"
 		),
 		_resident_engine_step(
 			"scenario_popup_contract_engine",
-			ScenarioPopupContractEngine
+			"res://systems/narrative/ScenarioPopupContractEngine.gd", &"ScenarioPopupContractEngine"
 		),
 		_resident_engine_step(
 			"scenario_runtime_contract_engine",
-			ScenarioRuntimeContractEngine
+			"res://systems/narrative/ScenarioRuntimeContractEngine.gd", &"ScenarioRuntimeContractEngine"
 		),
 		_resident_engine_step(
 			"pending_situations_engine",
-			PendingSituationsEngine
+			"res://systems/narrative/PendingSituationsEngine.gd", &"PendingSituationsEngine"
 		),
 		_resident_engine_step(
 			"contract_view_layer_contract_engine",
-			ContractViewLayerContractEngine
+			"res://core/contracts/ContractViewLayerContractEngine.gd", &"ContractViewLayerContractEngine"
 		),
 		_resident_engine_step(
 			"traits_contract_engine",
-			TraitsContractEngine
+			"res://systems/characters/TraitsContractEngine.gd", &"TraitsContractEngine"
 		),
 		_resident_engine_step(
 			"identity_contract_engine",
-			IdentityContractEngine
+			"res://systems/characters/IdentityContractEngine.gd", &"IdentityContractEngine"
 		),
 		# Save Game routes to these already-resident services. The creator's
 		# chassis path previously omitted them, so every save failed to route.
 		_resident_engine_step(
 			"life_account_transfer_contract_engine",
-			LifeAccountTransferContractEngine
+			"res://integrations/network/LifeAccountTransferContractEngine.gd", &"LifeAccountTransferContractEngine"
 		),
 		_resident_engine_step(
 			"session_contract_engine",
-			SessionContractEngine
+			"res://integrations/network/SessionContractEngine.gd", &"SessionContractEngine"
 		),
 		_resident_engine_step(
 			"reality_checkpoint_contract_engine",
-			RealityCheckpointContractEngine
+			"res://core/persistence/RealityCheckpointContractEngine.gd", &"RealityCheckpointContractEngine"
 		),
 		_resident_engine_step(
 			"game_state_serialization_runtime",
-			GameStateSerializationRuntime
+			"res://core/persistence/GameStateSerializationRuntime.gd", &"GameStateSerializationRuntime"
 		),
 		_resident_engine_step(
 			"red_bonnet_engine",
-			RedBonnetEngine
+			"res://systems/supernatural/RedBonnetEngine.gd", &"RedBonnetEngine"
 		),
 		_resident_engine_step(
 			"world_engine",
-			WorldEngine
+			"res://systems/world/WorldEngine.gd", &"WorldEngine"
 		),
 		_resident_engine_step(
 			"event_engine",
-			EventEngine
+			"res://core/events/EventEngine.gd", &"EventEngine"
 		),
 		_resident_engine_step(
 			"personality_engine",
-			PersonalityEngine
+			"res://systems/characters/PersonalityEngine.gd", &"PersonalityEngine"
 		),
 		_resident_engine_step(
 			"relationship_engine",
-			RelationshipEngine
+			"res://systems/relationships/RelationshipEngine.gd", &"RelationshipEngine"
 		),
 		_resident_engine_step(
 			"memory_engine",
-			MemoryEngine
+			"res://systems/relationships/MemoryEngine.gd", &"MemoryEngine"
 		),
 		_resident_engine_step(
 			"health_engine",
-			HealthEngine
+			"res://systems/characters/HealthEngine.gd", &"HealthEngine"
 		),
 		_resident_engine_step(
 			"genetics_inheritance_engine",
-			GeneticsInheritanceEngine
+			"res://systems/characters/GeneticsInheritanceEngine.gd", &"GeneticsInheritanceEngine"
 		),
 		_resident_engine_step(
 			"body_type_contract_engine",
-			BodyTypeContractEngine
+			"res://systems/characters/BodyTypeContractEngine.gd", &"BodyTypeContractEngine"
 		),
 		_resident_engine_step(
 			"growth_curve_engine",
-			GrowthCurveEngine
+			"res://systems/characters/GrowthCurveEngine.gd", &"GrowthCurveEngine"
 		),
 		_resident_engine_step(
 			"height_contract_engine",
-			HeightContractEngine
+			"res://systems/characters/HeightContractEngine.gd", &"HeightContractEngine"
 		),
 		_resident_engine_step(
 			"weight_contract_engine",
-			WeightContractEngine
+			"res://systems/characters/WeightContractEngine.gd", &"WeightContractEngine"
 		),
 		_resident_engine_step(
 			"human_contract_engine",
-			HumanContractEngine
+			"res://systems/characters/HumanContractEngine.gd", &"HumanContractEngine"
 		),
 		_resident_engine_step(
 			"animal_contract_engine",
-			AnimalContractEngine
+			"res://systems/pets/AnimalContractEngine.gd", &"AnimalContractEngine"
 		),
 		_resident_engine_step(
 			"mythical_contract_engine",
-			MythicalContractEngine
+			"res://systems/supernatural/MythicalContractEngine.gd", &"MythicalContractEngine"
 		),
 		_resident_engine_step(
 			"relationship_graph_contract_engine",
-			RelationshipGraphContractEngine
+			"res://systems/relationships/RelationshipGraphContractEngine.gd", &"RelationshipGraphContractEngine"
 		),
 		_resident_engine_step(
 			"human_relationship_contract_engine",
-			HumanRelationshipContractEngine
+			"res://systems/relationships/HumanRelationshipContractEngine.gd", &"HumanRelationshipContractEngine"
 		),
 		_resident_engine_step(
 			"pets_contract_engine",
-			PetsContractEngine
+			"res://systems/pets/PetsContractEngine.gd", &"PetsContractEngine"
 		),
 		_resident_engine_step(
 			"mythical_pets_contract_engine",
-			MythicalPetsContractEngine
+			"res://systems/pets/MythicalPetsContractEngine.gd", &"MythicalPetsContractEngine"
 		),
 		_resident_engine_step(
 			"pet_shop_contract_engine",
-			PetShopContractEngine
+			"res://systems/pets/PetShopContractEngine.gd", &"PetShopContractEngine"
 		),
 		_resident_engine_step(
 			"breeding_contract_engine",
-			BreedingContractEngine
+			"res://systems/relationships/BreedingContractEngine.gd", &"BreedingContractEngine"
 		),
 		_resident_engine_step(
 			"debt_contract_engine",
-			DebtContractEngine
+			"res://systems/economy/DebtContractEngine.gd", &"DebtContractEngine"
 		),
 		_resident_engine_step(
 			"meat_market_contract_engine",
-			MeatMarketContractEngine
+			"res://systems/economy/MeatMarketContractEngine.gd", &"MeatMarketContractEngine"
 		),
 		_resident_engine_step(
 			"career_runtime_engine",
-			CareerRuntimeEngine
+			"res://systems/careers/CareerRuntimeEngine.gd", &"CareerRuntimeEngine"
 		),
 		_resident_engine_step(
 			"career_contract_engine",
-			CareerContractEngine
+			"res://systems/careers/CareerContractEngine.gd", &"CareerContractEngine"
 		),
 		_resident_engine_step(
 			"career_space_contract_engine",
-			CareerSpaceContractEngine
+			"res://systems/careers/CareerSpaceContractEngine.gd", &"CareerSpaceContractEngine"
 		),
 		_resident_engine_step(
 			"career_hub_contract_engine",
-			CareerHubContractEngine
+			"res://systems/careers/CareerHubContractEngine.gd", &"CareerHubContractEngine"
 		),
 		_resident_engine_step(
 			"career_engine",
-			CareerEngine
+			"res://systems/careers/CareerEngine.gd", &"CareerEngine"
 		),
 		_resident_engine_step(
 			"activities_contract_engine",
-			ActivitiesContractEngine
+			"res://systems/activities/ActivitiesContractEngine.gd", &"ActivitiesContractEngine"
 		),
 		_resident_engine_step(
 			"activities_hub_contract_engine",
-			ActivitiesHubContractEngine
+			"res://systems/activities/ActivitiesHubContractEngine.gd", &"ActivitiesHubContractEngine"
 		),
 		_resident_engine_step(
 			"mod_contract_engine",
-			ModContractEngine
+			"res://mods/ModContractEngine.gd", &"ModContractEngine"
 		),
 		_resident_engine_step(
 			"caveman_reality_runtime_engine",
-			CavemanRealityRuntimeEngine
+			"res://systems/realities/CavemanRealityRuntimeEngine.gd", &"CavemanRealityRuntimeEngine"
 		),
 		_resident_engine_step(
 			"mod_bundle_contract_engine",
-			ModBundleContractEngine
+			"res://mods/ModBundleContractEngine.gd", &"ModBundleContractEngine"
 		),
 		_resident_engine_step(
 			"mod_marketplace_contract_engine",
-			ModMarketplaceContractEngine
+			"res://mods/ModMarketplaceContractEngine.gd", &"ModMarketplaceContractEngine"
 		),
 		_resident_engine_step(
 			"mod_hub_contract_engine",
-			ModHubContractEngine
+			"res://mods/ModHubContractEngine.gd", &"ModHubContractEngine"
 		),
 		_resident_engine_step(
 			"mod_menu_contract_engine",
-			ModMenuContractEngine
+			"res://mods/ModMenuContractEngine.gd", &"ModMenuContractEngine"
 		),
 		_resident_action_step(
 			"bootstrap_mod_bundle_contracts",
@@ -2315,107 +2324,107 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"school_engine",
-			SchoolEngine
+			"res://systems/education/SchoolEngine.gd", &"SchoolEngine"
 		),
 		_resident_engine_step(
 			"school_hub_contract_engine",
-			SchoolHubContractEngine
+			"res://systems/education/SchoolHubContractEngine.gd", &"SchoolHubContractEngine"
 		),
 		_resident_engine_step(
 			"family_contract_engine",
-			FamilyContractEngine
+			"res://systems/relationships/FamilyContractEngine.gd", &"FamilyContractEngine"
 		),
 		_resident_engine_step(
 			"family_control_engine",
-			FamilyControlEngine
+			"res://systems/relationships/FamilyControlEngine.gd", &"FamilyControlEngine"
 		),
 		_resident_engine_step(
 			"global_intent_contract_engine",
-			GlobalIntentContractEngine
+			"res://core/events/GlobalIntentContractEngine.gd", &"GlobalIntentContractEngine"
 		),
 		_resident_engine_step(
 			"universal_switch_contract_engine",
-			UniversalSwitchContractEngine
+			"res://systems/realities/UniversalSwitchContractEngine.gd", &"UniversalSwitchContractEngine"
 		),
 		_resident_engine_step(
 			"relationships_hub_contract_engine",
-			RelationshipsHubContractEngine
+			"res://systems/relationships/RelationshipsHubContractEngine.gd", &"RelationshipsHubContractEngine"
 		),
 		_resident_engine_step(
 			"crr_contract_engine",
-			CRRContractEngine
+			"res://systems/realities/CRRContractEngine.gd", &"CRRContractEngine"
 		),
 		_resident_engine_step(
 			"opportunity_engine",
-			OpportunityEngine
+			"res://systems/narrative/OpportunityEngine.gd", &"OpportunityEngine"
 		),
 		_resident_engine_step(
 			"fate_engine",
-			FateEngine
+			"res://systems/characters/FateEngine.gd", &"FateEngine"
 		),
 		_resident_engine_step(
 			"life_engine",
-			LifeEngine
+			"res://systems/characters/LifeEngine.gd", &"LifeEngine"
 		),
 		_resident_engine_step(
 			"life_diary_contract_engine",
-			LifeDiaryContractEngine
+			"res://systems/narrative/LifeDiaryContractEngine.gd", &"LifeDiaryContractEngine"
 		),
 		_resident_engine_step(
 			"narrative_engine",
-			NarrativeEngine
+			"res://systems/narrative/NarrativeEngine.gd", &"NarrativeEngine"
 		),
 		_resident_engine_step(
 			"llm_bridge",
-			LLMNarrativeBridge
+			"res://integrations/ai/LLMNarrativeBridge.gd", &"LLMNarrativeBridge"
 		),
 		_resident_engine_step(
 			"bending_engine",
-			BendingEngine
+			"res://systems/supernatural/bending/BendingEngine.gd", &"BendingEngine"
 		),
 		_resident_engine_step(
 			"bending_tournament_engine",
-			BendingTournamentEngine
+			"res://systems/supernatural/bending/BendingTournamentEngine.gd", &"BendingTournamentEngine"
 		),
 		_resident_engine_step(
 			"avatar_influence_engine",
-			AvatarInfluenceEngine
+			"res://systems/supernatural/AvatarInfluenceEngine.gd", &"AvatarInfluenceEngine"
 		),
 		_resident_engine_step(
 			"bending_dojo_engine",
-			BendingDojoEngine
+			"res://systems/supernatural/bending/BendingDojoEngine.gd", &"BendingDojoEngine"
 		),
 		_resident_engine_step(
 			"wizard_engine",
-			WizardEngine
+			"res://systems/supernatural/WizardEngine.gd", &"WizardEngine"
 		),
 		_resident_engine_step(
 			"power_engine",
-			PowerEngine
+			"res://systems/supernatural/PowerEngine.gd", &"PowerEngine"
 		),
 		_resident_engine_step(
 			"superhero_engine",
-			SuperHeroEngine
+			"res://systems/supernatural/SuperHeroEngine.gd", &"SuperHeroEngine"
 		),
 		_resident_engine_step(
 			"infamy_engine",
-			InfamyEngine
+			"res://systems/crime/InfamyEngine.gd", &"InfamyEngine"
 		),
 		_resident_engine_step(
 			"dynasty_engine",
-			DynastyEngine
+			"res://systems/relationships/DynastyEngine.gd", &"DynastyEngine"
 		),
 		_resident_engine_step(
 			"era_engine",
-			EraEngine
+			"res://systems/world/EraEngine.gd", &"EraEngine"
 		),
 		_resident_engine_step(
 			"era_mod_contract_engine",
-			EraModContractEngine
+			"res://mods/EraModContractEngine.gd", &"EraModContractEngine"
 		),
 		_resident_engine_step(
 			"era_contract_engine",
-			EraContractEngine
+			"res://systems/world/EraContractEngine.gd", &"EraContractEngine"
 		),
 		_resident_action_step(
 			"bootstrap_era_contracts",
@@ -2426,143 +2435,143 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"world_feed_engine",
-			WorldFeedEngine
+			"res://systems/narrative/WorldFeedEngine.gd", &"WorldFeedEngine"
 		),
 		_resident_engine_step(
 			"world_chronicle_engine",
-			WorldChronicleEngine
+			"res://systems/narrative/WorldChronicleEngine.gd", &"WorldChronicleEngine"
 		),
 		_resident_engine_step(
 			"reputation_engine",
-			ReputationEngine
+			"res://systems/reputation/ReputationEngine.gd", &"ReputationEngine"
 		),
 		_resident_engine_step(
 			"artifacts_engine",
-			ArtifactsEngine
+			"res://systems/items/ArtifactsEngine.gd", &"ArtifactsEngine"
 		),
 		_resident_engine_step(
 			"artifacts_catalog_contract_engine",
-			ArtifactsCatalogContractEngine
+			"res://systems/items/ArtifactsCatalogContractEngine.gd", &"ArtifactsCatalogContractEngine"
 		),
 		_resident_engine_step(
 			"artifact_interaction_contract_engine",
-			ArtifactInteractionContractEngine
+			"res://systems/items/ArtifactInteractionContractEngine.gd", &"ArtifactInteractionContractEngine"
 		),
 		_resident_engine_step(
 			"artifact_shop_contract_engine",
-			ArtifactShopContractEngine
+			"res://systems/items/ArtifactShopContractEngine.gd", &"ArtifactShopContractEngine"
 		),
 		_resident_engine_step(
 			"realm_contract_engine",
-			RealmContractEngine
+			"res://systems/world/RealmContractEngine.gd", &"RealmContractEngine"
 		),
 		_resident_engine_step(
 			"simulation_contract_engine",
-			SimulationContractEngine
+			"res://core/simulation/SimulationContractEngine.gd", &"SimulationContractEngine"
 		),
 		_resident_engine_step(
 			"runtime_contract_engine",
-			RuntimeContractEngine
+			"res://core/contracts/RuntimeContractEngine.gd", &"RuntimeContractEngine"
 		),
 		_resident_engine_step(
 			"romance_contract_engine",
-			RomanceContractEngine
+			"res://systems/relationships/RomanceContractEngine.gd", &"RomanceContractEngine"
 		),
 		_resident_engine_step(
 			"ui_contract_engine",
-			UIContractEngine
+			"res://ui/common/UIContractEngine.gd", &"UIContractEngine"
 		),
 		_resident_engine_step(
 			"embedded_ui_contract_engine",
-			EmbeddedUIContractEngine
+			"res://ui/common/EmbeddedUIContractEngine.gd", &"EmbeddedUIContractEngine"
 		),
 		_resident_engine_step(
 			"birth_contract_engine",
-			BirthContractEngine
+			"res://systems/characters/BirthContractEngine.gd", &"BirthContractEngine"
 		),
 		_resident_engine_step(
 			"many_realms_engine",
-			ManyRealmsEngine
+			"res://systems/realities/ManyRealmsEngine.gd", &"ManyRealmsEngine"
 		),
 		_resident_engine_step(
 			"bridge_to_terabithia_engine",
-			BridgeToTerabithiaEngine
+			"res://systems/supernatural/BridgeToTerabithiaEngine.gd", &"BridgeToTerabithiaEngine"
 		),
 		_resident_engine_step(
 			"vormir_engine",
-			VormirEngine
+			"res://systems/supernatural/VormirEngine.gd", &"VormirEngine"
 		),
 		_resident_engine_step(
 			"nidavellir_engine",
-			NidavellirEngine
+			"res://systems/supernatural/NidavellirEngine.gd", &"NidavellirEngine"
 		),
 		_resident_engine_step(
 			"dragonballs_engine",
-			DragonBallsEngine
+			"res://systems/supernatural/DragonBallsEngine.gd", &"DragonBallsEngine"
 		),
 		_resident_engine_step(
 			"dynasty_legacy_engine",
-			DynastyLegacyEngine
+			"res://systems/relationships/DynastyLegacyEngine.gd", &"DynastyLegacyEngine"
 		),
 		_resident_engine_step(
 			"weapons_engine",
-			WeaponsEngine
+			"res://systems/items/WeaponsEngine.gd", &"WeaponsEngine"
 		),
 		_resident_engine_step(
 			"weapons_catalog_expansion",
-			WeaponsCatalogExpansion
+			"res://systems/items/WeaponsCatalogExpansion.gd", &"WeaponsCatalogExpansion"
 		),
 		_resident_engine_step(
 			"crime_contract_engine",
-			CrimeContractEngine
+			"res://systems/crime/CrimeContractEngine.gd", &"CrimeContractEngine"
 		),
 		_resident_engine_step(
 			"investigation_layer",
-			InvestigationLayer
+			"res://systems/crime/InvestigationLayer.gd", &"InvestigationLayer"
 		),
 		_resident_engine_step(
 			"justice_system_engine",
-			JusticeSystemEngine
+			"res://systems/crime/JusticeSystemEngine.gd", &"JusticeSystemEngine"
 		),
 		_resident_engine_step(
 			"jail_engine",
-			JailEngine
+			"res://systems/crime/JailEngine.gd", &"JailEngine"
 		),
 		_resident_engine_step(
 			"prison_engine",
-			PrisonEngine
+			"res://systems/crime/PrisonEngine.gd", &"PrisonEngine"
 		),
 		_resident_engine_step(
 			"case_orchestrator",
-			CaseOrchestrator
+			"res://systems/crime/CaseOrchestrator.gd", &"CaseOrchestrator"
 		),
 		_resident_engine_step(
 			"crime_engine",
-			CrimeEngine
+			"res://systems/crime/CrimeEngine.gd", &"CrimeEngine"
 		),
 		_resident_engine_step(
 			"crime_hub_contract_engine",
-			CrimeHubContractEngine
+			"res://systems/crime/CrimeHubContractEngine.gd", &"CrimeHubContractEngine"
 		),
 		_resident_engine_step(
 			"relationship_activities_engine",
-			RelationshipActivitiesEngine
+			"res://systems/relationships/RelationshipActivitiesEngine.gd", &"RelationshipActivitiesEngine"
 		),
 		_resident_engine_step(
 			"realm_engine",
-			RealmEngine
+			"res://systems/world/RealmEngine.gd", &"RealmEngine"
 		),
 		_resident_engine_step(
 			"class_engine",
-			ClassEngine
+			"res://systems/characters/ClassEngine.gd", &"ClassEngine"
 		),
 		_resident_engine_step(
 			"fame_engine",
-			FameEngine
+			"res://systems/reputation/FameEngine.gd", &"FameEngine"
 		),
 		_resident_engine_step(
 			"upce_engine",
-			UniversalPerceptionConsequenceEngine
+			"res://systems/realities/UniversalPerceptionConsequenceEngine.gd", &"UniversalPerceptionConsequenceEngine"
 		),
 		_resident_action_step(
 			"bootstrap_upce_contracts",
@@ -2573,23 +2582,23 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"royalty_engine",
-			RoyaltyEngine
+			"res://systems/politics/RoyaltyEngine.gd", &"RoyaltyEngine"
 		),
 		_resident_engine_step(
 			"royalty_runtime_engine",
-			RoyaltyRuntimeEngine
+			"res://systems/politics/RoyaltyRuntimeEngine.gd", &"RoyaltyRuntimeEngine"
 		),
 		_resident_engine_step(
 			"royalty_mod_contract_engine",
-			RoyaltyModContractEngine
+			"res://systems/politics/RoyaltyModContractEngine.gd", &"RoyaltyModContractEngine"
 		),
 		_resident_engine_step(
 			"royalty_contract_engine",
-			RoyaltyContractEngine
+			"res://systems/politics/RoyaltyContractEngine.gd", &"RoyaltyContractEngine"
 		),
 		_resident_engine_step(
 			"crown_hub_contract_engine",
-			CrownHubContractEngine
+			"res://systems/politics/CrownHubContractEngine.gd", &"CrownHubContractEngine"
 		),
 		_resident_action_step(
 			"bootstrap_royalty_contracts",
@@ -2600,75 +2609,75 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"politics_engine",
-			PoliticsEngine
+			"res://systems/politics/PoliticsEngine.gd", &"PoliticsEngine"
 		),
 		_resident_engine_step(
 			"property_engine",
-			PropertyEngine
+			"res://systems/property/PropertyEngine.gd", &"PropertyEngine"
 		),
 		_resident_engine_step(
 			"era_life_asset_catalog_expansion",
-			EraLifeAssetCatalogExpansion
+			"res://systems/items/EraLifeAssetCatalogExpansion.gd", &"EraLifeAssetCatalogExpansion"
 		),
 		_resident_engine_step(
 			"assets_contract_engine",
-			AssetsContractEngine
+			"res://systems/property/AssetsContractEngine.gd", &"AssetsContractEngine"
 		),
 		_resident_engine_step(
 			"property_amenity_synthesis_contract_engine",
-			PropertyAmenitySynthesisContractEngine
+			"res://systems/property/PropertyAmenitySynthesisContractEngine.gd", &"PropertyAmenitySynthesisContractEngine"
 		),
 		_resident_engine_step(
 			"room_graph_contract_engine",
-			RoomGraphContractEngine
+			"res://systems/property/RoomGraphContractEngine.gd", &"RoomGraphContractEngine"
 		),
 		_resident_engine_step(
 			"presence_engine",
-			PresenceEngine
+			"res://systems/world/PresenceEngine.gd", &"PresenceEngine"
 		),
 		_resident_engine_step(
 			"property_makeover_contract_engine",
-			PropertyMakeoverContractEngine
+			"res://systems/property/PropertyMakeoverContractEngine.gd", &"PropertyMakeoverContractEngine"
 		),
 		_resident_engine_step(
 			"vehicle_engine",
-			VehicleEngine
+			"res://systems/property/VehicleEngine.gd", &"VehicleEngine"
 		),
 		_resident_engine_step(
 			"card_contract_engine",
-			CardContractEngine
+			"res://ui/common/CardContractEngine.gd", &"CardContractEngine"
 		),
 		_resident_engine_step(
 			"property_market_contract_engine",
-			PropertyMarketContractEngine
+			"res://systems/property/PropertyMarketContractEngine.gd", &"PropertyMarketContractEngine"
 		),
 		_resident_engine_step(
 			"spatial_traversal_contract_engine",
-			SpatialTraversalContractEngine
+			"res://systems/world/SpatialTraversalContractEngine.gd", &"SpatialTraversalContractEngine"
 		),
 		_resident_engine_step(
 			"dealership_contract_engine",
-			DealershipContractEngine
+			"res://systems/property/DealershipContractEngine.gd", &"DealershipContractEngine"
 		),
 		_resident_engine_step(
 			"shared_public_space_engine",
-			SharedPublicSpaceEngine
+			"res://systems/world/SharedPublicSpaceEngine.gd", &"SharedPublicSpaceEngine"
 		),
 		_resident_engine_step(
 			"food_engine",
-			FoodEngine
+			"res://systems/activities/FoodEngine.gd", &"FoodEngine"
 		),
 		_resident_engine_step(
 			"food_restaurant_engine",
-			FoodRestaurantEngine
+			"res://systems/activities/FoodRestaurantEngine.gd", &"FoodRestaurantEngine"
 		),
 		_resident_engine_step(
 			"grocery_store_engine",
-			GroceryStoreEngine
+			"res://systems/activities/GroceryStoreEngine.gd", &"GroceryStoreEngine"
 		),
 		_resident_engine_step(
 			"movie_theater_engine",
-			MovieTheaterEngine
+			"res://systems/activities/MovieTheaterEngine.gd", &"MovieTheaterEngine"
 		),
 		_resident_action_step(
 			"bootstrap_movie_theater_contracts",
@@ -2679,55 +2688,55 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"luxury_shop_engine",
-			LuxuryShopEngine
+			"res://systems/economy/LuxuryShopEngine.gd", &"LuxuryShopEngine"
 		),
 		_resident_engine_step(
 			"heirloom_runtime_engine",
-			HeirloomRuntimeEngine
+			"res://systems/items/HeirloomRuntimeEngine.gd", &"HeirloomRuntimeEngine"
 		),
 		_resident_engine_step(
 			"heirloom_contract_engine",
-			HeirloomContractEngine
+			"res://systems/items/HeirloomContractEngine.gd", &"HeirloomContractEngine"
 		),
 		_resident_engine_step(
 			"heirloom_engine",
-			HeirloomEngine
+			"res://systems/items/HeirloomEngine.gd", &"HeirloomEngine"
 		),
 		_resident_engine_step(
 			"heirloom_catalog_contract_engine",
-			HeirloomCatalogContractEngine
+			"res://systems/items/HeirloomCatalogContractEngine.gd", &"HeirloomCatalogContractEngine"
 		),
 		_resident_engine_step(
 			"heirloom_hub_contract_engine",
-			HeirloomHubContractEngine
+			"res://systems/items/HeirloomHubContractEngine.gd", &"HeirloomHubContractEngine"
 		),
 		_resident_engine_step(
 			"island_realm_engine",
-			IslandRealmExpansionEngine
+			"res://systems/supernatural/IslandRealmExpansionEngine.gd", &"IslandRealmExpansionEngine"
 		),
 		_resident_engine_step(
 			"population_movement_contract_engine",
-			PopulationMovementContractEngine
+			"res://systems/world/PopulationMovementContractEngine.gd", &"PopulationMovementContractEngine"
 		),
 		_resident_engine_step(
 			"global_prewarm_contract_engine",
-			GlobalPrewarmContractEngine
+			"res://core/simulation/GlobalPrewarmContractEngine.gd", &"GlobalPrewarmContractEngine"
 		),
 		_resident_engine_step(
 			"global_node_contract_engine",
-			GlobalNodeContractEngine
+			"res://core/contracts/GlobalNodeContractEngine.gd", &"GlobalNodeContractEngine"
 		),
 		_resident_engine_step(
 			"truth_resolution_contract_engine",
-			TruthResolutionContractEngine
+			"res://core/contracts/TruthResolutionContractEngine.gd", &"TruthResolutionContractEngine"
 		),
 		_resident_engine_step(
 			"observable_node_contract_engine",
-			ObservableNodeContractEngine
+			"res://core/contracts/ObservableNodeContractEngine.gd", &"ObservableNodeContractEngine"
 		),
 		_resident_engine_step(
 			"world_observability_contract_engine",
-			WorldObservabilityContractEngine
+			"res://systems/world/WorldObservabilityContractEngine.gd", &"WorldObservabilityContractEngine"
 		),
 
 
@@ -2735,19 +2744,19 @@ func _resident_runtime_engine_steps() -> Array:
 
 		_resident_engine_step(
 			"population_movement_contract_engine",
-			PopulationMovementContractEngine
+			"res://systems/world/PopulationMovementContractEngine.gd", &"PopulationMovementContractEngine"
 		),
 		_resident_engine_step(
 			"crown_population_view_contract",
-			CrownPopulationViewContract
+			"res://systems/politics/CrownPopulationViewContract.gd", &"CrownPopulationViewContract"
 		),
 		_resident_engine_step(
 			"population_card_contract_engine",
-			PopulationCardContractEngine
+			"res://systems/world/PopulationCardContractEngine.gd", &"PopulationCardContractEngine"
 		),
 		_resident_engine_step(
 			"belongings_engine",
-			BelongingsEngine
+			"res://systems/items/BelongingsEngine.gd", &"BelongingsEngine"
 		),
 		_resident_action_step(
 			"bootstrap_heirloom_contracts",
@@ -2758,11 +2767,11 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"global_object_catalog_system",
-			GlobalObjectCatalogSystem
+			"res://systems/items/GlobalObjectCatalogSystem.gd", &"GlobalObjectCatalogSystem"
 		),
 		_resident_engine_step(
 			"object_hub_contract_engine",
-			ObjectHubContractEngine
+			"res://systems/items/ObjectHubContractEngine.gd", &"ObjectHubContractEngine"
 		),
 		_resident_action_step(
 			"bootstrap_global_object_catalog",
@@ -2780,115 +2789,115 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"desire_engine",
-			DesireEngine
+			"res://systems/characters/DesireEngine.gd", &"DesireEngine"
 		),
 		_resident_engine_step(
 			"capability_graph_engine",
-			CapabilityGraphEngine
+			"res://core/contracts/CapabilityGraphEngine.gd", &"CapabilityGraphEngine"
 		),
 		_resident_engine_step(
 			"goal_planning_engine",
-			GoalPlanningEngine
+			"res://systems/narrative/GoalPlanningEngine.gd", &"GoalPlanningEngine"
 		),
 		_resident_engine_step(
 			"simulation_director",
-			SimulationDirector
+			"res://core/simulation/SimulationDirector.gd", &"SimulationDirector"
 		),
 		_resident_engine_step(
 			"year_budget_engine",
-			YearBudgetEngine
+			"res://core/simulation/YearBudgetEngine.gd", &"YearBudgetEngine"
 		),
 		_resident_engine_step(
 			"desire_behavior_bridge",
-			DesireBehaviorBridge
+			"res://systems/characters/DesireBehaviorBridge.gd", &"DesireBehaviorBridge"
 		),
 		_resident_engine_step(
 			"ai_event_engine",
-			AIEventGenerator
+			"res://systems/narrative/AIEventGenerator.gd", &"AIEventGenerator"
 		),
 		_resident_engine_step(
 			"era_data_loader",
-			EraDataLoader
+			"res://data/EraDataLoader.gd", &"EraDataLoader"
 		),
 		_resident_engine_step(
 			"weapon_pack_loader",
-			WeaponPackLoader
+			"res://systems/items/WeaponPackLoader.gd", &"WeaponPackLoader"
 		),
 		_resident_engine_step(
 			"mod_loader",
-			ModLoader
+			"res://mods/ModLoader.gd", &"ModLoader"
 		),
 		_resident_engine_step(
 			"boxing_contract_engine",
-			BoxingContractEngine
+			"res://systems/boxing/BoxingContractEngine.gd", &"BoxingContractEngine"
 		),
 		_resident_engine_step(
 			"boxing_fighter_engine",
-			BoxingFighterEngine
+			"res://systems/boxing/BoxingFighterEngine.gd", &"BoxingFighterEngine"
 		),
 		_resident_engine_step(
 			"boxing_training_engine",
-			BoxingTrainingEngine
+			"res://systems/boxing/BoxingTrainingEngine.gd", &"BoxingTrainingEngine"
 		),
 		_resident_engine_step(
 			"boxing_matchmaking_engine",
-			BoxingMatchmakingEngine
+			"res://systems/boxing/BoxingMatchmakingEngine.gd", &"BoxingMatchmakingEngine"
 		),
 		_resident_engine_step(
 			"boxing_fight_sim_engine",
-			BoxingFightSimEngine
+			"res://systems/boxing/BoxingFightSimEngine.gd", &"BoxingFightSimEngine"
 		),
 		_resident_engine_step(
 			"boxing_ranking_engine",
-			BoxingRankingEngine
+			"res://systems/boxing/BoxingRankingEngine.gd", &"BoxingRankingEngine"
 		),
 		_resident_engine_step(
 			"boxing_title_engine",
-			BoxingTitleEngine
+			"res://systems/boxing/BoxingTitleEngine.gd", &"BoxingTitleEngine"
 		),
 		_resident_engine_step(
 			"boxing_injury_engine",
-			BoxingInjuryEngine
+			"res://systems/boxing/BoxingInjuryEngine.gd", &"BoxingInjuryEngine"
 		),
 		_resident_engine_step(
 			"boxing_engine",
-			BoxingEngine
+			"res://systems/boxing/BoxingEngine.gd", &"BoxingEngine"
 		),
 		_resident_engine_step(
 			"boxing_round_log_engine",
-			BoxingRoundLogEngine
+			"res://systems/boxing/BoxingRoundEngine.gd", &"BoxingRoundLogEngine"
 		),
 		_resident_engine_step(
 			"boxing_rivalry_engine",
-			BoxingRivalryEngine
+			"res://systems/boxing/BoxingRivalryEngine.gd", &"BoxingRivalryEngine"
 		),
 		_resident_engine_step(
 			"boxing_promotion_engine",
-			BoxingPromotionEngine
+			"res://systems/boxing/BoxingPromotionEngine.gd", &"BoxingPromotionEngine"
 		),
 		_resident_engine_step(
 			"boxing_weight_engine",
-			BoxingWeightEngine
+			"res://systems/boxing/BoxingWeightEngine.gd", &"BoxingWeightEngine"
 		),
 		_resident_engine_step(
 			"boxing_mandatory_engine",
-			BoxingMandatoryEngine
+			"res://systems/boxing/BoxingMandatoryEngine.gd", &"BoxingMandatoryEngine"
 		),
 		_resident_engine_step(
 			"boxing_amateur_engine",
-			BoxingAmateurEngine
+			"res://systems/boxing/BoxingAmateurEngine.gd", &"BoxingAmateurEngine"
 		),
 		_resident_engine_step(
 			"boxing_media_engine",
-			BoxingMediaEngine
+			"res://systems/boxing/BoxingMediaEngine.gd", &"BoxingMediaEngine"
 		),
 		_resident_engine_step(
 			"boxing_gym_engine",
-			BoxingGymEngine
+			"res://systems/boxing/BoxingGymEngine.gd", &"BoxingGymEngine"
 		),
 		_resident_engine_step(
 			"boxing_legacy_engine",
-			BoxingLegacyEngine
+			"res://systems/boxing/BoxingLegacyEngine.gd", &"BoxingLegacyEngine"
 		),
 		_resident_action_step(
 			"bootstrap_boxing_contract",
@@ -2899,7 +2908,7 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"competitive_reality_runtime",
-			CompetitiveRealityRuntime
+			"res://systems/realities/CompetitiveRealityRuntime.gd", &"CompetitiveRealityRuntime"
 		),
 		_resident_action_step(
 			"bootstrap_competitive_reality_contracts",
@@ -2910,7 +2919,7 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"reality_surge_engine",
-			RealitySurgeEngine
+			"res://systems/realities/RealitySurgeEngine.gd", &"RealitySurgeEngine"
 		),
 		_resident_action_step(
 			"bootstrap_reality_surge_contracts",
@@ -2921,7 +2930,7 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"reality_orchestrator",
-			RealityOrchestrator
+			"res://systems/realities/RealityOrchestrator.gd", &"RealityOrchestrator"
 		),
 		_resident_action_step(
 			"bootstrap_reality_orchestrator_contracts",
@@ -2932,67 +2941,67 @@ func _resident_runtime_engine_steps() -> Array:
 		),
 		_resident_engine_step(
 			"vampire_origin_engine",
-			VampireOriginEngine
+			"res://systems/supernatural/vampires/VampireOriginEngine.gd", &"VampireOriginEngine"
 		),
 		_resident_engine_step(
 			"vampire_hunger_engine",
-			VampireHungerEngine
+			"res://systems/supernatural/vampires/VampireHungerEngine.gd", &"VampireHungerEngine"
 		),
 		_resident_engine_step(
 			"vampire_ability_engine",
-			VampireAbilityEngine
+			"res://systems/supernatural/vampires/VampireAbilityEngine.gd", &"VampireAbilityEngine"
 		),
 		_resident_engine_step(
 			"vampire_society_engine",
-			VampireSocietyEngine
+			"res://systems/supernatural/vampires/VampireSocietyEngine.gd", &"VampireSocietyEngine"
 		),
 		_resident_engine_step(
 			"vampire_hunter_engine",
-			VampireHunterEngine
+			"res://systems/supernatural/vampires/VampireHunterEngine.gd", &"VampireHunterEngine"
 		),
 		_resident_engine_step(
 			"vampire_legacy_engine",
-			VampireLegacyEngine
+			"res://systems/supernatural/vampires/VampireLegacyEngine.gd", &"VampireLegacyEngine"
 		),
 		_resident_engine_step(
 			"vampire_masquerade_engine",
-			VampireMasqueradeEngine
+			"res://systems/supernatural/vampires/VampireMasqueradeEngine.gd", &"VampireMasqueradeEngine"
 		),
 		_resident_engine_step(
 			"vampire_cure_engine",
-			VampireCureEngine
+			"res://systems/supernatural/vampires/VampireCureEngine.gd", &"VampireCureEngine"
 		),
 		_resident_engine_step(
 			"vampire_engine",
-			VampireEngine
+			"res://systems/supernatural/vampires/VampireEngine.gd", &"VampireEngine"
 		),
 		_resident_engine_step(
 			"universal_faction_engine",
-			UniversalFactionEngine
+			"res://systems/politics/UniversalFactionEngine.gd", &"UniversalFactionEngine"
 		),
 		_resident_engine_step(
 			"runtime_health_registry",
-			RuntimeHealthRegistry
+			"res://core/diagnostics/RuntimeHealthRegistry.gd", &"RuntimeHealthRegistry"
 		),
 		_resident_engine_step(
 			"runtime_fault_router",
-			RuntimeFaultRouter
+			"res://core/diagnostics/RuntimeFaultRouter.gd", &"RuntimeFaultRouter"
 		),
 		_resident_engine_step(
 			"patch_suggestion_engine",
-			PatchSuggestionEngine
+			"res://integrations/updates/PatchSuggestionEngine.gd", &"PatchSuggestionEngine"
 		),
 		_resident_engine_step(
 			"live_patch_guard",
-			LivePatchGuard
+			"res://core/diagnostics/LivePatchGuard.gd", &"LivePatchGuard"
 		),
 		_resident_engine_step(
 			"auto_patch_engine",
-			AutoPatchEngine
+			"res://integrations/updates/AutoPatchEngine.gd", &"AutoPatchEngine"
 		),
 		_resident_engine_step(
 			"live_diagnostics_engine",
-			LiveDiagnosticsEngine
+			"res://core/diagnostics/LiveDiagnosticsEngine.gd", &"LiveDiagnosticsEngine"
 		),
 		_resident_action_step(
 			"seal_resident_chassis",
@@ -6083,7 +6092,7 @@ func initialize():
 		return
 
 	if game_state_contract_engine == null:
-		game_state_contract_engine = GameStateContractEngine.new(self)
+		game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(self)
 
 	var game_state_boot_report: Dictionary = game_state_contract_engine.bootstrap_kernel_contract({
 		"phase": "pre_engine_boot",
@@ -6104,7 +6113,7 @@ func initialize():
 	var defer_static_world_bootstrap: bool = bool(scenario_state.get("defer_static_world_bootstrap", true))
 	var defer_live_runtime_watchers: bool = bool(scenario_state.get("defer_live_runtime_watchers", true))
 
-	event_bus = EventBus.new(self)
+	event_bus = load("res://core/events/EventBus.gd").new(self)
 	event_bus_contract_layer = event_bus.contract_layer
 
 	if game_state_contract_engine != null:
@@ -6117,155 +6126,155 @@ func initialize():
 		})
 		scenario_state ["contract_meta_governor_report"] = meta_boot_report.duplicate(true)
 
-	world_space_engine = WorldSpaceEngine.new(self)
-	spatial_culling_engine = SpatialCullingEngine.new(self)
-	emergent_story_engine = EmergentNPCStoryEngine.new(self)
-	economy_engine = EconomyEngine.new(self)
-	bank_engine = BankEngine.new(self)
-	historical_timeline_engine = HistoricalTimelineEngine.new(self)
-	global_market_engine = GlobalMarketEngine.new(self)
-	ecs_engine = ECSEngine.new(self)
-	chunk_simulation_engine = ChunkSimulationEngine.new(self)
-	population_shard_engine = PopulationShardEngine.new(self)
+	world_space_engine = load("res://systems/world/WorldSpaceEngine.gd").new(self)
+	spatial_culling_engine = load("res://systems/world/SpatialCullingEngine.gd").new(self)
+	emergent_story_engine = load("res://systems/narrative/EmergentNPCStoryEngine.gd").new(self)
+	economy_engine = load("res://systems/economy/EconomyEngine.gd").new(self)
+	bank_engine = load("res://systems/economy/BankEngine.gd").new(self)
+	historical_timeline_engine = load("res://systems/world/HistoricalTimelineEngine.gd").new(self)
+	global_market_engine = load("res://systems/economy/GlobalMarketEngine.gd").new(self)
+	ecs_engine = load("res://core/simulation/ECSEngine.gd").new(self)
+	chunk_simulation_engine = load("res://core/simulation/ChunkSimulationEngine.gd").new(self)
+	population_shard_engine = load("res://systems/world/PopulationShardEngine.gd").new(self)
 
 	if event_bus != null and event_bus.contract_layer != null and event_bus.contract_layer.has_method("register_contract"):
 		event_bus.contract_layer.register_contract(population_shard_engine.get_event_bus_contract())
 
-	population_lifecycle_manager = PopulationLifecycleManager.new(self)
+	population_lifecycle_manager = load("res://systems/world/PopulationLifecycleManager.gd").new(self)
 
-	geo_engine = GeoEngine.new(self)
-	settlement_presence_engine = SettlementPresenceEngine.new(self)
-	migration_engine = MigrationEngine.new(self)
-	place_influence_engine = PlaceInfluenceEngine.new(self)
-	seed_engine = SeedEngine.new(self)
+	geo_engine = load("res://systems/world/GeoEngine.gd").new(self)
+	settlement_presence_engine = load("res://systems/world/SettlementPresenceEngine.gd").new(self)
+	migration_engine = load("res://systems/world/MigrationEngine.gd").new(self)
+	place_influence_engine = load("res://systems/world/PlaceInfluenceEngine.gd").new(self)
+	seed_engine = load("res://core/simulation/SeedEngine.gd").new(self)
 	seed_engine.initialize()
-	soul_seed_engine = SoulSeedEngine.new(self)
-	consciousness_engine = ConsciousnessEngine.new(self)
-	willpower_engine = WillpowerEngine.new(self)
-	social_graph_engine = SocialGraphEngine.new(self)
-	workplace_engine = WorkplaceEngine.new(self)
-	player_action_engine = PlayerActionEngine.new(self)
-	npc_memory_web_engine = NPCMemoryWebEngine.new(self)
-	agent_memory_propagation_engine = AgentMemoryPropagationEngine.new(self)
-	dynamic_world_event_engine = DynamicWorldEventEngine.new(self)
-	action_discovery_engine = ActionDiscoveryEngine.new(self)
-	names_db = NamesDB.new(self)
-	npc_factory = NPCFactory.new(self)
-	character_creator = CharacterCreator.new(self)
-	legacy_memory_engine = LegacyMemoryEngine.new(self)
-	legacy_echo_engine = LegacyEchoEngine.new(self)
-	afterlife_influence_engine = AfterlifeInfluenceEngine.new(self)
+	soul_seed_engine = load("res://systems/characters/SoulSeedEngine.gd").new(self)
+	consciousness_engine = load("res://systems/characters/ConsciousnessEngine.gd").new(self)
+	willpower_engine = load("res://systems/characters/WillpowerEngine.gd").new(self)
+	social_graph_engine = load("res://systems/relationships/SocialGraphEngine.gd").new(self)
+	workplace_engine = load("res://systems/careers/WorkplaceEngine.gd").new(self)
+	player_action_engine = load("res://core/events/PlayerActionEngine.gd").new(self)
+	npc_memory_web_engine = load("res://systems/relationships/NPCMemoryWebEngine.gd").new(self)
+	agent_memory_propagation_engine = load("res://systems/relationships/AgentMemoryPropagationEngine.gd").new(self)
+	dynamic_world_event_engine = load("res://systems/narrative/DynamicWorldEventEngine.gd").new(self)
+	action_discovery_engine = load("res://core/events/ActionDiscoveryEngine.gd").new(self)
+	names_db = load("res://data/NamesDB.gd").new(self)
+	npc_factory = load("res://data/NPCFactory.gd").new(self)
+	character_creator = load("res://systems/characters/CharacterCreator.gd").new(self)
+	legacy_memory_engine = load("res://systems/relationships/LegacyMemoryEngine.gd").new(self)
+	legacy_echo_engine = load("res://systems/relationships/LegacyEchoEngine.gd").new(self)
+	afterlife_influence_engine = load("res://systems/supernatural/AfterlifeInfluenceEngine.gd").new(self)
 
-	scenario_resolver = ScenarioResolver.new(self)
-	scenario_engine = ScenarioEngine.new(self)
-	scenario_popup_contract_engine = ScenarioPopupContractEngine.new(self)
-	scenario_runtime_contract_engine = ScenarioRuntimeContractEngine.new(self)
-	pending_situations_engine = PendingSituationsEngine.new(self)
-	contract_view_layer_contract_engine = ContractViewLayerContractEngine.new(self)
-	traits_contract_engine = TraitsContractEngine.new(self)
-	identity_contract_engine = IdentityContractEngine.new(self)
-	event_engine = EventEngine.new(self)
-	relationship_engine = RelationshipEngine.new(self)
-	memory_engine = MemoryEngine.new(self)
-	health_engine = HealthEngine.new(self)
-	genetics_inheritance_engine = GeneticsInheritanceEngine.new(self)
-	body_type_contract_engine = BodyTypeContractEngine.new(self)
-	growth_curve_engine = GrowthCurveEngine.new(self)
-	height_contract_engine = HeightContractEngine.new(self)
-	weight_contract_engine = WeightContractEngine.new(self)
-
-
-
-	career_runtime_engine = CareerRuntimeEngine.new(self)
+	scenario_resolver = load("res://systems/narrative/ScenarioResolver.gd").new(self)
+	scenario_engine = load("res://systems/narrative/ScenarioEngine.gd").new(self)
+	scenario_popup_contract_engine = load("res://systems/narrative/ScenarioPopupContractEngine.gd").new(self)
+	scenario_runtime_contract_engine = load("res://systems/narrative/ScenarioRuntimeContractEngine.gd").new(self)
+	pending_situations_engine = load("res://systems/narrative/PendingSituationsEngine.gd").new(self)
+	contract_view_layer_contract_engine = load("res://core/contracts/ContractViewLayerContractEngine.gd").new(self)
+	traits_contract_engine = load("res://systems/characters/TraitsContractEngine.gd").new(self)
+	identity_contract_engine = load("res://systems/characters/IdentityContractEngine.gd").new(self)
+	event_engine = load("res://core/events/EventEngine.gd").new(self)
+	relationship_engine = load("res://systems/relationships/RelationshipEngine.gd").new(self)
+	memory_engine = load("res://systems/relationships/MemoryEngine.gd").new(self)
+	health_engine = load("res://systems/characters/HealthEngine.gd").new(self)
+	genetics_inheritance_engine = load("res://systems/characters/GeneticsInheritanceEngine.gd").new(self)
+	body_type_contract_engine = load("res://systems/characters/BodyTypeContractEngine.gd").new(self)
+	growth_curve_engine = load("res://systems/characters/GrowthCurveEngine.gd").new(self)
+	height_contract_engine = load("res://systems/characters/HeightContractEngine.gd").new(self)
+	weight_contract_engine = load("res://systems/characters/WeightContractEngine.gd").new(self)
 
 
 
-	career_contract_engine = CareerContractEngine.new(self)
+	career_runtime_engine = load("res://systems/careers/CareerRuntimeEngine.gd").new(self)
 
 
 
-	career_space_contract_engine = CareerSpaceContractEngine.new(self)
+	career_contract_engine = load("res://systems/careers/CareerContractEngine.gd").new(self)
 
 
 
-	career_hub_contract_engine = CareerHubContractEngine.new(self)
+	career_space_contract_engine = load("res://systems/careers/CareerSpaceContractEngine.gd").new(self)
 
 
 
-	activities_contract_engine = ActivitiesContractEngine.new(self)
+	career_hub_contract_engine = load("res://systems/careers/CareerHubContractEngine.gd").new(self)
 
 
-	activities_hub_contract_engine = ActivitiesHubContractEngine.new(self)
+
+	activities_contract_engine = load("res://systems/activities/ActivitiesContractEngine.gd").new(self)
 
 
-	career_engine = CareerEngine.new(self)
+	activities_hub_contract_engine = load("res://systems/activities/ActivitiesHubContractEngine.gd").new(self)
 
-	school_engine = SchoolEngine.new(
+
+	career_engine = load("res://systems/careers/CareerEngine.gd").new(self)
+
+	school_engine = load("res://systems/education/SchoolEngine.gd").new(
 		self
 	)
-	school_hub_contract_engine = SchoolHubContractEngine.new(
+	school_hub_contract_engine = load("res://systems/education/SchoolHubContractEngine.gd").new(
 		self
 	)
 
-	family_contract_engine = FamilyContractEngine.new(
+	family_contract_engine = load("res://systems/relationships/FamilyContractEngine.gd").new(
 		self
 	)
 	checks_and_balances_contract_engine = (
-		ChecksAndBalancesContractEngine.new(
+		load("res://core/contracts/ChecksAndBalancesContractEngine.gd").new(
 			self
 		)
 	)
-	family_control_engine = FamilyControlEngine.new(
+	family_control_engine = load("res://systems/relationships/FamilyControlEngine.gd").new(
 		self
 	)
 	universal_switch_contract_engine = (
-		UniversalSwitchContractEngine.new(
+		load("res://systems/realities/UniversalSwitchContractEngine.gd").new(
 			self
 		)
 	)
 	relationships_hub_contract_engine = (
-		RelationshipsHubContractEngine.new(
+		load("res://systems/relationships/RelationshipsHubContractEngine.gd").new(
 			self,
 			universal_switch_contract_engine
 		)
 	)
-	crr_contract_engine = CRRContractEngine.new(
+	crr_contract_engine = load("res://systems/realities/CRRContractEngine.gd").new(
 		self
 	)
 	global_intent_contract_engine = (
-		GlobalIntentContractEngine.new(
+		load("res://core/events/GlobalIntentContractEngine.gd").new(
 			self
 		)
 	)
 
 
 
-	mod_contract_engine = ModContractEngine.new(self)
+	mod_contract_engine = load("res://mods/ModContractEngine.gd").new(self)
 
 
 
 	caveman_reality_runtime_engine = (
-		CavemanRealityRuntimeEngine.new(self)
+		load("res://systems/realities/CavemanRealityRuntimeEngine.gd").new(self)
 	)
 
 
 	mod_bundle_contract_engine = (
-		ModBundleContractEngine.new(self)
+		load("res://mods/ModBundleContractEngine.gd").new(self)
 	)
 
 
 
 	mod_marketplace_contract_engine = (
-		ModMarketplaceContractEngine.new(self)
+		load("res://mods/ModMarketplaceContractEngine.gd").new(self)
 	)
 
 
 
-	mod_hub_contract_engine = ModHubContractEngine.new(self)
+	mod_hub_contract_engine = load("res://mods/ModHubContractEngine.gd").new(self)
 
 
 
-	mod_menu_contract_engine = ModMenuContractEngine.new(self)
+	mod_menu_contract_engine = load("res://mods/ModMenuContractEngine.gd").new(self)
 
 	if caveman_reality_runtime_engine != null:
 		caveman_reality_runtime_engine.bootstrap_default_contracts()
@@ -6273,36 +6282,36 @@ func initialize():
 	if mod_bundle_contract_engine != null:
 		mod_bundle_contract_engine.bootstrap_default_contracts()
 
-	checks_and_balances_contract_engine = ChecksAndBalancesContractEngine.new(self)
-	fate_engine = FateEngine.new(self)
-	life_diary_contract_engine = LifeDiaryContractEngine.new(self)
-	life_engine = LifeEngine.new(self)
-	narrative_governor = NarrativeGovernor.new(self)
-	perceptual_integrity_engine = PerceptualIntegrityEngine.new(self)
-	choose_adventure_ai_node_generator = ChooseAdventureAINodeGenerator.new(self)
-	choose_adventure_scenario_engine = ChooseAdventureScenarioEngine.new(self)
-	choose_adventure_engine = ChooseAdventureEngine.new(self)
-	family_creation_contract_engine = FamilyCreationContractEngine.new(self)
-	narrative_engine = NarrativeEngine.new(self)
-	llm_bridge = LLMNarrativeBridge.new(self)
-	bending_engine = BendingEngine.new(self)
-	bending_tournament_engine = BendingTournamentEngine.new(self)
-	avatar_influence_engine = AvatarInfluenceEngine.new(self)
-	bending_dojo_engine = BendingDojoEngine.new(self)
-	wizard_engine = WizardEngine.new(self)
-	power_engine = PowerEngine.new(self)
-	superhero_engine = SuperHeroEngine.new(self)
-	infamy_engine = InfamyEngine.new(self)
-	lineage_engine = LineageEngine.new(self)
-	dynasty_engine = DynastyEngine.new(self)
+	checks_and_balances_contract_engine = load("res://core/contracts/ChecksAndBalancesContractEngine.gd").new(self)
+	fate_engine = load("res://systems/characters/FateEngine.gd").new(self)
+	life_diary_contract_engine = load("res://systems/narrative/LifeDiaryContractEngine.gd").new(self)
+	life_engine = load("res://systems/characters/LifeEngine.gd").new(self)
+	narrative_governor = load("res://systems/narrative/NarrativeGovernor.gd").new(self)
+	perceptual_integrity_engine = load("res://core/diagnostics/PerceptualIntegrityEngine.gd").new(self)
+	choose_adventure_ai_node_generator = load("res://systems/narrative/ChooseAdventureAINodeGenerator.gd").new(self)
+	choose_adventure_scenario_engine = load("res://systems/narrative/ChooseAdventureScenarioEngine.gd").new(self)
+	choose_adventure_engine = load("res://systems/narrative/ChooseAdventureEngine.gd").new(self)
+	family_creation_contract_engine = load("res://systems/characters/FamilyCreationContractEngine.gd").new(self)
+	narrative_engine = load("res://systems/narrative/NarrativeEngine.gd").new(self)
+	llm_bridge = load("res://integrations/ai/LLMNarrativeBridge.gd").new(self)
+	bending_engine = load("res://systems/supernatural/bending/BendingEngine.gd").new(self)
+	bending_tournament_engine = load("res://systems/supernatural/bending/BendingTournamentEngine.gd").new(self)
+	avatar_influence_engine = load("res://systems/supernatural/AvatarInfluenceEngine.gd").new(self)
+	bending_dojo_engine = load("res://systems/supernatural/bending/BendingDojoEngine.gd").new(self)
+	wizard_engine = load("res://systems/supernatural/WizardEngine.gd").new(self)
+	power_engine = load("res://systems/supernatural/PowerEngine.gd").new(self)
+	superhero_engine = load("res://systems/supernatural/SuperHeroEngine.gd").new(self)
+	infamy_engine = load("res://systems/crime/InfamyEngine.gd").new(self)
+	lineage_engine = load("res://systems/relationships/LineageEngine.gd").new(self)
+	dynasty_engine = load("res://systems/relationships/DynastyEngine.gd").new(self)
 
-	era_engine = EraEngine.new(self)
-
-
-	era_mod_contract_engine = EraModContractEngine.new(self)
+	era_engine = load("res://systems/world/EraEngine.gd").new(self)
 
 
-	era_contract_engine = EraContractEngine.new(self)
+	era_mod_contract_engine = load("res://mods/EraModContractEngine.gd").new(self)
+
+
+	era_contract_engine = load("res://systems/world/EraContractEngine.gd").new(self)
 
 	if era_mod_contract_engine != null:
 		era_mod_contract_engine.bootstrap_default_contracts()
@@ -6310,89 +6319,89 @@ func initialize():
 	if era_contract_engine != null:
 		era_contract_engine.bootstrap_default_contracts()
 
-	world_feed_engine = WorldFeedEngine.new(self)
-	world_chronicle_engine = WorldChronicleEngine.new(self)
-	reputation_engine = ReputationEngine.new(self)
-	artifacts_engine = ArtifactsEngine.new(
+	world_feed_engine = load("res://systems/narrative/WorldFeedEngine.gd").new(self)
+	world_chronicle_engine = load("res://systems/narrative/WorldChronicleEngine.gd").new(self)
+	reputation_engine = load("res://systems/reputation/ReputationEngine.gd").new(self)
+	artifacts_engine = load("res://systems/items/ArtifactsEngine.gd").new(
 		self
 	)
 	artifacts_catalog_contract_engine = (
-		ArtifactsCatalogContractEngine.new(
+		load("res://systems/items/ArtifactsCatalogContractEngine.gd").new(
 			self
 		)
 	)
 	artifact_interaction_contract_engine = (
-		ArtifactInteractionContractEngine.new(
+		load("res://systems/items/ArtifactInteractionContractEngine.gd").new(
 			self
 		)
 	)
 	artifact_shop_contract_engine = (
-		ArtifactShopContractEngine.new(
+		load("res://systems/items/ArtifactShopContractEngine.gd").new(
 			self
 		)
 	)
 
-	realm_contract_engine = RealmContractEngine.new(
+	realm_contract_engine = load("res://systems/world/RealmContractEngine.gd").new(
 		self
 	)
-	simulation_contract_engine = SimulationContractEngine.new(self)
-	runtime_contract_engine = RuntimeContractEngine.new(self)
-	romance_contract_engine = RomanceContractEngine.new(self)
-	ui_contract_engine = UIContractEngine.new(self)
-	embedded_ui_contract_engine = EmbeddedUIContractEngine.new(self)
-	birth_contract_engine = BirthContractEngine.new(self)
-	many_realms_engine = ManyRealmsEngine.new(self)
-	bridge_to_terabithia_engine = BridgeToTerabithiaEngine.new(self)
-	vormir_engine = VormirEngine.new(self)
-	nidavellir_engine = NidavellirEngine.new(self)
-	dragonballs_engine = DragonBallsEngine.new(self)
-	dynasty_legacy_engine = DynastyLegacyEngine.new(self)
-	weapons_engine = WeaponsEngine.new(self)
-	weapons_catalog_expansion = WeaponsCatalogExpansion.new(
+	simulation_contract_engine = load("res://core/simulation/SimulationContractEngine.gd").new(self)
+	runtime_contract_engine = load("res://core/contracts/RuntimeContractEngine.gd").new(self)
+	romance_contract_engine = load("res://systems/relationships/RomanceContractEngine.gd").new(self)
+	ui_contract_engine = load("res://ui/common/UIContractEngine.gd").new(self)
+	embedded_ui_contract_engine = load("res://ui/common/EmbeddedUIContractEngine.gd").new(self)
+	birth_contract_engine = load("res://systems/characters/BirthContractEngine.gd").new(self)
+	many_realms_engine = load("res://systems/realities/ManyRealmsEngine.gd").new(self)
+	bridge_to_terabithia_engine = load("res://systems/supernatural/BridgeToTerabithiaEngine.gd").new(self)
+	vormir_engine = load("res://systems/supernatural/VormirEngine.gd").new(self)
+	nidavellir_engine = load("res://systems/supernatural/NidavellirEngine.gd").new(self)
+	dragonballs_engine = load("res://systems/supernatural/DragonBallsEngine.gd").new(self)
+	dynasty_legacy_engine = load("res://systems/relationships/DynastyLegacyEngine.gd").new(self)
+	weapons_engine = load("res://systems/items/WeaponsEngine.gd").new(self)
+	weapons_catalog_expansion = load("res://systems/items/WeaponsCatalogExpansion.gd").new(
 		self
 	)
-	crime_contract_engine = CrimeContractEngine.new(self)
-	investigation_layer = InvestigationLayer.new(self)
-	justice_system_engine = JusticeSystemEngine.new(self)
-	jail_engine = JailEngine.new(self)
-	prison_engine = PrisonEngine.new(self)
-	case_orchestrator = CaseOrchestrator.new(self)
-	crime_engine = CrimeEngine.new(self)
-	crime_hub_contract_engine = CrimeHubContractEngine.new(
+	crime_contract_engine = load("res://systems/crime/CrimeContractEngine.gd").new(self)
+	investigation_layer = load("res://systems/crime/InvestigationLayer.gd").new(self)
+	justice_system_engine = load("res://systems/crime/JusticeSystemEngine.gd").new(self)
+	jail_engine = load("res://systems/crime/JailEngine.gd").new(self)
+	prison_engine = load("res://systems/crime/PrisonEngine.gd").new(self)
+	case_orchestrator = load("res://systems/crime/CaseOrchestrator.gd").new(self)
+	crime_engine = load("res://systems/crime/CrimeEngine.gd").new(self)
+	crime_hub_contract_engine = load("res://systems/crime/CrimeHubContractEngine.gd").new(
 		self
 	)
-	relationship_activities_engine = RelationshipActivitiesEngine.new(self)
-	human_contract_engine = HumanContractEngine.new(self)
-	animal_contract_engine = AnimalContractEngine.new(self)
-	mythical_contract_engine = MythicalContractEngine.new(self)
-	relationship_graph_contract_engine = RelationshipGraphContractEngine.new(self)
-	human_relationship_contract_engine = HumanRelationshipContractEngine.new(self)
-	pets_contract_engine = PetsContractEngine.new(self)
-	mythical_pets_contract_engine = MythicalPetsContractEngine.new(self)
-	pet_shop_contract_engine = PetShopContractEngine.new(self)
-	breeding_contract_engine = BreedingContractEngine.new(self)
-	debt_contract_engine = DebtContractEngine.new(self)
-	meat_market_contract_engine = MeatMarketContractEngine.new(self)
-	realm_engine = RealmEngine.new(self)
-	class_engine = ClassEngine.new(self)
-	fame_engine = FameEngine.new(self)
-	upce_engine = UniversalPerceptionConsequenceEngine.new(self)
+	relationship_activities_engine = load("res://systems/relationships/RelationshipActivitiesEngine.gd").new(self)
+	human_contract_engine = load("res://systems/characters/HumanContractEngine.gd").new(self)
+	animal_contract_engine = load("res://systems/pets/AnimalContractEngine.gd").new(self)
+	mythical_contract_engine = load("res://systems/supernatural/MythicalContractEngine.gd").new(self)
+	relationship_graph_contract_engine = load("res://systems/relationships/RelationshipGraphContractEngine.gd").new(self)
+	human_relationship_contract_engine = load("res://systems/relationships/HumanRelationshipContractEngine.gd").new(self)
+	pets_contract_engine = load("res://systems/pets/PetsContractEngine.gd").new(self)
+	mythical_pets_contract_engine = load("res://systems/pets/MythicalPetsContractEngine.gd").new(self)
+	pet_shop_contract_engine = load("res://systems/pets/PetShopContractEngine.gd").new(self)
+	breeding_contract_engine = load("res://systems/relationships/BreedingContractEngine.gd").new(self)
+	debt_contract_engine = load("res://systems/economy/DebtContractEngine.gd").new(self)
+	meat_market_contract_engine = load("res://systems/economy/MeatMarketContractEngine.gd").new(self)
+	realm_engine = load("res://systems/world/RealmEngine.gd").new(self)
+	class_engine = load("res://systems/characters/ClassEngine.gd").new(self)
+	fame_engine = load("res://systems/reputation/FameEngine.gd").new(self)
+	upce_engine = load("res://systems/realities/UniversalPerceptionConsequenceEngine.gd").new(self)
 	if upce_engine != null:
 		upce_engine.bootstrap_default_contracts()
 
-	royalty_engine = RoyaltyEngine.new(self)
+	royalty_engine = load("res://systems/politics/RoyaltyEngine.gd").new(self)
 
 
-	royalty_runtime_engine = RoyaltyRuntimeEngine.new(self)
+	royalty_runtime_engine = load("res://systems/politics/RoyaltyRuntimeEngine.gd").new(self)
 
 
-	royalty_mod_contract_engine = RoyaltyModContractEngine.new(self)
+	royalty_mod_contract_engine = load("res://systems/politics/RoyaltyModContractEngine.gd").new(self)
 
 
-	royalty_contract_engine = RoyaltyContractEngine.new(self)
+	royalty_contract_engine = load("res://systems/politics/RoyaltyContractEngine.gd").new(self)
 
 
-	crown_hub_contract_engine = CrownHubContractEngine.new(self)
+	crown_hub_contract_engine = load("res://systems/politics/CrownHubContractEngine.gd").new(self)
 
 	if royalty_mod_contract_engine != null:
 		royalty_mod_contract_engine.bootstrap_default_contracts()
@@ -6406,94 +6415,94 @@ func initialize():
 	if crown_hub_contract_engine != null:
 		crown_hub_contract_engine.bootstrap_default_contracts()
 
-	politics_engine = PoliticsEngine.new(self)
-	property_engine = PropertyEngine.new(self)
-	era_life_asset_catalog_expansion = EraLifeAssetCatalogExpansion.new(self)
-	property_amenity_synthesis_contract_engine = PropertyAmenitySynthesisContractEngine.new(self)
-	vehicle_engine = VehicleEngine.new(self)
-	card_contract_engine = CardContractEngine.new(self)
-	property_market_contract_engine = PropertyMarketContractEngine.new(self)
-	dealership_contract_engine = DealershipContractEngine.new(self)
-	assets_contract_engine = AssetsContractEngine.new(self)
-	room_graph_contract_engine = RoomGraphContractEngine.new(self)
-	spatial_traversal_contract_engine = SpatialTraversalContractEngine.new(self)
-	presence_engine = PresenceEngine.new(self)
-	property_makeover_contract_engine = PropertyMakeoverContractEngine.new(self)
-	shared_public_space_engine = SharedPublicSpaceEngine.new(self)
-	food_engine = FoodEngine.new(self)
-	food_restaurant_engine = FoodRestaurantEngine.new(self)
-	grocery_store_engine = GroceryStoreEngine.new(self)
-	movie_theater_engine = MovieTheaterEngine.new(self)
+	politics_engine = load("res://systems/politics/PoliticsEngine.gd").new(self)
+	property_engine = load("res://systems/property/PropertyEngine.gd").new(self)
+	era_life_asset_catalog_expansion = load("res://systems/items/EraLifeAssetCatalogExpansion.gd").new(self)
+	property_amenity_synthesis_contract_engine = load("res://systems/property/PropertyAmenitySynthesisContractEngine.gd").new(self)
+	vehicle_engine = load("res://systems/property/VehicleEngine.gd").new(self)
+	card_contract_engine = load("res://ui/common/CardContractEngine.gd").new(self)
+	property_market_contract_engine = load("res://systems/property/PropertyMarketContractEngine.gd").new(self)
+	dealership_contract_engine = load("res://systems/property/DealershipContractEngine.gd").new(self)
+	assets_contract_engine = load("res://systems/property/AssetsContractEngine.gd").new(self)
+	room_graph_contract_engine = load("res://systems/property/RoomGraphContractEngine.gd").new(self)
+	spatial_traversal_contract_engine = load("res://systems/world/SpatialTraversalContractEngine.gd").new(self)
+	presence_engine = load("res://systems/world/PresenceEngine.gd").new(self)
+	property_makeover_contract_engine = load("res://systems/property/PropertyMakeoverContractEngine.gd").new(self)
+	shared_public_space_engine = load("res://systems/world/SharedPublicSpaceEngine.gd").new(self)
+	food_engine = load("res://systems/activities/FoodEngine.gd").new(self)
+	food_restaurant_engine = load("res://systems/activities/FoodRestaurantEngine.gd").new(self)
+	grocery_store_engine = load("res://systems/activities/GroceryStoreEngine.gd").new(self)
+	movie_theater_engine = load("res://systems/activities/MovieTheaterEngine.gd").new(self)
 	if movie_theater_engine != null and movie_theater_engine.has_method("bootstrap_ui_contracts"):
 		movie_theater_engine.bootstrap_ui_contracts()
 	if runtime_contract_engine != null and runtime_contract_engine.has_method("ensure_default_world_contracts"):
 		runtime_contract_engine.ensure_default_world_contracts({
 			"source": "game_state_post_movie_theater_boot",
 		})
-	luxury_shop_engine = LuxuryShopEngine.new(self)
+	luxury_shop_engine = load("res://systems/economy/LuxuryShopEngine.gd").new(self)
 
-	heirloom_runtime_engine = HeirloomRuntimeEngine.new(
+	heirloom_runtime_engine = load("res://systems/items/HeirloomRuntimeEngine.gd").new(
 		self
 	)
-	heirloom_contract_engine = HeirloomContractEngine.new(
+	heirloom_contract_engine = load("res://systems/items/HeirloomContractEngine.gd").new(
 		self
 	)
-	heirloom_engine = HeirloomEngine.new(
+	heirloom_engine = load("res://systems/items/HeirloomEngine.gd").new(
 		self
 	)
 	heirloom_catalog_contract_engine = (
-		HeirloomCatalogContractEngine.new(
+		load("res://systems/items/HeirloomCatalogContractEngine.gd").new(
 			self
 		)
 	)
-	heirloom_hub_contract_engine = HeirloomHubContractEngine.new(
+	heirloom_hub_contract_engine = load("res://systems/items/HeirloomHubContractEngine.gd").new(
 		self
 	)
 
-	island_realm_engine = IslandRealmExpansionEngine.new(
+	island_realm_engine = load("res://systems/supernatural/IslandRealmExpansionEngine.gd").new(
 		self
 	)
-	global_prewarm_contract_engine = GlobalPrewarmContractEngine.new(self)
-	global_node_contract_engine = GlobalNodeContractEngine.new(self)
-	truth_resolution_contract_engine = TruthResolutionContractEngine.new(self)
-	observable_node_contract_engine = ObservableNodeContractEngine.new(self)
-	world_observability_contract_engine = WorldObservabilityContractEngine.new(self)
-	population_movement_contract_engine = PopulationMovementContractEngine.new(self)
-	crown_population_view_contract = CrownPopulationViewContract.new(self)
-	population_card_contract_engine = PopulationCardContractEngine.new(self)
-	belongings_engine = BelongingsEngine.new(
+	global_prewarm_contract_engine = load("res://core/simulation/GlobalPrewarmContractEngine.gd").new(self)
+	global_node_contract_engine = load("res://core/contracts/GlobalNodeContractEngine.gd").new(self)
+	truth_resolution_contract_engine = load("res://core/contracts/TruthResolutionContractEngine.gd").new(self)
+	observable_node_contract_engine = load("res://core/contracts/ObservableNodeContractEngine.gd").new(self)
+	world_observability_contract_engine = load("res://systems/world/WorldObservabilityContractEngine.gd").new(self)
+	population_movement_contract_engine = load("res://systems/world/PopulationMovementContractEngine.gd").new(self)
+	crown_population_view_contract = load("res://systems/politics/CrownPopulationViewContract.gd").new(self)
+	population_card_contract_engine = load("res://systems/world/PopulationCardContractEngine.gd").new(self)
+	belongings_engine = load("res://systems/items/BelongingsEngine.gd").new(
 		self
 	)
 
 	_resident_bootstrap_heirloom_contracts()
 
-	global_object_catalog_system = GlobalObjectCatalogSystem.new(
+	global_object_catalog_system = load("res://systems/items/GlobalObjectCatalogSystem.gd").new(
 		self
 	)
-	object_hub_contract_engine = ObjectHubContractEngine.new(
+	object_hub_contract_engine = load("res://systems/items/ObjectHubContractEngine.gd").new(
 		self
 	)
 
 	_resident_bootstrap_global_object_catalog()
 	_resident_bootstrap_object_projection_contracts()
 
-	desire_engine = DesireEngine.new(
+	desire_engine = load("res://systems/characters/DesireEngine.gd").new(
 		self
 	)
-	capability_graph_engine = CapabilityGraphEngine.new(self)
-	goal_planning_engine = GoalPlanningEngine.new(self)
-	simulation_director = SimulationDirector.new(self)
-	year_budget_engine = YearBudgetEngine.new(self)
-	desire_behavior_bridge = DesireBehaviorBridge.new(self)
-	ai_event_engine = AIEventGenerator.new(self)
+	capability_graph_engine = load("res://core/contracts/CapabilityGraphEngine.gd").new(self)
+	goal_planning_engine = load("res://systems/narrative/GoalPlanningEngine.gd").new(self)
+	simulation_director = load("res://core/simulation/SimulationDirector.gd").new(self)
+	year_budget_engine = load("res://core/simulation/YearBudgetEngine.gd").new(self)
+	desire_behavior_bridge = load("res://systems/characters/DesireBehaviorBridge.gd").new(self)
+	ai_event_engine = load("res://systems/narrative/AIEventGenerator.gd").new(self)
 	if era_data_loader == null:
-		era_data_loader = EraDataLoader.new(self)
+		era_data_loader = load("res://data/EraDataLoader.gd").new(self)
 	if weapon_pack_loader == null:
-		weapon_pack_loader = WeaponPackLoader.new(self)
+		weapon_pack_loader = load("res://systems/items/WeaponPackLoader.gd").new(self)
 	if game_state_contract_engine == null:
-		game_state_contract_engine = GameStateContractEngine.new(self)
+		game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(self)
 	if mod_loader == null:
-		mod_loader = ModLoader.new(self)
+		mod_loader = load("res://mods/ModLoader.gd").new(self)
 
 	if not defer_static_world_bootstrap:
 		scenario_state ["deferred_data_bootstrap_pending"] = false
@@ -6577,65 +6586,65 @@ func initialize():
 		simulation_contract_engine.load_external_packs()
 	else:
 		scenario_state ["deferred_data_bootstrap_pending"] = true
-	boxing_contract_engine = BoxingContractEngine.new(self)
-	boxing_combat_resolution_engine = BoxingCombatResolutionEngine.new(self)
-	boxing_fight_economy_engine = BoxingFightEconomyEngine.new(self)
-	boxing_fighter_engine = BoxingFighterEngine.new(self)
-	boxing_training_engine = BoxingTrainingEngine.new(self)
-	boxing_matchmaking_engine = BoxingMatchmakingEngine.new(self)
-	boxing_fight_sim_engine = BoxingFightSimEngine.new(self)
-	boxing_ranking_engine = BoxingRankingEngine.new(self)
-	boxing_title_engine = BoxingTitleEngine.new(self)
-	boxing_injury_engine = BoxingInjuryEngine.new(self)
-	boxing_engine = BoxingEngine.new(self)
-	boxing_round_log_engine = BoxingRoundLogEngine.new(self)
-	boxing_rivalry_engine = BoxingRivalryEngine.new(self)
-	boxing_gym_engine = BoxingGymEngine.new(self)
-	boxing_promotion_engine = BoxingPromotionEngine.new(self)
-	boxing_weight_engine = BoxingWeightEngine.new(self)
-	boxing_mandatory_engine = BoxingMandatoryEngine.new(self)
-	boxing_amateur_engine = BoxingAmateurEngine.new(self)
-	boxing_media_engine = BoxingMediaEngine.new(self)
-	boxing_legacy_engine = BoxingLegacyEngine.new(self)
+	boxing_contract_engine = load("res://systems/boxing/BoxingContractEngine.gd").new(self)
+	boxing_combat_resolution_engine = load("res://systems/boxing/BoxingCombatResolutionEngine.gd").new(self)
+	boxing_fight_economy_engine = load("res://systems/boxing/BoxingFightEconomyEngine.gd").new(self)
+	boxing_fighter_engine = load("res://systems/boxing/BoxingFighterEngine.gd").new(self)
+	boxing_training_engine = load("res://systems/boxing/BoxingTrainingEngine.gd").new(self)
+	boxing_matchmaking_engine = load("res://systems/boxing/BoxingMatchmakingEngine.gd").new(self)
+	boxing_fight_sim_engine = load("res://systems/boxing/BoxingFightSimEngine.gd").new(self)
+	boxing_ranking_engine = load("res://systems/boxing/BoxingRankingEngine.gd").new(self)
+	boxing_title_engine = load("res://systems/boxing/BoxingTitleEngine.gd").new(self)
+	boxing_injury_engine = load("res://systems/boxing/BoxingInjuryEngine.gd").new(self)
+	boxing_engine = load("res://systems/boxing/BoxingEngine.gd").new(self)
+	boxing_round_log_engine = load("res://systems/boxing/BoxingRoundEngine.gd").new(self)
+	boxing_rivalry_engine = load("res://systems/boxing/BoxingRivalryEngine.gd").new(self)
+	boxing_gym_engine = load("res://systems/boxing/BoxingGymEngine.gd").new(self)
+	boxing_promotion_engine = load("res://systems/boxing/BoxingPromotionEngine.gd").new(self)
+	boxing_weight_engine = load("res://systems/boxing/BoxingWeightEngine.gd").new(self)
+	boxing_mandatory_engine = load("res://systems/boxing/BoxingMandatoryEngine.gd").new(self)
+	boxing_amateur_engine = load("res://systems/boxing/BoxingAmateurEngine.gd").new(self)
+	boxing_media_engine = load("res://systems/boxing/BoxingMediaEngine.gd").new(self)
+	boxing_legacy_engine = load("res://systems/boxing/BoxingLegacyEngine.gd").new(self)
 	if boxing_contract_engine != null:
 		boxing_contract_engine.set_contract()
-	competitive_reality_runtime = CompetitiveRealityRuntime.new(self)
+	competitive_reality_runtime = load("res://systems/realities/CompetitiveRealityRuntime.gd").new(self)
 	if competitive_reality_runtime != null:
 		competitive_reality_runtime.bootstrap_default_contracts()
-	reality_surge_engine = RealitySurgeEngine.new(self)
+	reality_surge_engine = load("res://systems/realities/RealitySurgeEngine.gd").new(self)
 	if reality_surge_engine != null:
 		reality_surge_engine.bootstrap_default_contracts()
-	reality_orchestrator = RealityOrchestrator.new(self)
+	reality_orchestrator = load("res://systems/realities/RealityOrchestrator.gd").new(self)
 	if reality_orchestrator != null:
 		reality_orchestrator.bootstrap_default_contracts()
 
-	causality_inversion_engine = CausalityInversionEngine.new(self)
+	causality_inversion_engine = load("res://systems/realities/CausalityInversionEngine.gd").new(self)
 	if causality_inversion_engine != null:
 		causality_inversion_engine.bootstrap_default_contracts()
 
-	causality_inversion_engine = CausalityInversionEngine.new(self)
+	causality_inversion_engine = load("res://systems/realities/CausalityInversionEngine.gd").new(self)
 	if causality_inversion_engine != null:
 		causality_inversion_engine.bootstrap_default_contracts()
-	vampire_origin_engine = VampireOriginEngine.new(self)
-	vampire_hunger_engine = VampireHungerEngine.new(self)
-	vampire_ability_engine = VampireAbilityEngine.new(self)
-	vampire_society_engine = VampireSocietyEngine.new(self)
-	vampire_hunter_engine = VampireHunterEngine.new(self)
-	vampire_legacy_engine = VampireLegacyEngine.new(self)
-	vampire_masquerade_engine = VampireMasqueradeEngine.new(self)
-	vampire_cure_engine = VampireCureEngine.new(self)
-	vampire_engine = VampireEngine.new(self)
-	universal_faction_engine = UniversalFactionEngine.new(self)
-	crime_world_engine = CrimeWorldEngine.new(self)
-	runtime_health_registry = RuntimeHealthRegistry.new(self)
-	runtime_fault_router = RuntimeFaultRouter.new(self)
-	patch_suggestion_engine = PatchSuggestionEngine.new(self)
-	live_patch_guard = LivePatchGuard.new(self)
-	auto_patch_engine = AutoPatchEngine.new(self)
-	live_diagnostics_engine = LiveDiagnosticsEngine.new(self)
+	vampire_origin_engine = load("res://systems/supernatural/vampires/VampireOriginEngine.gd").new(self)
+	vampire_hunger_engine = load("res://systems/supernatural/vampires/VampireHungerEngine.gd").new(self)
+	vampire_ability_engine = load("res://systems/supernatural/vampires/VampireAbilityEngine.gd").new(self)
+	vampire_society_engine = load("res://systems/supernatural/vampires/VampireSocietyEngine.gd").new(self)
+	vampire_hunter_engine = load("res://systems/supernatural/vampires/VampireHunterEngine.gd").new(self)
+	vampire_legacy_engine = load("res://systems/supernatural/vampires/VampireLegacyEngine.gd").new(self)
+	vampire_masquerade_engine = load("res://systems/supernatural/vampires/VampireMasqueradeEngine.gd").new(self)
+	vampire_cure_engine = load("res://systems/supernatural/vampires/VampireCureEngine.gd").new(self)
+	vampire_engine = load("res://systems/supernatural/vampires/VampireEngine.gd").new(self)
+	universal_faction_engine = load("res://systems/politics/UniversalFactionEngine.gd").new(self)
+	crime_world_engine = load("res://systems/crime/CrimeWorldEngine.gd").new(self)
+	runtime_health_registry = load("res://core/diagnostics/RuntimeHealthRegistry.gd").new(self)
+	runtime_fault_router = load("res://core/diagnostics/RuntimeFaultRouter.gd").new(self)
+	patch_suggestion_engine = load("res://integrations/updates/PatchSuggestionEngine.gd").new(self)
+	live_patch_guard = load("res://core/diagnostics/LivePatchGuard.gd").new(self)
+	auto_patch_engine = load("res://integrations/updates/AutoPatchEngine.gd").new(self)
+	live_diagnostics_engine = load("res://core/diagnostics/LiveDiagnosticsEngine.gd").new(self)
 
 	if game_state_contract_engine == null:
-		game_state_contract_engine = GameStateContractEngine.new(self)
+		game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(self)
 
 	game_state_contract_engine.instantiate_contract_engine_extensions()
 	game_state_contract_engine.register_existing_engines_from_game_state()
@@ -7492,29 +7501,29 @@ func _initialize_birth_shell_first_life() -> void:
 	scenario_state ["post_spawn_ui_finalize_pending"] = true
 
 	if game_state_contract_engine == null:
-		game_state_contract_engine = GameStateContractEngine.new(self)
+		game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(self)
 	contract_meta_governor = game_state_contract_engine.contract_meta_governor
 
-	event_bus = EventBus.new(self)
+	event_bus = load("res://core/events/EventBus.gd").new(self)
 	event_bus_contract_layer = event_bus.contract_layer
 
-	world_space_engine = WorldSpaceEngine.new(self)
-	spatial_culling_engine = SpatialCullingEngine.new(self)
-	emergent_story_engine = EmergentNPCStoryEngine.new(self)
-	economy_engine = EconomyEngine.new(self)
-	bank_engine = BankEngine.new(self)
-	historical_timeline_engine = HistoricalTimelineEngine.new(self)
-	global_market_engine = GlobalMarketEngine.new(self)
-	ecs_engine = ECSEngine.new(self)
-	chunk_simulation_engine = ChunkSimulationEngine.new(self)
-	population_shard_engine = PopulationShardEngine.new(self)
-	population_lifecycle_manager = PopulationLifecycleManager.new(self)
+	world_space_engine = load("res://systems/world/WorldSpaceEngine.gd").new(self)
+	spatial_culling_engine = load("res://systems/world/SpatialCullingEngine.gd").new(self)
+	emergent_story_engine = load("res://systems/narrative/EmergentNPCStoryEngine.gd").new(self)
+	economy_engine = load("res://systems/economy/EconomyEngine.gd").new(self)
+	bank_engine = load("res://systems/economy/BankEngine.gd").new(self)
+	historical_timeline_engine = load("res://systems/world/HistoricalTimelineEngine.gd").new(self)
+	global_market_engine = load("res://systems/economy/GlobalMarketEngine.gd").new(self)
+	ecs_engine = load("res://core/simulation/ECSEngine.gd").new(self)
+	chunk_simulation_engine = load("res://core/simulation/ChunkSimulationEngine.gd").new(self)
+	population_shard_engine = load("res://systems/world/PopulationShardEngine.gd").new(self)
+	population_lifecycle_manager = load("res://systems/world/PopulationLifecycleManager.gd").new(self)
 
-	geo_engine = GeoEngine.new(self)
-	settlement_presence_engine = SettlementPresenceEngine.new(self)
-	migration_engine = MigrationEngine.new(self)
-	place_influence_engine = PlaceInfluenceEngine.new(self)
-	seed_engine = SeedEngine.new(self)
+	geo_engine = load("res://systems/world/GeoEngine.gd").new(self)
+	settlement_presence_engine = load("res://systems/world/SettlementPresenceEngine.gd").new(self)
+	migration_engine = load("res://systems/world/MigrationEngine.gd").new(self)
+	place_influence_engine = load("res://systems/world/PlaceInfluenceEngine.gd").new(self)
+	seed_engine = load("res://core/simulation/SeedEngine.gd").new(self)
 
 	var seed_contract_raw: Variant = scenario_state.get("seed_contract", {})
 	if typeof(seed_contract_raw) != TYPE_DICTIONARY and typeof(custom_settings) == TYPE_DICTIONARY:
@@ -7535,91 +7544,91 @@ func _initialize_birth_shell_first_life() -> void:
 	else:
 		scenario_state ["seed_bootstrap_deferred"] = true
 		scenario_state ["seed_bootstrap_reason"] = "waiting_for_god_mode_seed_commit"
-	soul_seed_engine = SoulSeedEngine.new(self)
-	consciousness_engine = ConsciousnessEngine.new(self)
-	willpower_engine = WillpowerEngine.new(self)
-	social_graph_engine = SocialGraphEngine.new(self)
-	workplace_engine = WorkplaceEngine.new(self)
-	player_action_engine = PlayerActionEngine.new(self)
-	npc_memory_web_engine = NPCMemoryWebEngine.new(self)
-	agent_memory_propagation_engine = AgentMemoryPropagationEngine.new(self)
-	dynamic_world_event_engine = DynamicWorldEventEngine.new(self)
-	action_discovery_engine = ActionDiscoveryEngine.new(self)
+	soul_seed_engine = load("res://systems/characters/SoulSeedEngine.gd").new(self)
+	consciousness_engine = load("res://systems/characters/ConsciousnessEngine.gd").new(self)
+	willpower_engine = load("res://systems/characters/WillpowerEngine.gd").new(self)
+	social_graph_engine = load("res://systems/relationships/SocialGraphEngine.gd").new(self)
+	workplace_engine = load("res://systems/careers/WorkplaceEngine.gd").new(self)
+	player_action_engine = load("res://core/events/PlayerActionEngine.gd").new(self)
+	npc_memory_web_engine = load("res://systems/relationships/NPCMemoryWebEngine.gd").new(self)
+	agent_memory_propagation_engine = load("res://systems/relationships/AgentMemoryPropagationEngine.gd").new(self)
+	dynamic_world_event_engine = load("res://systems/narrative/DynamicWorldEventEngine.gd").new(self)
+	action_discovery_engine = load("res://core/events/ActionDiscoveryEngine.gd").new(self)
 
-	names_db = NamesDB.new(self)
-	npc_factory = NPCFactory.new(self)
-	character_creator = CharacterCreator.new(self)
+	names_db = load("res://data/NamesDB.gd").new(self)
+	npc_factory = load("res://data/NPCFactory.gd").new(self)
+	character_creator = load("res://systems/characters/CharacterCreator.gd").new(self)
 
-	legacy_memory_engine = LegacyMemoryEngine.new(self)
-	legacy_echo_engine = LegacyEchoEngine.new(self)
-	afterlife_influence_engine = AfterlifeInfluenceEngine.new(self)
+	legacy_memory_engine = load("res://systems/relationships/LegacyMemoryEngine.gd").new(self)
+	legacy_echo_engine = load("res://systems/relationships/LegacyEchoEngine.gd").new(self)
+	afterlife_influence_engine = load("res://systems/supernatural/AfterlifeInfluenceEngine.gd").new(self)
 
-	scenario_resolver = ScenarioResolver.new(self)
-	scenario_engine = ScenarioEngine.new(self)
-	scenario_popup_contract_engine = ScenarioPopupContractEngine.new(self)
-	scenario_runtime_contract_engine = ScenarioRuntimeContractEngine.new(self)
-	pending_situations_engine = PendingSituationsEngine.new(self)
-	contract_view_layer_contract_engine = ContractViewLayerContractEngine.new(self)
-	traits_contract_engine = TraitsContractEngine.new(self)
-	identity_contract_engine = IdentityContractEngine.new(self)
-	red_bonnet_engine = RedBonnetEngine.new(self)
-	world_engine = WorldEngine.new(self)
-	event_engine = EventEngine.new(self)
-	personality_engine = PersonalityEngine.new(self)
-	relationship_engine = RelationshipEngine.new(self)
-	memory_engine = MemoryEngine.new(self)
-	health_engine = HealthEngine.new(self)
-	genetics_inheritance_engine = GeneticsInheritanceEngine.new(self)
-	body_type_contract_engine = BodyTypeContractEngine.new(self)
-	growth_curve_engine = GrowthCurveEngine.new(self)
-	height_contract_engine = HeightContractEngine.new(self)
-	weight_contract_engine = WeightContractEngine.new(self)
-	human_contract_engine = HumanContractEngine.new(self)
-	animal_contract_engine = AnimalContractEngine.new(self)
-	mythical_contract_engine = MythicalContractEngine.new(self)
-	relationship_graph_contract_engine = RelationshipGraphContractEngine.new(self)
-	human_relationship_contract_engine = HumanRelationshipContractEngine.new(self)
-	pets_contract_engine = PetsContractEngine.new(self)
-	mythical_pets_contract_engine = MythicalPetsContractEngine.new(self)
-	pet_shop_contract_engine = PetShopContractEngine.new(self)
-	breeding_contract_engine = BreedingContractEngine.new(self)
-	debt_contract_engine = DebtContractEngine.new(self)
-	meat_market_contract_engine = MeatMarketContractEngine.new(self)
-
-
-
-	career_runtime_engine = CareerRuntimeEngine.new(self)
-	career_contract_engine = CareerContractEngine.new(self)
-	career_space_contract_engine = CareerSpaceContractEngine.new(self)
-	career_hub_contract_engine = CareerHubContractEngine.new(self)
-	career_engine = CareerEngine.new(self)
+	scenario_resolver = load("res://systems/narrative/ScenarioResolver.gd").new(self)
+	scenario_engine = load("res://systems/narrative/ScenarioEngine.gd").new(self)
+	scenario_popup_contract_engine = load("res://systems/narrative/ScenarioPopupContractEngine.gd").new(self)
+	scenario_runtime_contract_engine = load("res://systems/narrative/ScenarioRuntimeContractEngine.gd").new(self)
+	pending_situations_engine = load("res://systems/narrative/PendingSituationsEngine.gd").new(self)
+	contract_view_layer_contract_engine = load("res://core/contracts/ContractViewLayerContractEngine.gd").new(self)
+	traits_contract_engine = load("res://systems/characters/TraitsContractEngine.gd").new(self)
+	identity_contract_engine = load("res://systems/characters/IdentityContractEngine.gd").new(self)
+	red_bonnet_engine = load("res://systems/supernatural/RedBonnetEngine.gd").new(self)
+	world_engine = load("res://systems/world/WorldEngine.gd").new(self)
+	event_engine = load("res://core/events/EventEngine.gd").new(self)
+	personality_engine = load("res://systems/characters/PersonalityEngine.gd").new(self)
+	relationship_engine = load("res://systems/relationships/RelationshipEngine.gd").new(self)
+	memory_engine = load("res://systems/relationships/MemoryEngine.gd").new(self)
+	health_engine = load("res://systems/characters/HealthEngine.gd").new(self)
+	genetics_inheritance_engine = load("res://systems/characters/GeneticsInheritanceEngine.gd").new(self)
+	body_type_contract_engine = load("res://systems/characters/BodyTypeContractEngine.gd").new(self)
+	growth_curve_engine = load("res://systems/characters/GrowthCurveEngine.gd").new(self)
+	height_contract_engine = load("res://systems/characters/HeightContractEngine.gd").new(self)
+	weight_contract_engine = load("res://systems/characters/WeightContractEngine.gd").new(self)
+	human_contract_engine = load("res://systems/characters/HumanContractEngine.gd").new(self)
+	animal_contract_engine = load("res://systems/pets/AnimalContractEngine.gd").new(self)
+	mythical_contract_engine = load("res://systems/supernatural/MythicalContractEngine.gd").new(self)
+	relationship_graph_contract_engine = load("res://systems/relationships/RelationshipGraphContractEngine.gd").new(self)
+	human_relationship_contract_engine = load("res://systems/relationships/HumanRelationshipContractEngine.gd").new(self)
+	pets_contract_engine = load("res://systems/pets/PetsContractEngine.gd").new(self)
+	mythical_pets_contract_engine = load("res://systems/pets/MythicalPetsContractEngine.gd").new(self)
+	pet_shop_contract_engine = load("res://systems/pets/PetShopContractEngine.gd").new(self)
+	breeding_contract_engine = load("res://systems/relationships/BreedingContractEngine.gd").new(self)
+	debt_contract_engine = load("res://systems/economy/DebtContractEngine.gd").new(self)
+	meat_market_contract_engine = load("res://systems/economy/MeatMarketContractEngine.gd").new(self)
 
 
 
-	activities_contract_engine = ActivitiesContractEngine.new(self)
-	activities_hub_contract_engine = ActivitiesHubContractEngine.new(self)
+	career_runtime_engine = load("res://systems/careers/CareerRuntimeEngine.gd").new(self)
+	career_contract_engine = load("res://systems/careers/CareerContractEngine.gd").new(self)
+	career_space_contract_engine = load("res://systems/careers/CareerSpaceContractEngine.gd").new(self)
+	career_hub_contract_engine = load("res://systems/careers/CareerHubContractEngine.gd").new(self)
+	career_engine = load("res://systems/careers/CareerEngine.gd").new(self)
 
 
 
-	mod_contract_engine = ModContractEngine.new(self)
+	activities_contract_engine = load("res://systems/activities/ActivitiesContractEngine.gd").new(self)
+	activities_hub_contract_engine = load("res://systems/activities/ActivitiesHubContractEngine.gd").new(self)
+
+
+
+	mod_contract_engine = load("res://mods/ModContractEngine.gd").new(self)
 
 
 
 	caveman_reality_runtime_engine = (
-		CavemanRealityRuntimeEngine.new(self)
+		load("res://systems/realities/CavemanRealityRuntimeEngine.gd").new(self)
 	)
 
 
 
 	mod_bundle_contract_engine = (
-		ModBundleContractEngine.new(self)
+		load("res://mods/ModBundleContractEngine.gd").new(self)
 	)
 
 	mod_marketplace_contract_engine = (
-		ModMarketplaceContractEngine.new(self)
+		load("res://mods/ModMarketplaceContractEngine.gd").new(self)
 	)
-	mod_hub_contract_engine = ModHubContractEngine.new(self)
-	mod_menu_contract_engine = ModMenuContractEngine.new(self)
+	mod_hub_contract_engine = load("res://mods/ModHubContractEngine.gd").new(self)
+	mod_menu_contract_engine = load("res://mods/ModMenuContractEngine.gd").new(self)
 
 	if caveman_reality_runtime_engine != null:
 		caveman_reality_runtime_engine.bootstrap_default_contracts()
@@ -7627,60 +7636,60 @@ func _initialize_birth_shell_first_life() -> void:
 	if mod_bundle_contract_engine != null:
 		mod_bundle_contract_engine.bootstrap_default_contracts()
 
-	school_engine = SchoolEngine.new(
+	school_engine = load("res://systems/education/SchoolEngine.gd").new(
 		self
 	)
-	school_hub_contract_engine = SchoolHubContractEngine.new(
+	school_hub_contract_engine = load("res://systems/education/SchoolHubContractEngine.gd").new(
 		self
 	)
 
-	family_contract_engine = FamilyContractEngine.new(
+	family_contract_engine = load("res://systems/relationships/FamilyContractEngine.gd").new(
 		self
 	)
-	family_control_engine = FamilyControlEngine.new(
+	family_control_engine = load("res://systems/relationships/FamilyControlEngine.gd").new(
 		self
 	)
-	global_intent_contract_engine = GlobalIntentContractEngine.new(
+	global_intent_contract_engine = load("res://core/events/GlobalIntentContractEngine.gd").new(
 		self
 	)
 	universal_switch_contract_engine = (
-		UniversalSwitchContractEngine.new(
+		load("res://systems/realities/UniversalSwitchContractEngine.gd").new(
 			self
 		)
 	)
 	relationships_hub_contract_engine = (
-		RelationshipsHubContractEngine.new(
+		load("res://systems/relationships/RelationshipsHubContractEngine.gd").new(
 			self,
 			universal_switch_contract_engine
 		)
 	)
-	crr_contract_engine = CRRContractEngine.new(
+	crr_contract_engine = load("res://systems/realities/CRRContractEngine.gd").new(
 		self
 	)
-	opportunity_engine = OpportunityEngine.new(self)
-	fate_engine = FateEngine.new(self)
-	life_engine = LifeEngine.new(self)
-	life_diary_contract_engine = LifeDiaryContractEngine.new(self)
-	narrative_engine = NarrativeEngine.new(self)
-	llm_bridge = LLMNarrativeBridge.new(self)
+	opportunity_engine = load("res://systems/narrative/OpportunityEngine.gd").new(self)
+	fate_engine = load("res://systems/characters/FateEngine.gd").new(self)
+	life_engine = load("res://systems/characters/LifeEngine.gd").new(self)
+	life_diary_contract_engine = load("res://systems/narrative/LifeDiaryContractEngine.gd").new(self)
+	narrative_engine = load("res://systems/narrative/NarrativeEngine.gd").new(self)
+	llm_bridge = load("res://integrations/ai/LLMNarrativeBridge.gd").new(self)
 
-	bending_engine = BendingEngine.new(self)
-	bending_tournament_engine = BendingTournamentEngine.new(self)
-	avatar_influence_engine = AvatarInfluenceEngine.new(self)
-	bending_dojo_engine = BendingDojoEngine.new(self)
-	wizard_engine = WizardEngine.new(self)
-	power_engine = PowerEngine.new(self)
-	superhero_engine = SuperHeroEngine.new(self)
-	infamy_engine = InfamyEngine.new(self)
-	dynasty_engine = DynastyEngine.new(self)
-
-
-	era_engine = EraEngine.new(self)
+	bending_engine = load("res://systems/supernatural/bending/BendingEngine.gd").new(self)
+	bending_tournament_engine = load("res://systems/supernatural/bending/BendingTournamentEngine.gd").new(self)
+	avatar_influence_engine = load("res://systems/supernatural/AvatarInfluenceEngine.gd").new(self)
+	bending_dojo_engine = load("res://systems/supernatural/bending/BendingDojoEngine.gd").new(self)
+	wizard_engine = load("res://systems/supernatural/WizardEngine.gd").new(self)
+	power_engine = load("res://systems/supernatural/PowerEngine.gd").new(self)
+	superhero_engine = load("res://systems/supernatural/SuperHeroEngine.gd").new(self)
+	infamy_engine = load("res://systems/crime/InfamyEngine.gd").new(self)
+	dynasty_engine = load("res://systems/relationships/DynastyEngine.gd").new(self)
 
 
+	era_engine = load("res://systems/world/EraEngine.gd").new(self)
 
-	era_mod_contract_engine = EraModContractEngine.new(self)
-	era_contract_engine = EraContractEngine.new(self)
+
+
+	era_mod_contract_engine = load("res://mods/EraModContractEngine.gd").new(self)
+	era_contract_engine = load("res://systems/world/EraContractEngine.gd").new(self)
 
 	if era_mod_contract_engine != null:
 		era_mod_contract_engine.bootstrap_default_contracts()
@@ -7688,70 +7697,70 @@ func _initialize_birth_shell_first_life() -> void:
 	if era_contract_engine != null:
 		era_contract_engine.bootstrap_default_contracts()
 
-	world_feed_engine = WorldFeedEngine.new(self)
-	world_chronicle_engine = WorldChronicleEngine.new(self)
-	reputation_engine = ReputationEngine.new(self)
-	artifacts_engine = ArtifactsEngine.new(
+	world_feed_engine = load("res://systems/narrative/WorldFeedEngine.gd").new(self)
+	world_chronicle_engine = load("res://systems/narrative/WorldChronicleEngine.gd").new(self)
+	reputation_engine = load("res://systems/reputation/ReputationEngine.gd").new(self)
+	artifacts_engine = load("res://systems/items/ArtifactsEngine.gd").new(
 		self
 	)
 	artifacts_catalog_contract_engine = (
-		ArtifactsCatalogContractEngine.new(
+		load("res://systems/items/ArtifactsCatalogContractEngine.gd").new(
 			self
 		)
 	)
 	artifact_interaction_contract_engine = (
-		ArtifactInteractionContractEngine.new(
+		load("res://systems/items/ArtifactInteractionContractEngine.gd").new(
 			self
 		)
 	)
 	artifact_shop_contract_engine = (
-		ArtifactShopContractEngine.new(
+		load("res://systems/items/ArtifactShopContractEngine.gd").new(
 			self
 		)
 	)
 
-	realm_contract_engine = RealmContractEngine.new(
+	realm_contract_engine = load("res://systems/world/RealmContractEngine.gd").new(
 		self
 	)
-	simulation_contract_engine = SimulationContractEngine.new(self)
-	runtime_contract_engine = RuntimeContractEngine.new(self)
-	romance_contract_engine = RomanceContractEngine.new(self)
-	ui_contract_engine = UIContractEngine.new(self)
-	embedded_ui_contract_engine = EmbeddedUIContractEngine.new(self)
-	birth_contract_engine = BirthContractEngine.new(self)
-	many_realms_engine = ManyRealmsEngine.new(self)
-	bridge_to_terabithia_engine = BridgeToTerabithiaEngine.new(self)
-	vormir_engine = VormirEngine.new(self)
-	nidavellir_engine = NidavellirEngine.new(self)
-	dragonballs_engine = DragonBallsEngine.new(self)
+	simulation_contract_engine = load("res://core/simulation/SimulationContractEngine.gd").new(self)
+	runtime_contract_engine = load("res://core/contracts/RuntimeContractEngine.gd").new(self)
+	romance_contract_engine = load("res://systems/relationships/RomanceContractEngine.gd").new(self)
+	ui_contract_engine = load("res://ui/common/UIContractEngine.gd").new(self)
+	embedded_ui_contract_engine = load("res://ui/common/EmbeddedUIContractEngine.gd").new(self)
+	birth_contract_engine = load("res://systems/characters/BirthContractEngine.gd").new(self)
+	many_realms_engine = load("res://systems/realities/ManyRealmsEngine.gd").new(self)
+	bridge_to_terabithia_engine = load("res://systems/supernatural/BridgeToTerabithiaEngine.gd").new(self)
+	vormir_engine = load("res://systems/supernatural/VormirEngine.gd").new(self)
+	nidavellir_engine = load("res://systems/supernatural/NidavellirEngine.gd").new(self)
+	dragonballs_engine = load("res://systems/supernatural/DragonBallsEngine.gd").new(self)
 
-	dynasty_legacy_engine = DynastyLegacyEngine.new(self)
-	weapons_engine = WeaponsEngine.new(self)
-	weapons_catalog_expansion = WeaponsCatalogExpansion.new(
+	dynasty_legacy_engine = load("res://systems/relationships/DynastyLegacyEngine.gd").new(self)
+	weapons_engine = load("res://systems/items/WeaponsEngine.gd").new(self)
+	weapons_catalog_expansion = load("res://systems/items/WeaponsCatalogExpansion.gd").new(
 		self
 	)
-	crime_contract_engine = CrimeContractEngine.new(self)
-	investigation_layer = InvestigationLayer.new(self)
-	justice_system_engine = JusticeSystemEngine.new(self)
-	jail_engine = JailEngine.new(self)
-	prison_engine = PrisonEngine.new(self)
-	case_orchestrator = CaseOrchestrator.new(self)
-	crime_engine = CrimeEngine.new(self)
-	crime_hub_contract_engine = CrimeHubContractEngine.new(
+	crime_contract_engine = load("res://systems/crime/CrimeContractEngine.gd").new(self)
+	investigation_layer = load("res://systems/crime/InvestigationLayer.gd").new(self)
+	justice_system_engine = load("res://systems/crime/JusticeSystemEngine.gd").new(self)
+	jail_engine = load("res://systems/crime/JailEngine.gd").new(self)
+	prison_engine = load("res://systems/crime/PrisonEngine.gd").new(self)
+	case_orchestrator = load("res://systems/crime/CaseOrchestrator.gd").new(self)
+	crime_engine = load("res://systems/crime/CrimeEngine.gd").new(self)
+	crime_hub_contract_engine = load("res://systems/crime/CrimeHubContractEngine.gd").new(
 		self
 	)
-	relationship_activities_engine = RelationshipActivitiesEngine.new(self)
-	realm_engine = RealmEngine.new(self)
-	class_engine = ClassEngine.new(self)
-	fame_engine = FameEngine.new(self)
-	upce_engine = UniversalPerceptionConsequenceEngine.new(self)
+	relationship_activities_engine = load("res://systems/relationships/RelationshipActivitiesEngine.gd").new(self)
+	realm_engine = load("res://systems/world/RealmEngine.gd").new(self)
+	class_engine = load("res://systems/characters/ClassEngine.gd").new(self)
+	fame_engine = load("res://systems/reputation/FameEngine.gd").new(self)
+	upce_engine = load("res://systems/realities/UniversalPerceptionConsequenceEngine.gd").new(self)
 	if upce_engine != null:
 		upce_engine.bootstrap_default_contracts()
-	royalty_engine = RoyaltyEngine.new(self)
-	royalty_runtime_engine = RoyaltyRuntimeEngine.new(self)
-	royalty_mod_contract_engine = RoyaltyModContractEngine.new(self)
-	royalty_contract_engine = RoyaltyContractEngine.new(self)
-	crown_hub_contract_engine = CrownHubContractEngine.new(self)
+	royalty_engine = load("res://systems/politics/RoyaltyEngine.gd").new(self)
+	royalty_runtime_engine = load("res://systems/politics/RoyaltyRuntimeEngine.gd").new(self)
+	royalty_mod_contract_engine = load("res://systems/politics/RoyaltyModContractEngine.gd").new(self)
+	royalty_contract_engine = load("res://systems/politics/RoyaltyContractEngine.gd").new(self)
+	crown_hub_contract_engine = load("res://systems/politics/CrownHubContractEngine.gd").new(self)
 
 	if royalty_mod_contract_engine != null:
 		royalty_mod_contract_engine.bootstrap_default_contracts()
@@ -7765,136 +7774,136 @@ func _initialize_birth_shell_first_life() -> void:
 	if crown_hub_contract_engine != null:
 		crown_hub_contract_engine.bootstrap_default_contracts()
 
-	politics_engine = PoliticsEngine.new(self)
-	property_engine = PropertyEngine.new(self)
-	era_life_asset_catalog_expansion = EraLifeAssetCatalogExpansion.new(self)
-	assets_contract_engine = AssetsContractEngine.new(self)
-	property_amenity_synthesis_contract_engine = PropertyAmenitySynthesisContractEngine.new(self)
-	room_graph_contract_engine = RoomGraphContractEngine.new(self)
-	presence_engine = PresenceEngine.new(self)
-	property_makeover_contract_engine = PropertyMakeoverContractEngine.new(self)
-	vehicle_engine = VehicleEngine.new(self)
-	card_contract_engine = CardContractEngine.new(self)
-	property_market_contract_engine = PropertyMarketContractEngine.new(self)
-	spatial_traversal_contract_engine = SpatialTraversalContractEngine.new(self)
-	dealership_contract_engine = DealershipContractEngine.new(self)
-	shared_public_space_engine = SharedPublicSpaceEngine.new(self)
-	food_engine = FoodEngine.new(self)
-	food_restaurant_engine = FoodRestaurantEngine.new(self)
-	grocery_store_engine = GroceryStoreEngine.new(self)
-	movie_theater_engine = MovieTheaterEngine.new(self)
+	politics_engine = load("res://systems/politics/PoliticsEngine.gd").new(self)
+	property_engine = load("res://systems/property/PropertyEngine.gd").new(self)
+	era_life_asset_catalog_expansion = load("res://systems/items/EraLifeAssetCatalogExpansion.gd").new(self)
+	assets_contract_engine = load("res://systems/property/AssetsContractEngine.gd").new(self)
+	property_amenity_synthesis_contract_engine = load("res://systems/property/PropertyAmenitySynthesisContractEngine.gd").new(self)
+	room_graph_contract_engine = load("res://systems/property/RoomGraphContractEngine.gd").new(self)
+	presence_engine = load("res://systems/world/PresenceEngine.gd").new(self)
+	property_makeover_contract_engine = load("res://systems/property/PropertyMakeoverContractEngine.gd").new(self)
+	vehicle_engine = load("res://systems/property/VehicleEngine.gd").new(self)
+	card_contract_engine = load("res://ui/common/CardContractEngine.gd").new(self)
+	property_market_contract_engine = load("res://systems/property/PropertyMarketContractEngine.gd").new(self)
+	spatial_traversal_contract_engine = load("res://systems/world/SpatialTraversalContractEngine.gd").new(self)
+	dealership_contract_engine = load("res://systems/property/DealershipContractEngine.gd").new(self)
+	shared_public_space_engine = load("res://systems/world/SharedPublicSpaceEngine.gd").new(self)
+	food_engine = load("res://systems/activities/FoodEngine.gd").new(self)
+	food_restaurant_engine = load("res://systems/activities/FoodRestaurantEngine.gd").new(self)
+	grocery_store_engine = load("res://systems/activities/GroceryStoreEngine.gd").new(self)
+	movie_theater_engine = load("res://systems/activities/MovieTheaterEngine.gd").new(self)
 	if movie_theater_engine != null and movie_theater_engine.has_method("bootstrap_ui_contracts"):
 		movie_theater_engine.bootstrap_ui_contracts()
-	luxury_shop_engine = LuxuryShopEngine.new(self)
+	luxury_shop_engine = load("res://systems/economy/LuxuryShopEngine.gd").new(self)
 
-	heirloom_runtime_engine = HeirloomRuntimeEngine.new(
+	heirloom_runtime_engine = load("res://systems/items/HeirloomRuntimeEngine.gd").new(
 		self
 	)
-	heirloom_contract_engine = HeirloomContractEngine.new(
+	heirloom_contract_engine = load("res://systems/items/HeirloomContractEngine.gd").new(
 		self
 	)
-	heirloom_engine = HeirloomEngine.new(
+	heirloom_engine = load("res://systems/items/HeirloomEngine.gd").new(
 		self
 	)
 	heirloom_catalog_contract_engine = (
-		HeirloomCatalogContractEngine.new(
+		load("res://systems/items/HeirloomCatalogContractEngine.gd").new(
 			self
 		)
 	)
-	heirloom_hub_contract_engine = HeirloomHubContractEngine.new(
+	heirloom_hub_contract_engine = load("res://systems/items/HeirloomHubContractEngine.gd").new(
 		self
 	)
 
-	island_realm_engine = IslandRealmExpansionEngine.new(
+	island_realm_engine = load("res://systems/supernatural/IslandRealmExpansionEngine.gd").new(
 		self
 	)
-	population_movement_contract_engine = PopulationMovementContractEngine.new(self)
-	global_prewarm_contract_engine = GlobalPrewarmContractEngine.new(self)
-	global_node_contract_engine = GlobalNodeContractEngine.new(self)
-	truth_resolution_contract_engine = TruthResolutionContractEngine.new(self)
-	observable_node_contract_engine = ObservableNodeContractEngine.new(self)
-	world_observability_contract_engine = WorldObservabilityContractEngine.new(self)
-	population_movement_contract_engine = PopulationMovementContractEngine.new(self)
-	crown_population_view_contract = CrownPopulationViewContract.new(self)
-	population_card_contract_engine = PopulationCardContractEngine.new(self)
-	belongings_engine = BelongingsEngine.new(
+	population_movement_contract_engine = load("res://systems/world/PopulationMovementContractEngine.gd").new(self)
+	global_prewarm_contract_engine = load("res://core/simulation/GlobalPrewarmContractEngine.gd").new(self)
+	global_node_contract_engine = load("res://core/contracts/GlobalNodeContractEngine.gd").new(self)
+	truth_resolution_contract_engine = load("res://core/contracts/TruthResolutionContractEngine.gd").new(self)
+	observable_node_contract_engine = load("res://core/contracts/ObservableNodeContractEngine.gd").new(self)
+	world_observability_contract_engine = load("res://systems/world/WorldObservabilityContractEngine.gd").new(self)
+	population_movement_contract_engine = load("res://systems/world/PopulationMovementContractEngine.gd").new(self)
+	crown_population_view_contract = load("res://systems/politics/CrownPopulationViewContract.gd").new(self)
+	population_card_contract_engine = load("res://systems/world/PopulationCardContractEngine.gd").new(self)
+	belongings_engine = load("res://systems/items/BelongingsEngine.gd").new(
 		self
 	)
 
 	_resident_bootstrap_heirloom_contracts()
 
-	global_object_catalog_system = GlobalObjectCatalogSystem.new(
+	global_object_catalog_system = load("res://systems/items/GlobalObjectCatalogSystem.gd").new(
 		self
 	)
-	object_hub_contract_engine = ObjectHubContractEngine.new(
+	object_hub_contract_engine = load("res://systems/items/ObjectHubContractEngine.gd").new(
 		self
 	)
 
 	_resident_bootstrap_global_object_catalog()
 	_resident_bootstrap_object_projection_contracts()
 
-	desire_engine = DesireEngine.new(
+	desire_engine = load("res://systems/characters/DesireEngine.gd").new(
 		self
 	)
-	capability_graph_engine = CapabilityGraphEngine.new(self)
-	goal_planning_engine = GoalPlanningEngine.new(self)
-	simulation_director = SimulationDirector.new(self)
-	year_budget_engine = YearBudgetEngine.new(self)
-	desire_behavior_bridge = DesireBehaviorBridge.new(self)
-	ai_event_engine = AIEventGenerator.new(self)
+	capability_graph_engine = load("res://core/contracts/CapabilityGraphEngine.gd").new(self)
+	goal_planning_engine = load("res://systems/narrative/GoalPlanningEngine.gd").new(self)
+	simulation_director = load("res://core/simulation/SimulationDirector.gd").new(self)
+	year_budget_engine = load("res://core/simulation/YearBudgetEngine.gd").new(self)
+	desire_behavior_bridge = load("res://systems/characters/DesireBehaviorBridge.gd").new(self)
+	ai_event_engine = load("res://systems/narrative/AIEventGenerator.gd").new(self)
 	if era_data_loader == null:
-		era_data_loader = EraDataLoader.new(self)
+		era_data_loader = load("res://data/EraDataLoader.gd").new(self)
 	if weapon_pack_loader == null:
-		weapon_pack_loader = WeaponPackLoader.new(self)
+		weapon_pack_loader = load("res://systems/items/WeaponPackLoader.gd").new(self)
 	if mod_loader == null:
-		mod_loader = ModLoader.new(self)
+		mod_loader = load("res://mods/ModLoader.gd").new(self)
 
-	boxing_contract_engine = BoxingContractEngine.new(self)
-	boxing_fighter_engine = BoxingFighterEngine.new(self)
-	boxing_training_engine = BoxingTrainingEngine.new(self)
-	boxing_matchmaking_engine = BoxingMatchmakingEngine.new(self)
-	boxing_fight_sim_engine = BoxingFightSimEngine.new(self)
-	boxing_ranking_engine = BoxingRankingEngine.new(self)
-	boxing_title_engine = BoxingTitleEngine.new(self)
-	boxing_injury_engine = BoxingInjuryEngine.new(self)
-	boxing_engine = BoxingEngine.new(self)
-	boxing_round_log_engine = BoxingRoundLogEngine.new(self)
-	boxing_rivalry_engine = BoxingRivalryEngine.new(self)
-	boxing_promotion_engine = BoxingPromotionEngine.new(self)
-	boxing_weight_engine = BoxingWeightEngine.new(self)
-	boxing_mandatory_engine = BoxingMandatoryEngine.new(self)
-	boxing_amateur_engine = BoxingAmateurEngine.new(self)
-	boxing_media_engine = BoxingMediaEngine.new(self)
-	boxing_gym_engine = BoxingGymEngine.new(self)
-	boxing_legacy_engine = BoxingLegacyEngine.new(self)
+	boxing_contract_engine = load("res://systems/boxing/BoxingContractEngine.gd").new(self)
+	boxing_fighter_engine = load("res://systems/boxing/BoxingFighterEngine.gd").new(self)
+	boxing_training_engine = load("res://systems/boxing/BoxingTrainingEngine.gd").new(self)
+	boxing_matchmaking_engine = load("res://systems/boxing/BoxingMatchmakingEngine.gd").new(self)
+	boxing_fight_sim_engine = load("res://systems/boxing/BoxingFightSimEngine.gd").new(self)
+	boxing_ranking_engine = load("res://systems/boxing/BoxingRankingEngine.gd").new(self)
+	boxing_title_engine = load("res://systems/boxing/BoxingTitleEngine.gd").new(self)
+	boxing_injury_engine = load("res://systems/boxing/BoxingInjuryEngine.gd").new(self)
+	boxing_engine = load("res://systems/boxing/BoxingEngine.gd").new(self)
+	boxing_round_log_engine = load("res://systems/boxing/BoxingRoundEngine.gd").new(self)
+	boxing_rivalry_engine = load("res://systems/boxing/BoxingRivalryEngine.gd").new(self)
+	boxing_promotion_engine = load("res://systems/boxing/BoxingPromotionEngine.gd").new(self)
+	boxing_weight_engine = load("res://systems/boxing/BoxingWeightEngine.gd").new(self)
+	boxing_mandatory_engine = load("res://systems/boxing/BoxingMandatoryEngine.gd").new(self)
+	boxing_amateur_engine = load("res://systems/boxing/BoxingAmateurEngine.gd").new(self)
+	boxing_media_engine = load("res://systems/boxing/BoxingMediaEngine.gd").new(self)
+	boxing_gym_engine = load("res://systems/boxing/BoxingGymEngine.gd").new(self)
+	boxing_legacy_engine = load("res://systems/boxing/BoxingLegacyEngine.gd").new(self)
 	if boxing_contract_engine != null:
 		boxing_contract_engine.set_contract()
-	competitive_reality_runtime = CompetitiveRealityRuntime.new(self)
+	competitive_reality_runtime = load("res://systems/realities/CompetitiveRealityRuntime.gd").new(self)
 	if competitive_reality_runtime != null:
 		competitive_reality_runtime.bootstrap_default_contracts()
-	reality_surge_engine = RealitySurgeEngine.new(self)
+	reality_surge_engine = load("res://systems/realities/RealitySurgeEngine.gd").new(self)
 	if reality_surge_engine != null:
 		reality_surge_engine.bootstrap_default_contracts()
-	reality_orchestrator = RealityOrchestrator.new(self)
+	reality_orchestrator = load("res://systems/realities/RealityOrchestrator.gd").new(self)
 	if reality_orchestrator != null:
 		reality_orchestrator.bootstrap_default_contracts()
-	vampire_origin_engine = VampireOriginEngine.new(self)
-	vampire_hunger_engine = VampireHungerEngine.new(self)
-	vampire_ability_engine = VampireAbilityEngine.new(self)
-	vampire_society_engine = VampireSocietyEngine.new(self)
-	vampire_hunter_engine = VampireHunterEngine.new(self)
-	vampire_legacy_engine = VampireLegacyEngine.new(self)
-	vampire_masquerade_engine = VampireMasqueradeEngine.new(self)
-	vampire_cure_engine = VampireCureEngine.new(self)
-	vampire_engine = VampireEngine.new(self)
-	universal_faction_engine = UniversalFactionEngine.new(self)
-	crime_world_engine = CrimeWorldEngine.new(self)
-	runtime_health_registry = RuntimeHealthRegistry.new(self)
-	runtime_fault_router = RuntimeFaultRouter.new(self)
-	patch_suggestion_engine = PatchSuggestionEngine.new(self)
-	live_patch_guard = LivePatchGuard.new(self)
-	auto_patch_engine = AutoPatchEngine.new(self)
-	live_diagnostics_engine = LiveDiagnosticsEngine.new(self)
+	vampire_origin_engine = load("res://systems/supernatural/vampires/VampireOriginEngine.gd").new(self)
+	vampire_hunger_engine = load("res://systems/supernatural/vampires/VampireHungerEngine.gd").new(self)
+	vampire_ability_engine = load("res://systems/supernatural/vampires/VampireAbilityEngine.gd").new(self)
+	vampire_society_engine = load("res://systems/supernatural/vampires/VampireSocietyEngine.gd").new(self)
+	vampire_hunter_engine = load("res://systems/supernatural/vampires/VampireHunterEngine.gd").new(self)
+	vampire_legacy_engine = load("res://systems/supernatural/vampires/VampireLegacyEngine.gd").new(self)
+	vampire_masquerade_engine = load("res://systems/supernatural/vampires/VampireMasqueradeEngine.gd").new(self)
+	vampire_cure_engine = load("res://systems/supernatural/vampires/VampireCureEngine.gd").new(self)
+	vampire_engine = load("res://systems/supernatural/vampires/VampireEngine.gd").new(self)
+	universal_faction_engine = load("res://systems/politics/UniversalFactionEngine.gd").new(self)
+	crime_world_engine = load("res://systems/crime/CrimeWorldEngine.gd").new(self)
+	runtime_health_registry = load("res://core/diagnostics/RuntimeHealthRegistry.gd").new(self)
+	runtime_fault_router = load("res://core/diagnostics/RuntimeFaultRouter.gd").new(self)
+	patch_suggestion_engine = load("res://integrations/updates/PatchSuggestionEngine.gd").new(self)
+	live_patch_guard = load("res://core/diagnostics/LivePatchGuard.gd").new(self)
+	auto_patch_engine = load("res://integrations/updates/AutoPatchEngine.gd").new(self)
+	live_diagnostics_engine = load("res://core/diagnostics/LiveDiagnosticsEngine.gd").new(self)
 
 	if custom_settings.has("year_locked"):
 		year_locked = custom_settings ["year_locked"]
@@ -12016,7 +12025,7 @@ func _execute_birth_shell_deferred_boot_stage(stage_name: String, mode_key: Stri
 	match stage_name:
 		"contract_boot":
 			if game_state_contract_engine == null:
-				game_state_contract_engine = GameStateContractEngine.new(self)
+				game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(self)
 
 			var game_state_boot_report: Dictionary = game_state_contract_engine.bootstrap_kernel_contract({
 				"phase": "birth_shell_deferred_contract_boot",
@@ -12036,21 +12045,21 @@ func _execute_birth_shell_deferred_boot_stage(stage_name: String, mode_key: Stri
 
 		"external_eras":
 			if era_data_loader == null:
-				era_data_loader = EraDataLoader.new(self)
+				era_data_loader = load("res://data/EraDataLoader.gd").new(self)
 			if not external_era_data_loaded:
 				era_data_loader.load_external_eras()
 			external_era_data_loaded = true
 
 		"asset_catalogs":
 			if era_data_loader == null:
-				era_data_loader = EraDataLoader.new(self)
+				era_data_loader = load("res://data/EraDataLoader.gd").new(self)
 			if not asset_catalogs_loaded:
 				era_data_loader.load_asset_catalogs()
 			asset_catalogs_loaded = true
 
 		"weapon_packs":
 			if weapon_pack_loader == null:
-				weapon_pack_loader = WeaponPackLoader.new(self)
+				weapon_pack_loader = load("res://systems/items/WeaponPackLoader.gd").new(self)
 			if not weapon_packs_loaded:
 				weapon_pack_loader.load_weapon_packs()
 			weapon_packs_loaded = true
@@ -12062,47 +12071,47 @@ func _execute_birth_shell_deferred_boot_stage(stage_name: String, mode_key: Stri
 			var era_contract_created: bool = false
 
 			if mod_loader == null:
-				mod_loader = ModLoader.new(self)
+				mod_loader = load("res://mods/ModLoader.gd").new(self)
 
 			if mod_contract_engine == null:
-				mod_contract_engine = ModContractEngine.new(self)
+				mod_contract_engine = load("res://mods/ModContractEngine.gd").new(self)
 
 			if caveman_reality_runtime_engine == null:
 				caveman_reality_runtime_engine = (
-					CavemanRealityRuntimeEngine.new(self)
+					load("res://systems/realities/CavemanRealityRuntimeEngine.gd").new(self)
 				)
 				caveman_runtime_created = true
 
 			if mod_bundle_contract_engine == null:
 				mod_bundle_contract_engine = (
-					ModBundleContractEngine.new(self)
+					load("res://mods/ModBundleContractEngine.gd").new(self)
 				)
 				mod_bundle_created = true
 
 			if mod_marketplace_contract_engine == null:
 				mod_marketplace_contract_engine = (
-					ModMarketplaceContractEngine.new(self)
+					load("res://mods/ModMarketplaceContractEngine.gd").new(self)
 				)
 
 			if mod_hub_contract_engine == null:
 				mod_hub_contract_engine = (
-					ModHubContractEngine.new(self)
+					load("res://mods/ModHubContractEngine.gd").new(self)
 				)
 
 			if mod_menu_contract_engine == null:
 				mod_menu_contract_engine = (
-					ModMenuContractEngine.new(self)
+					load("res://mods/ModMenuContractEngine.gd").new(self)
 				)
 
 			if era_mod_contract_engine == null:
 				era_mod_contract_engine = (
-					EraModContractEngine.new(self)
+					load("res://mods/EraModContractEngine.gd").new(self)
 				)
 				era_mod_created = true
 
 			if era_contract_engine == null:
 				era_contract_engine = (
-					EraContractEngine.new(self)
+					load("res://systems/world/EraContractEngine.gd").new(self)
 				)
 				era_contract_created = true
 
@@ -12199,7 +12208,7 @@ func _execute_birth_shell_deferred_boot_stage(stage_name: String, mode_key: Stri
 
 		"event_bus_contracts":
 			if event_bus == null:
-				event_bus = EventBus.new(self)
+				event_bus = load("res://core/events/EventBus.gd").new(self)
 				event_bus_contract_layer = event_bus.contract_layer
 
 			if game_state_contract_engine != null:
@@ -12262,7 +12271,7 @@ func _execute_birth_shell_deferred_boot_stage(stage_name: String, mode_key: Stri
 	}
 func ensure_causality_inversion_engine() -> bool:
 	if causality_inversion_engine == null:
-		causality_inversion_engine = CausalityInversionEngine.new(self)
+		causality_inversion_engine = load("res://systems/realities/CausalityInversionEngine.gd").new(self)
 		if causality_inversion_engine != null:
 			causality_inversion_engine.bootstrap_default_contracts()
 	return causality_inversion_engine != null
@@ -14848,87 +14857,87 @@ func _ensure_identity_checkpoint_runtime_dependencies() -> void:
 			scenario_state = {}
 
 		if identity_contract_engine == null:
-			identity_contract_engine = IdentityContractEngine.new(
+			identity_contract_engine = load("res://systems/characters/IdentityContractEngine.gd").new(
 				self
 			)
 
 		if email_verification_transport_engine == null:
 			email_verification_transport_engine = (
-				EmailVerificationTransportEngine.new(
+				load("res://integrations/network/EmailVerificationTransportEngine.gd").new(
 					self
 				)
 			)
 
 		if compression == null:
-			compression = Compression.new(
+			compression = load("res://core/persistence/Compression.gd").new(
 				self
 			)
 
 		if connection_graph_network == null:
-			connection_graph_network = ConnectionGraphNetwork.new(
+			connection_graph_network = load("res://integrations/network/ConnectionGraphNetwork.gd").new(
 				self
 			)
 
 		if messenger_contract_engine == null:
-			messenger_contract_engine = MessengerContractEngine.new(
+			messenger_contract_engine = load("res://integrations/network/MessengerContractEngine.gd").new(
 				self
 			)
 
 		if mailbox_contract_engine == null:
-			mailbox_contract_engine = MailBoxContractEngine.new(
+			mailbox_contract_engine = load("res://integrations/network/MailBoxContractEngine.gd").new(
 				self
 			)
 
 		if eraccount_profile_contract_engine == null:
 			eraccount_profile_contract_engine = (
-				ErAccountProfileContractEngine.new(
+				load("res://integrations/network/ErAccountProfileContractEngine.gd").new(
 					self
 				)
 			)
 
 		if network_notes_contract_engine == null:
 			network_notes_contract_engine = (
-				NetworkNotesContractEngine.new(
+				load("res://integrations/network/NetworkNotesContractEngine.gd").new(
 					self
 				)
 			)
 
 		if public_feed_contract_engine == null:
 			public_feed_contract_engine = (
-				PublicFeedContractEngine.new(
+				load("res://integrations/network/PublicFeedContractEngine.gd").new(
 					self
 				)
 			)
 
 		if reality_stream_contract_engine == null:
 			reality_stream_contract_engine = (
-				RealityStreamContractEngine.new(
+				load("res://systems/realities/RealityStreamContractEngine.gd").new(
 					self
 				)
 			)
 
 		if life_account_transfer_contract_engine == null:
 			life_account_transfer_contract_engine = (
-				LifeAccountTransferContractEngine.new(
+				load("res://integrations/network/LifeAccountTransferContractEngine.gd").new(
 					self
 				)
 			)
 
 		if self_host_network_contract_engine == null:
 			self_host_network_contract_engine = (
-				SelfHostNetworkContractEngine.new(
+				load("res://integrations/network/SelfHostNetworkContractEngine.gd").new(
 					self
 				)
 			)
 
 		if search_contract_engine == null:
-			search_contract_engine = SearchContractEngine.new(
+			search_contract_engine = load("res://integrations/network/SearchContractEngine.gd").new(
 				self
 			)
 
 		if eralife_network_contract_engine == null:
 			eralife_network_contract_engine = (
-				EraLifeNetworkContractEngine.new(
+				load("res://integrations/network/EraLifeNetworkContractEngine.gd").new(
 					self
 				)
 			)
@@ -14948,12 +14957,12 @@ func _ensure_identity_checkpoint_runtime_dependencies() -> void:
 			reality_stream_contract_engine.bind_event_bus()
 
 		if crr_contract_engine == null:
-			crr_contract_engine = CRRContractEngine.new(
+			crr_contract_engine = load("res://systems/realities/CRRContractEngine.gd").new(
 				self
 			)
 
 		if military_contract_engine == null:
-			military_contract_engine = MilitaryContractEngine.new(
+			military_contract_engine = load("res://systems/politics/MilitaryContractEngine.gd").new(
 				self
 			)
 
@@ -14963,35 +14972,35 @@ func _ensure_identity_checkpoint_runtime_dependencies() -> void:
 		ensure_war_contract_runtime_authority()
 
 		if battle_contract_engine == null:
-			battle_contract_engine = BattleContractEngine.new(
+			battle_contract_engine = load("res://systems/minigames/BattleContractEngine.gd").new(
 				self
 			)
 
 		if battle_sim_contract_engine == null:
-			battle_sim_contract_engine = BattleSimContractEngine.new(
+			battle_sim_contract_engine = load("res://systems/minigames/BattleSimContractEngine.gd").new(
 				self
 			)
 
 		if battle_ui_contract_engine == null:
-			battle_ui_contract_engine = BattleUIContractEngine.new(
+			battle_ui_contract_engine = load("res://systems/minigames/BattleUIContractEngine.gd").new(
 				self
 			)
 
 		if session_contract_engine == null:
-			session_contract_engine = SessionContractEngine.new(
+			session_contract_engine = load("res://integrations/network/SessionContractEngine.gd").new(
 				self
 			)
 
 		if reality_checkpoint_contract_engine == null:
 			reality_checkpoint_contract_engine = (
-				RealityCheckpointContractEngine.new(
+				load("res://core/persistence/RealityCheckpointContractEngine.gd").new(
 					self
 				)
 			)
 
 		if reality_merge_contract_engine == null:
 			reality_merge_contract_engine = (
-				RealityMergeContractEngine.new(
+				load("res://systems/realities/RealityMergeContractEngine.gd").new(
 					self
 				)
 			)
@@ -17418,7 +17427,7 @@ func save_game(
 
 	if game_state_serialization_runtime == null:
 		game_state_serialization_runtime = (
-			GameStateSerializationRuntime.new(self)
+			load("res://core/persistence/GameStateSerializationRuntime.gd").new(self)
 		)
 
 	var identity_context: Dictionary = (
@@ -17736,7 +17745,7 @@ or engine_property == "reality_orchestrator" or target == "reality_orchestrator"
 		return { "success": false, "reason": "RealityOrchestrator unavailable."}
 	if command_id.begins_with("email.") or command_id.begins_with("email_transport.") or engine_property == "email_verification_transport_engine" or target == "email_verification_transport_engine":
 		if email_verification_transport_engine == null:
-			email_verification_transport_engine = EmailVerificationTransportEngine.new(self)
+			email_verification_transport_engine = load("res://integrations/network/EmailVerificationTransportEngine.gd").new(self)
 		if email_verification_transport_engine != null and email_verification_transport_engine.has_method("route_command_envelope"):
 			return email_verification_transport_engine.route_command_envelope(envelope)
 		return { "success": false, "reason": "EmailVerificationTransportEngine unavailable."}
@@ -17798,41 +17807,41 @@ or engine_property == "reality_orchestrator" or target == "reality_orchestrator"
 		}
 	if command_id.begins_with("crr.") or engine_property == "crr_contract_engine" or target == "crr_contract_engine":
 		if crr_contract_engine == null:
-			crr_contract_engine = CRRContractEngine.new(self)
+			crr_contract_engine = load("res://systems/realities/CRRContractEngine.gd").new(self)
 		if crr_contract_engine != null and crr_contract_engine.has_method("route_command_envelope"):
 			return crr_contract_engine.route_command_envelope(envelope)
 		return { "success": false, "reason": "CRRContractEngine unavailable."}
 	if command_id.begins_with("military.") or engine_property == "military_contract_engine" or target == "military_contract_engine":
 		if military_contract_engine == null:
-			military_contract_engine = MilitaryContractEngine.new(self)
+			military_contract_engine = load("res://systems/politics/MilitaryContractEngine.gd").new(self)
 		if military_contract_engine != null and military_contract_engine.has_method("route_command_envelope"):
 			return military_contract_engine.route_command_envelope(envelope)
 		return { "success": false, "reason": "MilitaryContractEngine unavailable."}
 
 	if command_id.begins_with("war.") or engine_property == "war_contract_engine" or target == "war_contract_engine":
 		if war_contract_engine == null:
-			war_contract_engine = WarContractEngine.new(self)
+			war_contract_engine = load("res://systems/politics/WarContractEngine.gd").new(self)
 		if war_contract_engine != null and war_contract_engine.has_method("route_command_envelope"):
 			return war_contract_engine.route_command_envelope(envelope)
 		return { "success": false, "reason": "WarContractEngine unavailable."}
 
 	if command_id.begins_with("battle_ui.") or engine_property == "battle_ui_contract_engine" or target == "battle_ui_contract_engine":
 		if battle_ui_contract_engine == null:
-			battle_ui_contract_engine = BattleUIContractEngine.new(self)
+			battle_ui_contract_engine = load("res://systems/minigames/BattleUIContractEngine.gd").new(self)
 		if battle_ui_contract_engine != null and battle_ui_contract_engine.has_method("route_command_envelope"):
 			return battle_ui_contract_engine.route_command_envelope(envelope)
 		return { "success": false, "reason": "BattleUIContractEngine unavailable."}
 
 	if command_id.begins_with("battle_sim.") or engine_property == "battle_sim_contract_engine" or target == "battle_sim_contract_engine":
 		if battle_sim_contract_engine == null:
-			battle_sim_contract_engine = BattleSimContractEngine.new(self)
+			battle_sim_contract_engine = load("res://systems/minigames/BattleSimContractEngine.gd").new(self)
 		if battle_sim_contract_engine != null and battle_sim_contract_engine.has_method("route_command_envelope"):
 			return battle_sim_contract_engine.route_command_envelope(envelope)
 		return { "success": false, "reason": "BattleSimContractEngine unavailable."}
 
 	if command_id.begins_with("battle.") or engine_property == "battle_contract_engine" or target == "battle_contract_engine":
 		if battle_contract_engine == null:
-			battle_contract_engine = BattleContractEngine.new(self)
+			battle_contract_engine = load("res://systems/minigames/BattleContractEngine.gd").new(self)
 		if battle_contract_engine != null and battle_contract_engine.has_method("route_command_envelope"):
 			return battle_contract_engine.route_command_envelope(envelope)
 		return { "success": false, "reason": "BattleContractEngine unavailable."}
@@ -17840,7 +17849,7 @@ or engine_property == "reality_orchestrator" or target == "reality_orchestrator"
 
 	if command_id.begins_with("identity.") or engine_property == "identity_contract_engine" or target == "identity_contract_engine":
 		if identity_contract_engine == null:
-			identity_contract_engine = IdentityContractEngine.new(self)
+			identity_contract_engine = load("res://systems/characters/IdentityContractEngine.gd").new(self)
 		if identity_contract_engine != null and identity_contract_engine.has_method("route_command_envelope"):
 			return identity_contract_engine.route_command_envelope(envelope)
 		if command_id == "identity.create_or_attach_eralife_account" and has_method("create_or_attach_eralife_account_contract"):
@@ -17983,98 +17992,98 @@ func _normalize_loaded_realm_map(raw_realms: Variant) -> Dictionary:
 	return out
 func _ensure_load_game_runtime_dependencies() -> void:
 	if era_engine == null:
-		era_engine = EraEngine.new(
+		era_engine = load("res://systems/world/EraEngine.gd").new(
 			self
 		)
 
 	if realm_engine == null:
-		realm_engine = RealmEngine.new(
+		realm_engine = load("res://systems/world/RealmEngine.gd").new(
 			self
 		)
 
 	if mod_loader == null:
-		mod_loader = ModLoader.new(
+		mod_loader = load("res://mods/ModLoader.gd").new(
 			self
 		)
 
 	if mod_contract_engine == null:
-		mod_contract_engine = ModContractEngine.new(
+		mod_contract_engine = load("res://mods/ModContractEngine.gd").new(
 			self
 		)
 
 	if dynasty_engine == null:
-		dynasty_engine = DynastyEngine.new(
+		dynasty_engine = load("res://systems/relationships/DynastyEngine.gd").new(
 			self
 		)
 
 	if historical_timeline_engine == null:
-		historical_timeline_engine = HistoricalTimelineEngine.new(
+		historical_timeline_engine = load("res://systems/world/HistoricalTimelineEngine.gd").new(
 			self
 		)
 
 	if world_chronicle_engine == null:
-		world_chronicle_engine = WorldChronicleEngine.new(
+		world_chronicle_engine = load("res://systems/narrative/WorldChronicleEngine.gd").new(
 			self
 		)
 
 	if agent_memory_propagation_engine == null:
 		agent_memory_propagation_engine = (
-			AgentMemoryPropagationEngine.new(
+			load("res://systems/relationships/AgentMemoryPropagationEngine.gd").new(
 				self
 			)
 		)
 
 	if population_shard_engine == null:
-		population_shard_engine = PopulationShardEngine.new(
+		population_shard_engine = load("res://systems/world/PopulationShardEngine.gd").new(
 			self
 		)
 
 	if game_state_contract_engine == null:
-		game_state_contract_engine = GameStateContractEngine.new(
+		game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(
 			self
 		)
 
 	if game_state_hydration_runtime == null:
-		game_state_hydration_runtime = GameStateHydrationRuntime.new(
+		game_state_hydration_runtime = load("res://core/state/GameStateHydrationRuntime.gd").new(
 			self
 		)
 
 	if game_state_serialization_runtime == null:
 		game_state_serialization_runtime = (
-			GameStateSerializationRuntime.new(
+			load("res://core/persistence/GameStateSerializationRuntime.gd").new(
 				self
 			)
 		)
 
 	if temporal_slice_transformation_runtime == null:
 		temporal_slice_transformation_runtime = (
-			TemporalSliceTransformationRuntime.new(
+			load("res://systems/realities/TemporalSliceTransformationRuntime.gd").new(
 				self
 			)
 		)
 
 	if reality_fusion_engine == null:
-		reality_fusion_engine = RealityFusionEngine.new(
+		reality_fusion_engine = load("res://systems/realities/RealityFusionEngine.gd").new(
 			self
 		)
 
 	if soul_seed_engine == null:
-		soul_seed_engine = SoulSeedEngine.new(
+		soul_seed_engine = load("res://systems/characters/SoulSeedEngine.gd").new(
 			self
 		)
 
 	if consciousness_engine == null:
-		consciousness_engine = ConsciousnessEngine.new(
+		consciousness_engine = load("res://systems/characters/ConsciousnessEngine.gd").new(
 			self
 		)
 
 	if perceptual_integrity_engine == null:
-		perceptual_integrity_engine = PerceptualIntegrityEngine.new(
+		perceptual_integrity_engine = load("res://core/diagnostics/PerceptualIntegrityEngine.gd").new(
 			self
 		)
 
 	if willpower_engine == null:
-		willpower_engine = WillpowerEngine.new(
+		willpower_engine = load("res://systems/characters/WillpowerEngine.gd").new(
 			self
 		)
 
@@ -18106,125 +18115,125 @@ func _ensure_load_game_runtime_dependencies() -> void:
 	)
 
 	if realm_contract_engine == null:
-		realm_contract_engine = RealmContractEngine.new(
+		realm_contract_engine = load("res://systems/world/RealmContractEngine.gd").new(
 			self
 		)
 
 	if simulation_contract_engine == null:
-		simulation_contract_engine = SimulationContractEngine.new(
+		simulation_contract_engine = load("res://core/simulation/SimulationContractEngine.gd").new(
 			self
 		)
 
 	if runtime_contract_engine == null:
-		runtime_contract_engine = RuntimeContractEngine.new(
+		runtime_contract_engine = load("res://core/contracts/RuntimeContractEngine.gd").new(
 			self
 		)
 
 	if romance_contract_engine == null:
-		romance_contract_engine = RomanceContractEngine.new(
+		romance_contract_engine = load("res://systems/relationships/RomanceContractEngine.gd").new(
 			self
 		)
 
 	if scenario_popup_contract_engine == null:
 		scenario_popup_contract_engine = (
-			ScenarioPopupContractEngine.new(
+			load("res://systems/narrative/ScenarioPopupContractEngine.gd").new(
 				self
 			)
 		)
 
 	if scenario_runtime_contract_engine == null:
 		scenario_runtime_contract_engine = (
-			ScenarioRuntimeContractEngine.new(
+			load("res://systems/narrative/ScenarioRuntimeContractEngine.gd").new(
 				self
 			)
 		)
 
 	if pending_situations_engine == null:
-		pending_situations_engine = PendingSituationsEngine.new(
+		pending_situations_engine = load("res://systems/narrative/PendingSituationsEngine.gd").new(
 			self
 		)
 
 	if live_person_editor_engine == null:
-		live_person_editor_engine = LivePersonEditorEngine.new(
+		live_person_editor_engine = load("res://systems/characters/LivePersonEditorEngine.gd").new(
 			self
 		)
 
 	if contract_view_layer_contract_engine == null:
 		contract_view_layer_contract_engine = (
-			ContractViewLayerContractEngine.new(
+			load("res://core/contracts/ContractViewLayerContractEngine.gd").new(
 				self
 			)
 		)
 
 	if traits_contract_engine == null:
-		traits_contract_engine = TraitsContractEngine.new(
+		traits_contract_engine = load("res://systems/characters/TraitsContractEngine.gd").new(
 			self
 		)
 
 	if identity_contract_engine == null:
-		identity_contract_engine = IdentityContractEngine.new(
+		identity_contract_engine = load("res://systems/characters/IdentityContractEngine.gd").new(
 			self
 		)
 
 	if family_control_engine == null:
-		family_control_engine = FamilyControlEngine.new(
+		family_control_engine = load("res://systems/relationships/FamilyControlEngine.gd").new(
 			self
 		)
 
 	if universal_switch_contract_engine == null:
 		universal_switch_contract_engine = (
-			UniversalSwitchContractEngine.new(
+			load("res://systems/realities/UniversalSwitchContractEngine.gd").new(
 				self
 			)
 		)
 
 	if ui_contract_engine == null:
-		ui_contract_engine = UIContractEngine.new(
+		ui_contract_engine = load("res://ui/common/UIContractEngine.gd").new(
 			self
 		)
 
 	if embedded_ui_contract_engine == null:
-		embedded_ui_contract_engine = EmbeddedUIContractEngine.new(
+		embedded_ui_contract_engine = load("res://ui/common/EmbeddedUIContractEngine.gd").new(
 			self
 		)
 
 	if world_engine == null:
-		world_engine = WorldEngine.new(
+		world_engine = load("res://systems/world/WorldEngine.gd").new(
 			self
 		)
 
 	if life_diary_contract_engine == null:
-		life_diary_contract_engine = LifeDiaryContractEngine.new(
+		life_diary_contract_engine = load("res://systems/narrative/LifeDiaryContractEngine.gd").new(
 			self
 		)
 
 	if life_engine == null:
-		life_engine = LifeEngine.new(
+		life_engine = load("res://systems/characters/LifeEngine.gd").new(
 			self
 		)
 
 	if shared_public_space_engine == null:
-		shared_public_space_engine = SharedPublicSpaceEngine.new(
+		shared_public_space_engine = load("res://systems/world/SharedPublicSpaceEngine.gd").new(
 			self
 		)
 
 	if food_engine == null:
-		food_engine = FoodEngine.new(
+		food_engine = load("res://systems/activities/FoodEngine.gd").new(
 			self
 		)
 
 	if food_restaurant_engine == null:
-		food_restaurant_engine = FoodRestaurantEngine.new(
+		food_restaurant_engine = load("res://systems/activities/FoodRestaurantEngine.gd").new(
 			self
 		)
 
 	if grocery_store_engine == null:
-		grocery_store_engine = GroceryStoreEngine.new(
+		grocery_store_engine = load("res://systems/activities/GroceryStoreEngine.gd").new(
 			self
 		)
 
 	if movie_theater_engine == null:
-		movie_theater_engine = MovieTheaterEngine.new(
+		movie_theater_engine = load("res://systems/activities/MovieTheaterEngine.gd").new(
 			self
 		)
 
@@ -18237,89 +18246,89 @@ func _ensure_load_game_runtime_dependencies() -> void:
 		movie_theater_engine.bootstrap_ui_contracts()
 
 	if luxury_shop_engine == null:
-		luxury_shop_engine = LuxuryShopEngine.new(
+		luxury_shop_engine = load("res://systems/economy/LuxuryShopEngine.gd").new(
 			self
 		)
 
 	if artifacts_engine == null:
-		artifacts_engine = ArtifactsEngine.new(
+		artifacts_engine = load("res://systems/items/ArtifactsEngine.gd").new(
 			self
 		)
 
 	if artifacts_catalog_contract_engine == null:
 		artifacts_catalog_contract_engine = (
-			ArtifactsCatalogContractEngine.new(
+			load("res://systems/items/ArtifactsCatalogContractEngine.gd").new(
 				self
 			)
 		)
 
 	if weapons_engine == null:
-		weapons_engine = WeaponsEngine.new(
+		weapons_engine = load("res://systems/items/WeaponsEngine.gd").new(
 			self
 		)
 
 	if weapons_catalog_expansion == null:
-		weapons_catalog_expansion = WeaponsCatalogExpansion.new(
+		weapons_catalog_expansion = load("res://systems/items/WeaponsCatalogExpansion.gd").new(
 			self
 		)
 
 	if artifact_interaction_contract_engine == null:
 		artifact_interaction_contract_engine = (
-			ArtifactInteractionContractEngine.new(
+			load("res://systems/items/ArtifactInteractionContractEngine.gd").new(
 				self
 			)
 		)
 
 	if artifact_shop_contract_engine == null:
 		artifact_shop_contract_engine = (
-			ArtifactShopContractEngine.new(
+			load("res://systems/items/ArtifactShopContractEngine.gd").new(
 				self
 			)
 		)
 
 	if heirloom_runtime_engine == null:
-		heirloom_runtime_engine = HeirloomRuntimeEngine.new(
+		heirloom_runtime_engine = load("res://systems/items/HeirloomRuntimeEngine.gd").new(
 			self
 		)
 
 	if heirloom_contract_engine == null:
-		heirloom_contract_engine = HeirloomContractEngine.new(
+		heirloom_contract_engine = load("res://systems/items/HeirloomContractEngine.gd").new(
 			self
 		)
 
 	if heirloom_engine == null:
-		heirloom_engine = HeirloomEngine.new(
+		heirloom_engine = load("res://systems/items/HeirloomEngine.gd").new(
 			self
 		)
 
 	if heirloom_catalog_contract_engine == null:
 		heirloom_catalog_contract_engine = (
-			HeirloomCatalogContractEngine.new(
+			load("res://systems/items/HeirloomCatalogContractEngine.gd").new(
 				self
 			)
 		)
 
 	if heirloom_hub_contract_engine == null:
 		heirloom_hub_contract_engine = (
-			HeirloomHubContractEngine.new(
+			load("res://systems/items/HeirloomHubContractEngine.gd").new(
 				self
 			)
 		)
 
 	if belongings_engine == null:
-		belongings_engine = BelongingsEngine.new(
+		belongings_engine = load("res://systems/items/BelongingsEngine.gd").new(
 			self
 		)
 
 	_resident_bootstrap_heirloom_contracts()
 
 	if global_object_catalog_system == null:
-		global_object_catalog_system = GlobalObjectCatalogSystem.new(
+		global_object_catalog_system = load("res://systems/items/GlobalObjectCatalogSystem.gd").new(
 			self
 		)
 
 	if object_hub_contract_engine == null:
-		object_hub_contract_engine = ObjectHubContractEngine.new(
+		object_hub_contract_engine = load("res://systems/items/ObjectHubContractEngine.gd").new(
 			self
 		)
 
@@ -18335,47 +18344,47 @@ func _ensure_load_game_runtime_dependencies() -> void:
 	_resident_bootstrap_object_projection_contracts()
 
 	if bank_engine == null:
-		bank_engine = BankEngine.new(
+		bank_engine = load("res://systems/economy/BankEngine.gd").new(
 			self
 		)
 
 	if crime_contract_engine == null:
-		crime_contract_engine = CrimeContractEngine.new(
+		crime_contract_engine = load("res://systems/crime/CrimeContractEngine.gd").new(
 			self
 		)
 
 	if investigation_layer == null:
-		investigation_layer = InvestigationLayer.new(
+		investigation_layer = load("res://systems/crime/InvestigationLayer.gd").new(
 			self
 		)
 
 	if justice_system_engine == null:
-		justice_system_engine = JusticeSystemEngine.new(
+		justice_system_engine = load("res://systems/crime/JusticeSystemEngine.gd").new(
 			self
 		)
 
 	if jail_engine == null:
-		jail_engine = JailEngine.new(
+		jail_engine = load("res://systems/crime/JailEngine.gd").new(
 			self
 		)
 
 	if prison_engine == null:
-		prison_engine = PrisonEngine.new(
+		prison_engine = load("res://systems/crime/PrisonEngine.gd").new(
 			self
 		)
 
 	if case_orchestrator == null:
-		case_orchestrator = CaseOrchestrator.new(
+		case_orchestrator = load("res://systems/crime/CaseOrchestrator.gd").new(
 			self
 		)
 
 	if crime_engine == null:
-		crime_engine = CrimeEngine.new(
+		crime_engine = load("res://systems/crime/CrimeEngine.gd").new(
 			self
 		)
 
 	if crime_hub_contract_engine == null:
-		crime_hub_contract_engine = CrimeHubContractEngine.new(
+		crime_hub_contract_engine = load("res://systems/crime/CrimeHubContractEngine.gd").new(
 			self
 		)
 
@@ -18383,7 +18392,7 @@ func _resolve_loaded_era_from_save_data(data: Dictionary, loaded_year: int) -> V
 	var saved_era_name: String = str(data.get("era_name", "")).strip_edges()
 
 	if era_engine == null:
-		era_engine = EraEngine.new(self)
+		era_engine = load("res://systems/world/EraEngine.gd").new(self)
 
 	if era_engine != null:
 		if saved_era_name != "" and "eras" in era_engine and typeof(era_engine.eras) == TYPE_DICTIONARY:
@@ -18412,7 +18421,7 @@ func load_game(path: String = "user://savegame.bin", options: Dictionary = {}) -
 	_ensure_identity_checkpoint_runtime_dependencies()
 
 	if game_state_hydration_runtime == null:
-		game_state_hydration_runtime = GameStateHydrationRuntime.new(self)
+		game_state_hydration_runtime = load("res://core/state/GameStateHydrationRuntime.gd").new(self)
 
 	var load_options: Dictionary = {
 		"source": "load_game",
@@ -18763,7 +18772,7 @@ func _soft_unload_npcs():
 func merge_character_from_save(path: String, merge_contract: Dictionary = {}):
 	_ensure_load_game_runtime_dependencies()
 	if game_state_hydration_runtime == null:
-		game_state_hydration_runtime = GameStateHydrationRuntime.new(self)
+		game_state_hydration_runtime = load("res://core/state/GameStateHydrationRuntime.gd").new(self)
 
 	var resolved_contract: Dictionary = _default_reality_merge_contract()
 	if typeof(merge_contract) == TYPE_DICTIONARY and not merge_contract.is_empty():
@@ -18786,7 +18795,7 @@ func fuse_reality_from_save(path: String, fusion_contract: Dictionary = {}) -> D
 	_ensure_load_game_runtime_dependencies()
 
 	if reality_fusion_engine == null:
-		reality_fusion_engine = RealityFusionEngine.new(self)
+		reality_fusion_engine = load("res://systems/realities/RealityFusionEngine.gd").new(self)
 
 	var report: Dictionary = reality_fusion_engine.fuse_from_path(path, fusion_contract)
 
@@ -18805,7 +18814,7 @@ func preview_reality_fusion_from_save(path: String, fusion_contract: Dictionary 
 	_ensure_load_game_runtime_dependencies()
 
 	if reality_fusion_engine == null:
-		reality_fusion_engine = RealityFusionEngine.new(self)
+		reality_fusion_engine = load("res://systems/realities/RealityFusionEngine.gd").new(self)
 
 	return reality_fusion_engine.preview_fusion_from_path(path, fusion_contract)
 func _default_reality_merge_contract() -> Dictionary:
@@ -18831,7 +18840,7 @@ func ensure_war_contract_runtime_authority() -> Dictionary:
 		var rebound: bool = false
 
 		if war_contract_engine == null:
-			war_contract_engine = WarContractEngine.new(
+			war_contract_engine = load("res://systems/politics/WarContractEngine.gd").new(
 				self
 			)
 			created = (
@@ -18872,7 +18881,7 @@ func ensure_war_contract_runtime_authority() -> Dictionary:
 
 func _normalize_external_birth_settings_for_runtime(settings: Dictionary) -> Dictionary:
 	if birth_contract_engine == null:
-		birth_contract_engine = BirthContractEngine.new(self)
+		birth_contract_engine = load("res://systems/characters/BirthContractEngine.gd").new(self)
 
 	var context:= {
 		"source": str(settings.get("source", "external_birth")),
@@ -18965,7 +18974,7 @@ func start_random_new_life(birth_settings: Dictionary = {}):
 	else:
 		var temp_era_engine: EraEngine = era_engine
 		if temp_era_engine == null:
-			temp_era_engine = EraEngine.new(self)
+			temp_era_engine = load("res://systems/world/EraEngine.gd").new(self)
 
 		if temp_era_engine != null and temp_era_engine.eras.size() > 0:
 			var era_keys: Array = temp_era_engine.eras.keys()
@@ -20563,11 +20572,11 @@ func _emit_family_death_pending_situation(contract: Dictionary, target_id: int) 
 
 func _ensure_family_death_pending_engines() -> void:
 	if scenario_runtime_contract_engine == null:
-		scenario_runtime_contract_engine = ScenarioRuntimeContractEngine.new(self)
+		scenario_runtime_contract_engine = load("res://systems/narrative/ScenarioRuntimeContractEngine.gd").new(self)
 	if scenario_popup_contract_engine == null:
-		scenario_popup_contract_engine = ScenarioPopupContractEngine.new(self)
+		scenario_popup_contract_engine = load("res://systems/narrative/ScenarioPopupContractEngine.gd").new(self)
 	if pending_situations_engine == null:
-		pending_situations_engine = PendingSituationsEngine.new(self)
+		pending_situations_engine = load("res://systems/narrative/PendingSituationsEngine.gd").new(self)
 
 
 func _family_funeral_responsible_person_for_dead(dead_person: Person) -> Person:

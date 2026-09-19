@@ -62,3 +62,19 @@ Dropdowns now open `ui/common/MobileOptionSheet.gd`, a scrollable in-viewport li
 The early boot PNG is included as a raw image (Godot's boot image reader cannot use only the imported texture). The mobile loader is the default entry, with a PC override retaining the desktop entry. The loader waits for drawing before requesting the heavy scene. Device diagnostics found its text at y=962 in a 938-high viewport during startup; the final layout uses viewport anchors rather than initial absolute Android geometry. The loading-layout regression checks centering and bounds across three phone sizes. These presentation changes do not claim to shorten scene-loading time.
 
 Validation: all 19 existing tests passed (`build/tests/headless-yjlymjo5`); the added loader test and final mobile configuration checks are in `build/tests/headless-ko2x511z`. APK signing and raw splash inclusion checked. USB disconnected before the final anchored-loader build could be installed, so final loader visibility still needs a device recheck. Earlier iterations are not counted as successful visual checks.
+
+
+## Startup update 0.1.0-portrait.3
+
+The `codex/mobile-startup-performance` branch adds an independent dark/cyan entry
+menu, defers domain script loading to existing initialization boundaries, and
+avoids optional mobile panel prewarming. New life can be selected during loading;
+Back cancels the selection. Saved life & account and Watch intro retain their
+existing destinations. Informational tooltips no longer consume panel Back.
+
+The signed ARMv7 build is installed on the paired HONOR phone. Resource loading
+fell from 46.0 seconds to 24.5–24.6 seconds in the measured cold starts. The entry
+menu appeared at 3.0–3.4 seconds; queued New life reached the creation menu at
+28.5 seconds. All 21 headless tests and the final God Mode/Household graphical
+smokes passed. One intermittent God Mode readiness timeout remains unresolved.
+See [startup performance](STARTUP-PERFORMANCE.md) for evidence and limitations.

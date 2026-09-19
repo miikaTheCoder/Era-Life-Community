@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-375 scripts; 922,961 source lines.
+376 scripts; 923,112 source lines.
 
 ## Largest files
 
@@ -20,8 +20,8 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Lines | Functions |
 | --- | ---: | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | 226,731 | 3102 |
-| [GameState.gd](../project/core/state/GameState.gd) | 23,283 | 337 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | 226,756 | 3102 |
+| [GameState.gd](../project/core/state/GameState.gd) | 23,292 | 337 |
 | [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,484 | 146 |
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
 | [StickFighterMiniGameProvider.gd](../project/systems/minigames/StickFighterMiniGameProvider.gd) | 13,025 | 107 |
@@ -65,6 +65,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [PerceptualIntegrityEngine.gd](../project/core/diagnostics/PerceptualIntegrityEngine.gd) | PerceptualIntegrityEngine | 25 |
 | [RuntimeFaultRouter.gd](../project/core/diagnostics/RuntimeFaultRouter.gd) | RuntimeFaultRouter | 3 |
 | [RuntimeHealthRegistry.gd](../project/core/diagnostics/RuntimeHealthRegistry.gd) | RuntimeHealthRegistry | 15 |
+| [StartupTiming.gd](../project/core/diagnostics/StartupTiming.gd) | StartupTiming | 1 |
 
 ## project/core/events
 
@@ -179,7 +180,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | Script | Global class | Functions |
 | --- | --- | ---: |
 | [MainScene.gd](../project/scenes/MainScene.gd) | — | 3102 |
-| [MobileBoot.gd](../project/scenes/MobileBoot.gd) | — | 3 |
+| [MobileBoot.gd](../project/scenes/MobileBoot.gd) | — | 11 |
 
 ## project/systems/activities
 

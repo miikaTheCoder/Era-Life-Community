@@ -170,7 +170,15 @@ func _run() -> void:
 	screen.add_child(shell)
 	MobileSupport.layout_life(screen)
 	_check(shell.layouts == 1, "Legacy mobile entry must delegate layout to the portrait shell")
+	root.gui_embed_subwindows = true
+	var tooltip := PopupPanel.new()
+	tooltip.unfocusable = true
+	screen.add_child(tooltip)
+	tooltip.popup(Rect2i(20, 20, 100, 40))
+	await process_frame
 	MobileSupport.handle_back(screen)
+	_check(not tooltip.visible, "Back must dismiss an informational tooltip")
+	tooltip.queue_free()
 	_check(not shell.drawer_open and screen.get_node_or_null("MobileExitConfirmation") == null, "Back must close the portrait drawer before asking to quit")
 	var closed: Array[String] = []
 	var front := ClosablePanel.new()
