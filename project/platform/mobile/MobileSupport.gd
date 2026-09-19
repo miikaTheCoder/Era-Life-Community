@@ -86,6 +86,10 @@ static func configure(scene: Control) -> void:
 		var gestures := preload("res://platform/mobile/MobileScrollGestures.gd").new()
 		gestures.name = "MobileScrollGestures"
 		scene.add_child(gestures)
+	if scene.get_node_or_null("MobileOptionSheet") == null:
+		var picker := preload("res://ui/common/MobileOptionSheet.gd").new()
+		picker.name = "MobileOptionSheet"
+		scene.add_child(picker)
 
 
 static func handle_back(scene: Control) -> void:
@@ -95,6 +99,10 @@ static func handle_back(scene: Control) -> void:
 		var focus := scene.get_viewport().gui_get_focus_owner()
 		if focus != null:
 			focus.release_focus()
+		return
+
+	var picker := scene.get_node_or_null("MobileOptionSheet")
+	if picker != null and picker.handle_back():
 		return
 
 	# Embedded menus/dialogs are Windows, not Controls.

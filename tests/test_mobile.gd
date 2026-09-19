@@ -75,6 +75,10 @@ func _run() -> void:
 	_check(MobileSupport.project_safe_area(Vector2(420, 840), Vector2(1080, 2160), Rect2(-100, -100, 2000, 3000)) == Rect2(0, 0, 420, 840), "Display safe area must be clipped to window bounds")
 	_check(ProjectSettings.get_setting("display/window/handheld/orientation.android") == DisplayServer.SCREEN_PORTRAIT, "Android must launch in portrait")
 	_check(ProjectSettings.get_setting("display/window/handheld/orientation") == DisplayServer.SCREEN_PORTRAIT, "Android exporter must write a portrait manifest from the base handheld setting")
+	_check(ProjectSettings.get_setting("application/boot_splash/image.android") == "res://branding/MobileBootSplash.png", "Android must display its branded splash before scripts initialize")
+	_check(ResourceLoader.exists("res://branding/MobileBootSplash.png"), "Startup splash resource is missing")
+	_check(ProjectSettings.get_setting("application/boot_splash/image") == "res://branding/MobileBootSplash.png", "Exporter needs the base splash path to include its raw PNG")
+	_check(ProjectSettings.get_setting("application/run/main_scene") == "res://scenes/mobile_boot.tscn", "Export default must enter the lightweight loader")
 	var exports := ConfigFile.new()
 	_check(exports.load("res://export_presets.cfg") == OK, "Android export settings must be readable")
 	for preset in ["preset.2.options", "preset.3.options"]:

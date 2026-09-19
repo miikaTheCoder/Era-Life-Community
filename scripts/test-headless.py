@@ -72,7 +72,7 @@ def main():
     failed = []
     for name in args.tests or available:
         arguments = ["--script", str(available[name])]
-        if name in ("test_mobile", "test_mobile_scroll", "test_mobile_portrait", "test_mobile_panels"):
+        if name in ("test_mobile", "test_mobile_boot", "test_mobile_scroll", "test_mobile_portrait", "test_mobile_panels"):
             arguments += ["--", "--mobile-preview"]
         if not run(binary, arguments, run_dir / name, args.timeout, require_pass=True):
             failed.append(name)

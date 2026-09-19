@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-374 scripts; 922,806 source lines.
+375 scripts; 922,961 source lines.
 
 ## Largest files
 
@@ -528,6 +528,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [CardContractEngine.gd](../project/ui/common/CardContractEngine.gd) | CardContractEngine | 9 |
 | [EmbeddedUIContractEngine.gd](../project/ui/common/EmbeddedUIContractEngine.gd) | EmbeddedUIContractEngine | 25 |
 | [InstitutionHubPanelBase.gd](../project/ui/common/InstitutionHubPanelBase.gd) | InstitutionHubPanelBase | 83 |
+| [MobileOptionSheet.gd](../project/ui/common/MobileOptionSheet.gd) | — | 10 |
 | [UIContractEngine.gd](../project/ui/common/UIContractEngine.gd) | UIContractEngine | 111 |
 
 ## project/ui/main/support

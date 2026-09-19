@@ -12,6 +12,7 @@ var loading_center: CenterContainer
 var loading_content: VBoxContainer
 
 func _ready() -> void:
+	print("MOBILE_BOOT: loading screen ready at ", Time.get_ticks_msec())
 	set_process(false)
 	MobileSupport.configure_viewport(self)
 	theme = Design.create()
@@ -52,7 +53,12 @@ func _ready() -> void:
 	resized.connect(_layout_loading)
 	_layout_loading()
 	started_at_ms = Time.get_ticks_msec()
-	await get_tree().process_frame
+	# Allow container layout, font uploads, and the Android swap chain to settle
+	# before background resource loading can occupy the renderer.
+	for frame in range(3):
+		await RenderingServer.frame_post_draw
+	await get_tree().create_timer(0.2).timeout
+	print("MOBILE_BOOT: first loading frame drawn at ", Time.get_ticks_msec(), " viewport=", get_viewport_rect(), " content=", loading_content.get_global_rect())
 	var error := ResourceLoader.load_threaded_request(GAME_SCENE, "PackedScene", false)
 	if error != OK:
 		status_label.text = "Could not start loading (%s). Please restart the app." % error_string(error)
@@ -62,10 +68,15 @@ func _ready() -> void:
 func _layout_loading() -> void:
 	if loading_center == null:
 		return
-	var safe := MobileSupport.safe_viewport_rect(self)
-	loading_center.position = safe.position + Vector2(24, 24)
-	loading_center.size = Vector2(maxf(1.0, safe.size.x - 48), maxf(1.0, safe.size.y - 48))
-	loading_content.custom_minimum_size.x = loading_center.size.x
+	# Anchors follow the viewport while Android settles its initial surface size.
+	# Absolute container geometry can retain the earlier physical-height layout.
+	loading_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	loading_center.offset_left = 24
+	loading_center.offset_top = 24
+	loading_center.offset_right = -24
+	loading_center.offset_bottom = -24
+	loading_content.custom_minimum_size.x = maxf(1.0, get_viewport_rect().size.x - 48)
+
 
 
 func _process(_delta: float) -> void:
@@ -82,7 +93,8 @@ func _process(_delta: float) -> void:
 			return
 		status_label.text = "Opening Era Life…"
 		progress_bar.value = 100
-		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		print("MOBILE_BOOT: opening game at ", Time.get_ticks_msec())
 		var error := get_tree().change_scene_to_packed(packed)
 		if error != OK:
 			status_label.text = "Could not open the game (%s)." % error_string(error)
