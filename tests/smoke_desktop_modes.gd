@@ -146,6 +146,9 @@ func _inspect_portrait_gameplay() -> void:
 		await _portrait_back()
 		_check(not surface.is_visible_in_tree(), "Android Back did not close " + tab)
 		_check(current_scene.get("current_panel") == "life", "Portrait panel Back did not return to the journal")
+		var journal := current_scene.get("output_label") as RichTextLabel
+		_check(journal != null and journal.is_visible_in_tree() and journal.size.y >= 220, "Back from " + tab + " did not restore the visible journal layout")
+		await _capture("back-from-" + tab)
 		if failed:
 			return
 	var shell := _portrait_shell()
@@ -418,9 +421,13 @@ func _god() -> void:
 		return
 	if not _check(await _wait_for(func(): return viewer.engine.current_state().get("viewer_ready_button_enabled", false), 100), "God Mode did not become ready"):
 		return
+	if OS.get_environment("ERA_PORTRAIT") == "1":
+		_check(not StartupTiming.stages.has("life_shell_visible"), "Prewarmed life was timed while covered by God Mode")
 	if not await _click(viewer.prewarm_button):
 		return
 	_check(await _wait_for(func(): return not viewer.is_visible_in_tree() and current_scene.call("_playable_life_shell_has_visible_sovereignty")), "God Mode did not enter gameplay")
+	if OS.get_environment("ERA_PORTRAIT") == "1":
+		_check(await _wait_for(func(): return StartupTiming.stages.has("life_shell_visible")), "Visible life was not timed")
 	await _capture("life")
 
 func _household() -> void:

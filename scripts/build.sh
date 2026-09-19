@@ -3,8 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 target="${1:-all}"
-if [[ $# -gt 1 || ! "$target" =~ ^(linux|windows|macos|android|all)$ ]]; then
-    echo "Usage: $0 [linux|windows|macos|android|all] (all = Linux, Windows, macOS)" >&2
+if [[ $# -gt 1 || ! "$target" =~ ^(linux|windows|macos|android|android-performance|all)$ ]]; then
+    echo "Usage: $0 [linux|windows|macos|android|android-performance|all] (all = Linux, Windows, macOS)" >&2
     exit 2
 fi
 
@@ -58,7 +58,7 @@ run_godot() {
 }
 
 run_godot import --import
-if [[ "$target" == android ]]; then
+if [[ "$target" == android || "$target" == android-performance ]]; then
     if [[ -z "${JAVA_HOME:-}" ]]; then
         export JAVA_HOME="$(dirname -- "$(dirname -- "$(readlink -f -- "$(command -v javac)")")")"
     fi
@@ -91,14 +91,28 @@ if [[ "$target" == android ]]; then
             -validity 10000 -dname "CN=Android Debug,O=Android,C=US")
     fi
     python3 "$repo_root/scripts/configure-android.py" > "$repo_root/build/logs/configure-android.log"
-    run_godot export-android --export-debug Android "$repo_root/build/android/EraLife-portrait-android-debug.apk"
+    apk_name="EraLife-portrait-android-debug.apk"
+    if [[ "$target" == android-performance ]]; then
+        # Release engine, signed by the same local test key for in-place updates.
+        # This is a phone performance preview, not a production signing setup.
+        export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$GODOT_ANDROID_KEYSTORE_DEBUG_PATH"
+        export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$GODOT_ANDROID_KEYSTORE_DEBUG_USER"
+        export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD"
+        apk_name="EraLife-portrait-android-performance.apk"
+        run_godot export-android-performance --export-release "Android Performance" "$repo_root/build/android/$apk_name"
+    else
+        run_godot export-android --export-debug Android "$repo_root/build/android/$apk_name"
+    fi
     # Godot can return success after an unsigned export. Independently require
     # a valid signature before reporting an installable APK.
-    "$apksigner" verify --verbose "$repo_root/build/android/EraLife-portrait-android-debug.apk" > "$repo_root/build/logs/verify-android.log"
+    "$apksigner" verify --verbose "$repo_root/build/android/$apk_name" > "$repo_root/build/logs/verify-$target.log"
     "$ANDROID_SDK_ROOT/build-tools/34.0.0/aapt" dump badging \
-        "$repo_root/build/android/EraLife-portrait-android-debug.apk" > "$repo_root/build/logs/android-manifest.log"
-    (cd -- "$repo_root/build/android" && sha256sum EraLife-portrait-android-debug.apk > SHA256SUMS.txt)
-    echo "Signed test APK ready: $repo_root/build/android/EraLife-portrait-android-debug.apk"
+        "$repo_root/build/android/$apk_name" > "$repo_root/build/logs/$target-manifest.log"
+    (cd -- "$repo_root/build/android" && sha256sum "$apk_name" > "SHA256SUMS-$target.txt")
+    if [[ "$target" == android ]]; then
+        cp -- "$repo_root/build/android/SHA256SUMS-android.txt" "$repo_root/build/android/SHA256SUMS.txt"
+    fi
+    echo "Signed test APK ready: $repo_root/build/android/$apk_name"
     exit 0
 fi
 

@@ -1,5 +1,13 @@
 # Android portrait fork (experimental)
 
+Current portrait performance preview: `scripts/build.sh android-performance` builds
+version `0.1.0-portrait.4` with the stock ARM64 release engine and source scripts.
+The earlier ARM64 startup failure did not recur with the optimized dependency
+graph; the final build reached the creation menu in 14.1 seconds on the HONOR test phone.
+The `android` command below remains the ARMv7 debug/fallback. See
+[startup performance](STARTUP-PERFORMANCE.md) for current evidence and limitations;
+the original landscape history below is retained as historical context.
+
 See [the portrait branch guide](MOBILE-PORTRAIT.md) for the new layout, preview commands, and current validation limits.
 
 This fork builds **EraLife Portrait**, a separate Android app with a portrait interface. Its package is `org.eralife.community.portrait`; installing it leaves the earlier `org.eralife.community.mobile` app and that app's private saves in place. The two apps do not automatically share saves. The landscape mobile validation history below describes the earlier app, not a completed validation of this portrait fork. The default APK now uses **ARMv7 (32-bit ARM)** after the original ARM64 build failed during startup on the test phone. This is a compatibility workaround, not a Google Play release or a claim that every gameplay system works on a phone.
@@ -87,7 +95,7 @@ Desktop profiling first identified repeated shop-button theme updates, redundant
 
 On the phone, selection ran at approximately **60 FPS**. Version 4 gameplay samples were around **4–14 FPS**; version 5 samples after world setup were around **25–43 FPS**, and the user independently reported smoother interaction. A later 240-frame sample measured median script time of **4.57 ms** and process time of **15.11 ms**, with process p95 **63.87 ms**. These are separate test lives and interactions with profiler overhead, not a controlled benchmark or a guarantee of sustained frame rate. World generation and occasional gameplay work still cause stalls. Vertical swipes over dropdowns, sliders, buttons, and diary text were exercised over USB; swipes retained the slider value and did not activate the covered buttons.
 
-The **Android** export preset is the tested ARMv7 configuration. **Android ARM64 Experimental** preserves the original architectures for future work and is still known to fail on this phone. Neither the 64-bit allocation problem nor support for 64-bit-only phones is fixed by the compatibility build.
+The **Android** export preset is the tested ARMv7 configuration. The former **Android ARM64 Experimental** preset is now **Android Performance**, with the current portrait results documented above. The historical allocation failure was not fixed by the ARMv7 workaround itself.
 
 Android development builds keep two rotating private Godot logs. On an authorized debugging connection, retrieve the current one without reading other apps' logs:
 

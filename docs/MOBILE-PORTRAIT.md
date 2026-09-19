@@ -78,3 +78,13 @@ menu appeared at 3.0–3.4 seconds; queued New life reached the creation menu at
 28.5 seconds. All 21 headless tests and the final God Mode/Household graphical
 smokes passed. One intermittent God Mode readiness timeout remains unresolved.
 See [startup performance](STARTUP-PERFORMANCE.md) for evidence and limitations.
+
+
+## ARM64 performance preview 0.1.0-portrait.4
+
+Use `scripts/build.sh android-performance` for the faster ARM64 release-engine
+preview. It preserves the portrait package, existing theme and saves. The previous
+ARMv7 debug/fallback remains available through `scripts/build.sh android`. The
+final source-script performance build reached the creation menu in 14.1 seconds; the
+ten-second target is not yet met. See [startup performance](STARTUP-PERFORMANCE.md)
+for the comparison, separate world-generation timing, and validation limits.

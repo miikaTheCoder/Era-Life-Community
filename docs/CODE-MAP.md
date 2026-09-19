@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-376 scripts; 923,112 source lines.
+376 scripts; 923,134 source lines.
 
 ## Largest files
 
@@ -20,7 +20,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Lines | Functions |
 | --- | ---: | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | 226,756 | 3102 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | 226,763 | 3102 |
 | [GameState.gd](../project/core/state/GameState.gd) | 23,292 | 337 |
 | [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,484 | 146 |
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
@@ -518,7 +518,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [EraBranchMark.gd](../project/ui/EraBranchMark.gd) | — | 2 |
 | [EraInterface.gd](../project/ui/EraInterface.gd) | — | 11 |
 | [EraMobilePanels.gd](../project/ui/EraMobilePanels.gd) | — | 32 |
-| [EraMobileShell.gd](../project/ui/EraMobileShell.gd) | — | 14 |
+| [EraMobileShell.gd](../project/ui/EraMobileShell.gd) | — | 15 |
 | [EraShell.gd](../project/ui/EraShell.gd) | — | 12 |
 | [EraTheme.gd](../project/ui/EraTheme.gd) | — | 3 |
 

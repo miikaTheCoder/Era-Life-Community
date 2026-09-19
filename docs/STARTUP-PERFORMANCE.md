@@ -55,7 +55,7 @@ The profiler writes `output.log`, `timings.json`, and screenshots beneath
 floated at 420×900; no desktop settings are changed by the profiler. The headless
 option is for route checks and cannot establish rendered-frame performance.
 
-## Initial measurements
+## Initial measurements (portrait.3)
 
 These are local desktop editor measurements, not phone cold-start results. File
 caches, build type and hardware differ from the exported ARMv7 APK.
@@ -145,3 +145,103 @@ Structure checks, generated code-map checks, and whitespace checks passed. Furth
 startup gains require reducing the remaining MainScene dependency graph or safely
 resolving the separate ARM64 export problem; the compatibility architecture remains
 ARMv7 for this installed build.
+
+
+## Second pass: ARM64 performance preview (portrait.4)
+
+The requested target is **under 10 seconds to the creation menu**. This pass has
+not met that target: the final source-script ARM64 release reached that menu at
+14.095 seconds with New life selected while loading. It is a measured improvement
+from 28.466 seconds in the preceding ARMv7 run, not an assertion of instant play.
+
+The same phone was tested with these successive configurations:
+
+| Configuration | First menu frame | Resource load | Creation menu |
+| --- | ---: | ---: | ---: |
+| portrait.3 ARMv7 debug, tokenized scripts | 3.033 s | 24.533 s | 28.466 s |
+| portrait.3 ARM64 debug, tokenized scripts | 2.653 s | 15.737 s | Late manual selection |
+| portrait.3 ARM64 release, tokenized scripts | 2.102 s | 14.189 s | Late manual selection |
+| ARM64 release, source scripts and lazy optional panels (trial) | 2.075 s | 11.946 s | 14.434 s |
+| Final portrait.4 performance APK | 1.497 s | 11.884 s | 14.095 s |
+
+These are sequential cold-process samples, not a randomized benchmark. The final
+comparison includes both the script-format and optional-panel changes, so their
+individual contribution is not isolated. The historical ARM64 startup failure did
+not recur in these runs. This establishes compatibility on the test phone, not a
+fix for an identified engine defect or a general device-compatibility guarantee.
+
+The main scene now holds optional panels and selected domain authorities as
+Variant handles, loading their scripts only inside the same ensure/open methods
+that previously constructed them. Arguments, signal connections, action IDs and
+ownership stay unchanged. The measured dependency closure dropped by 13 scripts,
+including shops, minigames, assets, account UI, relationship contracts and diary
+serialization. The test guards against optional scripts returning through field
+type annotations and corrects the earlier bending assertion's stale resource path.
+
+The performance preset uses Godot's supported source-script export option and the
+stock 4.4.1 release engine. Tokenized exports are still parsed/compiled on-device;
+Godot's [token buffer implementation](https://github.com/godotengine/godot/blob/4.4.1-stable/modules/gdscript/gdscript_tokenizer_buffer.cpp)
+shows the buffer expansion path. No source minifier, engine patch, or gameplay
+rewrite is shipped. Temporary formatting and reduced-type-analysis experiments
+showed little desktop benefit and were discarded.
+
+```sh
+# ARM64 release engine, locally test-signed, same portrait package/save directory.
+scripts/build.sh android-performance
+# ARMv7 debug fallback and private-log access, also version 0.1.0-portrait.4.
+scripts/build.sh android
+```
+
+The fast artifact is `build/android/EraLife-portrait-android-performance.apk`.
+Its manifest and signature logs use the `android-performance` suffix; its checksum
+is in `build/android/SHA256SUMS-android-performance.txt`. The compatibility command
+continues producing `EraLife-portrait-android-debug.apk`. Both use the same local
+test signing key to support in-place updates without uninstalling or clearing data.
+The performance build is not debuggable: to retrieve a retained private Godot log,
+stop that game process, install the matching debug APK without launching it, read
+the log with `run-as`, then restore the performance APK. Release memory markers
+report zero because Godot's debug memory counter is unavailable; they are not a
+measurement of zero memory use.
+
+All 21 final regressions passed (`headless-pe42n6b8`). Final portrait God Mode
+and Household creation, aging, core panels, Back and saving passed at 420×900 in
+`/tmp/eralife-desktop-H6DgOZ` and `/tmp/eralife-desktop-8CJrgt`. The title/account and
+intro routes passed earlier in this pass (`title-k_fzoty3`, `intro-lh4clnbq`). Two
+intermediate graphical attempts failed to advance after a simulated menu tap;
+the successful final runs do not establish a fix for that intermittent failure
+or the previously observed God Mode readiness timeout.
+
+The phone check exposed a persistent hidden journal after closing People. The
+stronger graphical assertion reproduced the same omission after School in
+`/tmp/eralife-desktop-BJJxCo`. Both existing close handlers now reopen the native
+life diary through its owner. The final regression checks visible journal height
+after each panel, rather than only checking the selected tab name. On the phone,
+the final build passed world creation, entering life, aging from 0 to 1, and opening
+and returning from People, Assets and School. Screenshots confirm the journal and
+bottom dock are restored. No new script error appeared; the pre-existing Android
+`NotoColorEmojiLegacy.ttf` diagnostic remains.
+
+Generation timing is separate from app startup: `god_mode_generation_requested`,
+`god_mode_generation_ready`, `god_mode_entry_requested`, and `life_shell_visible`.
+The last marker now waits for gameplay authority and hidden creation overlays:
+prewarming UIContainer under God Mode must not count as entering gameplay. The
+God Mode smoke asserts the marker is absent before Begin life and present after
+handoff. The final phone log records 1.439 seconds from Prepare world to readiness,
+and 21 ms from Begin life to the visible-shell marker; the latter is a script
+milestone, not a precise physical display-latency measurement. Manual time spent
+in the creator is excluded from both intervals.
+
+Final evidence is in `build/phone-startup-performance/portrait4-final-gameplay.log`
+and `portrait4-final-*.png`. The earlier `portrait4-gameplay.log` also reached the
+creation menu in 13.934 seconds, but its premature `life_shell_visible` marker must
+not be used for gameplay-handoff timing. The faster APK was restored after private
+log retrieval, preserving app data. Its SHA-256 is
+`0d2559e7c7f88d88401336db13dec914945a3ab05fb3da6efc18c3027adfe429`.
+
+The remaining dominant cost is the large MainScene itself: a desktop run with all
+its dependencies already cached still took about 3.7 seconds to load that script.
+Moving only the optional intro would remove roughly 3,600 of its 226,000 lines and
+would not credibly close the remaining gap alone. Reaching ten seconds needs a
+larger separation of optional feature UI from that coordinator, with equivalent
+feature-level lifecycle coverage; this pass does not replace that work with a
+renamed loading screen.

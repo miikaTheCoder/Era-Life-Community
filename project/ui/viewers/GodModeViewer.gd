@@ -3093,6 +3093,8 @@ func _sync_from_engine() -> void:
 		progress_bar.value = progress
 
 	var viewer_ready_button_enabled: bool = bool(state.get("viewer_ready_button_enabled", false))
+	if viewer_ready_button_enabled:
+		StartupTiming.mark("god_mode_generation_ready")
 	_update_prewarm_button_visual(progress, lifecycle, status_text, viewer_ready_button_enabled)
 	_apply_ready_button_state(state)
 

@@ -14,7 +14,7 @@ func _run() -> void:
 	# regressions by pulling in the implementations before the assertion.
 	var state = load("res://core/state/GameState.gd").new()
 	var steps: Array = state._resident_runtime_engine_steps()
-	check(not ResourceLoader.has_cached("res://systems/bending/BendingEngine.gd"), "Describing residency must not eagerly load bending")
+	check(not ResourceLoader.has_cached("res://systems/supernatural/bending/BendingEngine.gd"), "Describing residency must not eagerly load bending")
 	var engines := 0
 	var alias_found := false
 	var bank_step: Dictionary = {}
@@ -37,5 +37,17 @@ func _run() -> void:
 			check(instance.get_script().get_global_name() == bank_step.engine_class_name, "Constructed engine must match its descriptor")
 		var second: Dictionary = bank_step.runner.call()
 		check(second.get("mode", "") == "engine_already_resident" and state.bank_engine == instance, "Repeated execution must reuse the existing engine")
+	# MainScene must not reintroduce optional UI dependencies through field types.
+	var main_script = load("res://scenes/MainScene.gd")
+	check(main_script != null and main_script.can_instantiate(), "MainScene must remain loadable")
+	for path in [
+		"res://ui/panels/economy/LuxuryExchangePanel.gd",
+		"res://ui/panels/economy/MeatMarketPanel.gd",
+		"res://ui/panels/minigames/MiniGamePanel.gd",
+		"res://ui/panels/property/AssetsPanel.gd",
+		"res://ui/panels/realities/RealityIntakePanel.gd",
+		"res://systems/relationships/RelationshipsHubContractEngine.gd",
+	]:
+		check(not ResourceLoader.has_cached(path), "Optional feature loaded before its owner requested it: " + path)
 	print("STARTUP DEPENDENCY TESTS: ", "PASS" if failures == 0 else "FAIL")
 	quit(0 if failures == 0 else 1)

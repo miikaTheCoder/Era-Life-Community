@@ -186,7 +186,20 @@ func _process(_delta: float) -> void:
 		_build()
 	layout_mobile()
 	_update_summary(gs)
-	StartupTiming.mark("life_shell_visible")
+	if not StartupTiming.stages.has("life_shell_visible") and _life_is_uncovered():
+		StartupTiming.mark("life_shell_visible")
+
+func _life_is_uncovered() -> bool:
+	# Prewarming may reveal UIContainer underneath a creation overlay.
+	if not host.has_method("_playable_life_shell_has_visible_sovereignty"):
+		return false
+	if not bool(host.call("_playable_life_shell_has_visible_sovereignty")):
+		return false
+	for key in ["god_mode_viewer", "household_creator_overlay", "startup_intro_overlay"]:
+		var cover := host.get(key) as Control
+		if is_instance_valid(cover) and cover.is_visible_in_tree():
+			return false
+	return true
 
 func layout_mobile() -> void:
 	if not is_instance_valid(header):

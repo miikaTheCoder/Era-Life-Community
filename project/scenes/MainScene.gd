@@ -6,6 +6,9 @@ const EraDesign = preload("res://ui/EraTheme.gd")
 const EraShell = preload("res://ui/EraShell.gd")
 var gs: GameState
 
+# Optional panel/domain handles use Variant so their type hints do not load
+# feature scripts at startup. Their existing ensure/open methods own construction.
+
 
 var world_feed_live_observation_queue: Array = []
 var world_feed_live_observation_head: int = 0
@@ -51,7 +54,7 @@ var god_mode_contract_engine: GodModeContractEngine = null
 var global_runtime_kill_contract_engine: GlobalRuntimeKillContractEngine = null
 var god_mode_viewer: GodModeViewer = null
 var playable_life_viewer: PlayableLifeViewer = null
-var relationships_hub_contract_engine: RelationshipsHubContractEngine = null
+var relationships_hub_contract_engine: Variant = null
 var relationships_hub_active_section_id: String = "family"
 
 
@@ -105,7 +108,7 @@ var activities_hub_active_section_id: String = "all"
 
 
 
-var mini_game_panel: MiniGamePanel = null
+var mini_game_panel: Variant = null
 var mini_game_panel_active_contract: Dictionary = {}
 var mini_game_panel_open: bool = false
 
@@ -138,13 +141,13 @@ var active_reality_surface_contract: Dictionary = {}
 var active_reality_surface_revision: String = ""
 
 
-var career_panel: CareerPanel = null
+var career_panel: Variant = null
 var career_panel_surface_cache: Dictionary = {}
 var career_panel_active_actor_id: int = -1
 var career_panel_active_section_id: String = "overview"
 var vehicle_market_panel_surface_deck: Dictionary = {}
 var vehicle_market_panel_active_surface_key: String = ""
-var life_diary_contract_engine: LifeDiaryContractEngine = null
+var life_diary_contract_engine: Variant = null
 
 var god_mode_tracker_contract_engine: GodModeTrackerContractEngine = null
 var god_mode_panel_contract_engine: GodModePanelContractEngine = null
@@ -276,7 +279,7 @@ var relationship_popup_money_widgets: Array = []
 var relationship_popup_experience_rows: Array = []
 var relationship_popup_experience_breathe_time: float = 0.0
 var relationship_profile_panel: RelationshipProfilePanel = null
-var modification_panel: ModificationPanel = null
+var modification_panel: Variant = null
 var assets_portfolio_popup: Control
 var assets_portfolio_popup_dim: ColorRect
 var assets_portfolio_popup_card: PanelContainer
@@ -478,7 +481,7 @@ var crown_diplomacy_population_rank_watch_active: bool = false
 var crown_diplomacy_population_rank_revision: String = ""
 var global_prewarm_contract_engine: GlobalPrewarmContractEngine = null
 
-var population_card_contract_engine: PopulationCardContractEngine = null
+var population_card_contract_engine: Variant = null
 var population_lens_viewer: PopulationLensViewer = null
 var realm_population_contract_panel: RealmPopulationContractPanel = null
 var realm_population_surface_cache_root: Control = null
@@ -864,10 +867,10 @@ var pet_shop_surface_stream_rendered_count: int = 0
 var pet_shop_surface_stream_revision: String = ""
 var pet_shop_surface_stream_service_armed: bool = false
 var pet_shop_surface_stream_armed_generation: int = -1
-var meat_market_panel: MeatMarketPanel = null
+var meat_market_panel: Variant = null
 
 var meat_market_open: bool = false
-var luxury_exchange_panel: LuxuryExchangePanel = null
+var luxury_exchange_panel: Variant = null
 var luxury_exchange_open: bool = false
 var property_viewer_panel: PropertyViewer = null
 var property_viewer_open: bool = false
@@ -882,7 +885,7 @@ var property_makeover_open: bool = false
 
 
 var property_makeover_surface_panel_by_key: Dictionary = {}
-var assets_panel: AssetsPanel = null
+var assets_panel: Variant = null
 var assets_panel_open: bool = false
 var asset_surface_pack_by_actor: Dictionary = {}
 
@@ -955,7 +958,7 @@ var player_stats_smarts_target: float = 0.0
 var player_stats_looks_target: float = 0.0
 var player_stats_imagination_target: float = 0.0
 var player_stats_fame_target: float = 0.0
-var scenario_panel: ScenarioPanel
+var scenario_panel: Variant
 var realm_contract_debug_panel: PanelContainer = null
 var realm_contract_debug_body: RichTextLabel = null
 var realm_contract_debug_open: bool = false
@@ -1114,9 +1117,9 @@ var eraccount_status_banner_tween: Tween = null
 var global_reality_intake_button: Button = null
 var global_reality_intake_hide_button: Button = null
 var global_reality_intake_tab_button: Button = null
-var reality_intake_panel: RealityIntakePanel = null
+var reality_intake_panel: Variant = null
 var title_card_account_password_toggle_button: Button = null
-var eraccount_profile_panel: ErAccountProfilePanel = null
+var eraccount_profile_panel: Variant = null
 var god_mode_panel_normal_style: StyleBoxFlat
 var god_mode_panel_hover_style: StyleBoxFlat
 var reality_mode_picker: OptionButton
@@ -13165,7 +13168,7 @@ func _ensure_career_panel() -> void:
 	):
 		return
 
-	career_panel = CareerPanel.new()
+	career_panel = load("res://ui/panels/careers/CareerPanel.gd").new()
 	career_panel.name = "CareerPanel"
 	career_panel.visible = false
 	career_panel.mouse_filter = (
@@ -16791,7 +16794,7 @@ func _bring_modal_to_front(node: Node) -> void:
 func _ensure_scenario_ui() -> void:
 	if scenario_panel != null:
 		return
-	scenario_panel = ScenarioPanel.new()
+	scenario_panel = load("res://ui/panels/narrative/ScenarioPanel.gd").new()
 	# Nodes created with .new() take their name from the base class, so this showed up
 	# in the remote scene tree as a bare "Control" and was impossible to pick out.
 	scenario_panel.name = "ScenarioPanel"
@@ -21761,7 +21764,7 @@ func _save_current_life_to_slot_deferred(
 	# session the property is still null, the route resolves to nothing, and the save
 	# fails with that reason instead of saving. Create it before routing.
 	if gs != null and gs.game_state_serialization_runtime == null:
-		gs.game_state_serialization_runtime = GameStateSerializationRuntime.new(gs)
+		gs.game_state_serialization_runtime = load("res://core/persistence/GameStateSerializationRuntime.gd").new(gs)
 
 	var save_report: Dictionary = (
 		_request_runtime_engine_method_intent(
@@ -24171,7 +24174,7 @@ func _load_saved_life_playable_first(path: String, extra_options: Dictionary = {
 			gs._ensure_identity_checkpoint_runtime_dependencies()
 
 		if gs.game_state_hydration_runtime == null:
-			gs.game_state_hydration_runtime = GameStateHydrationRuntime.new(gs)
+			gs.game_state_hydration_runtime = load("res://core/state/GameStateHydrationRuntime.gd").new(gs)
 
 		if gs.game_state_hydration_runtime != null and gs.game_state_hydration_runtime.has_method("hydrate_playable_from_path"):
 			var report: Dictionary = gs.game_state_hydration_runtime.hydrate_playable_from_path(clean_path, load_options)
@@ -31389,13 +31392,13 @@ func _emit_pending_popup_contract_from_action_result(result: Dictionary, context
 		}
 
 	if gs.scenario_popup_contract_engine == null:
-		gs.scenario_popup_contract_engine = ScenarioPopupContractEngine.new(gs)
+		gs.scenario_popup_contract_engine = load("res://systems/narrative/ScenarioPopupContractEngine.gd").new(gs)
 
 	if gs.scenario_runtime_contract_engine == null:
-		gs.scenario_runtime_contract_engine = ScenarioRuntimeContractEngine.new(gs)
+		gs.scenario_runtime_contract_engine = load("res://systems/narrative/ScenarioRuntimeContractEngine.gd").new(gs)
 
 	if gs.pending_situations_engine == null:
-		gs.pending_situations_engine = PendingSituationsEngine.new(gs)
+		gs.pending_situations_engine = load("res://systems/narrative/PendingSituationsEngine.gd").new(gs)
 
 	var report: Dictionary = gs.scenario_popup_contract_engine.emit_from_action_result(result, context)
 	if bool(report.get("success", false)):
@@ -31910,21 +31913,21 @@ func _ensure_pending_situation_engines() -> void:
 
 	if gs.scenario_popup_contract_engine == null:
 		gs.scenario_popup_contract_engine = (
-			ScenarioPopupContractEngine.new(
+			load("res://systems/narrative/ScenarioPopupContractEngine.gd").new(
 				gs
 			)
 		)
 
 	if gs.scenario_runtime_contract_engine == null:
 		gs.scenario_runtime_contract_engine = (
-			ScenarioRuntimeContractEngine.new(
+			load("res://systems/narrative/ScenarioRuntimeContractEngine.gd").new(
 				gs
 			)
 		)
 
 	if gs.pending_situations_engine == null:
 		gs.pending_situations_engine = (
-			PendingSituationsEngine.new(
+			load("res://systems/narrative/PendingSituationsEngine.gd").new(
 				gs
 			)
 		)
@@ -32152,7 +32155,7 @@ func _append_pending_situation_diary_line_for_active_actor(clean_text: String, r
 	var owner_id: int = int(gs.player.id)
 	_ensure_active_life_diary_loaded(false)
 
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine == null:
 		return
 
@@ -36986,7 +36989,7 @@ func _reset_newborn_birth_intro_diary_contract_for_new_world_seed(reason: String
 
 	if gs != null:
 		if "life_diary_contract_engine" in gs:
-			gs.life_diary_contract_engine = LifeDiaryContractEngine.new(gs)
+			gs.life_diary_contract_engine = load("res://systems/narrative/LifeDiaryContractEngine.gd").new(gs)
 
 		if typeof(gs.scenario_state) != TYPE_DICTIONARY:
 			gs.scenario_state = {}
@@ -39447,7 +39450,7 @@ func _ensure_luxury_exchange_panel() -> void:
 		return
 
 	luxury_exchange_panel = (
-		LuxuryExchangePanel.new()
+		load("res://ui/panels/economy/LuxuryExchangePanel.gd").new()
 	)
 	luxury_exchange_panel.name = (
 		"LuxuryExchangePanel"
@@ -39798,7 +39801,7 @@ func _show_luxury_exchange_panel() -> void:
 	luxury_exchange_panel.z_as_relative = false
 	luxury_exchange_panel.z_index = 245
 
-	var parent:= (
+	var parent: Node = (
 		luxury_exchange_panel.get_parent()
 	)
 
@@ -41790,7 +41793,7 @@ func _ensure_assets_panel() -> void:
 
 		return
 
-	assets_panel = AssetsPanel.new()
+	assets_panel = load("res://ui/panels/property/AssetsPanel.gd").new()
 	assets_panel.name = "AssetsPanel"
 	assets_panel.visible = false
 	assets_panel.mouse_filter = (
@@ -44818,7 +44821,7 @@ func _show_meat_market_panel() -> void:
 	meat_market_panel.z_as_relative = false
 	meat_market_panel.z_index = 245
 
-	var parent:= meat_market_panel.get_parent()
+	var parent: Node = meat_market_panel.get_parent()
 
 	if parent != null:
 		parent.move_child(
@@ -44853,7 +44856,7 @@ func _ensure_meat_market_panel() -> void:
 		meat_market_panel.bind_host(self, gs)
 		return
 
-	meat_market_panel = MeatMarketPanel.new()
+	meat_market_panel = load("res://ui/panels/economy/MeatMarketPanel.gd").new()
 	meat_market_panel.name = "MeatMarketPanel"
 	meat_market_panel.visible = false
 	meat_market_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -77230,7 +77233,7 @@ func _on_copy_reality_capsule_link_pressed() -> void:
 		return
 
 	if gs.game_state_contract_engine == null:
-		gs.game_state_contract_engine = GameStateContractEngine.new(gs)
+		gs.game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(gs)
 
 	var origin: String = NetworkSceneSupport._read_browser_origin()
 	var base_path: String = NetworkSceneSupport._read_browser_base_path()
@@ -77304,7 +77307,7 @@ func _build_current_reality_capsule_id() -> String:
 		return "life.%d" % int(Time.get_ticks_msec())
 
 	if gs.game_state_contract_engine == null:
-		gs.game_state_contract_engine = GameStateContractEngine.new(gs)
+		gs.game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(gs)
 
 	var identity: Dictionary = gs.game_state_contract_engine.ensure_life_identity({
 		"world_id": "eralife-default-world",
@@ -77353,7 +77356,7 @@ func _try_load_reality_capsule_from_browser_url() -> bool:
 		gs.initialize()
 
 	if gs.game_state_contract_engine == null:
-		gs.game_state_contract_engine = GameStateContractEngine.new(gs)
+		gs.game_state_contract_engine = load("res://core/state/GameStateContractEngine.gd").new(gs)
 
 	var report: Dictionary = {}
 	if encoded_capsule != "":
@@ -99653,7 +99656,7 @@ func _crown_population_view_contract_for_realm(
 		else "nation_representative"
 	)
 
-	var card_engine:= _ensure_population_card_contract_engine()
+	var card_engine: Variant = _ensure_population_card_contract_engine()
 	if card_engine == null:
 		return {}
 
@@ -99744,14 +99747,14 @@ func _ensure_global_prewarm_contract_engine() -> GlobalPrewarmContractEngine:
 		global_prewarm_contract_engine.bind_game_state(gs)
 
 	return global_prewarm_contract_engine
-func _ensure_population_card_contract_engine() -> PopulationCardContractEngine:
+func _ensure_population_card_contract_engine() -> Variant:
 	if gs == null:
 		return null
 
 	if "population_card_contract_engine" in gs and gs.population_card_contract_engine != null:
 		population_card_contract_engine = gs.population_card_contract_engine
 	else:
-		population_card_contract_engine = PopulationCardContractEngine.new(gs)
+		population_card_contract_engine = load("res://systems/world/PopulationCardContractEngine.gd").new(gs)
 		gs.population_card_contract_engine = population_card_contract_engine
 
 	if population_card_contract_engine != null:
@@ -100249,7 +100252,7 @@ func _register_global_prewarm_shell_contracts(
 			}
 		)
 
-	var card_engine:= (
+	var card_engine: Variant = (
 		_ensure_population_card_contract_engine()
 	)
 
@@ -100697,7 +100700,7 @@ func _global_prewarm_execute_reveal_contracts_tail_chunk(reason: String, realm_i
 		)
 		return
 
-	var card_engine:= _ensure_population_card_contract_engine()
+	var card_engine: Variant = _ensure_population_card_contract_engine()
 	var panel:= _ensure_realm_population_contract_panel()
 	if card_engine == null or panel == null:
 		call_deferred(
@@ -100982,7 +100985,7 @@ func _global_prewarm_population_card_surfaces_now(reason: String = "global_prewa
 	if typeof(gs.scenario_state) != TYPE_DICTIONARY:
 		gs.scenario_state = {}
 
-	var card_engine:= _ensure_population_card_contract_engine()
+	var card_engine: Variant = _ensure_population_card_contract_engine()
 	var panel:= _ensure_realm_population_contract_panel()
 
 	if card_engine == null or panel == null:
@@ -101068,7 +101071,7 @@ func _global_prewarm_population_card_surfaces_now(reason: String = "global_prewa
 
 
 func _global_prewarm_verify_population_card_surfaces(realm_ids: Array = []) -> Dictionary:
-	var card_engine:= _ensure_population_card_contract_engine()
+	var card_engine: Variant = _ensure_population_card_contract_engine()
 	if card_engine == null:
 		return {
 			"success": false,
@@ -101117,7 +101120,7 @@ func _global_prewarm_ingest_population_cards_into_global_nodes(reason: String = 
 			"reason": "missing_game_state"
 		}
 
-	var card_engine:= _ensure_population_card_contract_engine()
+	var card_engine: Variant = _ensure_population_card_contract_engine()
 	if card_engine == null:
 		return {
 			"success": false,
@@ -101394,7 +101397,7 @@ func _tail_prewarm_population_card_contract_registry(
 	if typeof(gs.scenario_state) != TYPE_DICTIONARY:
 		gs.scenario_state = {}
 
-	var card_engine:= _ensure_population_card_contract_engine()
+	var card_engine: Variant = _ensure_population_card_contract_engine()
 	var panel:= _ensure_realm_population_contract_panel()
 
 	if card_engine == null or panel == null:
@@ -170913,6 +170916,7 @@ func _on_god_mode_viewer_prewarm_requested(
 	panel_state: Dictionary,
 	reason: String
 ) -> void:
+	StartupTiming.mark("god_mode_generation_requested")
 	set_meta(
 		"god_mode_residency_request_input_received",
 		true
@@ -171674,6 +171678,7 @@ func _on_god_mode_viewer_handoff_requested(
 	_panel_state: Dictionary,
 	reason: String
 ) -> void:
+	StartupTiming.mark("god_mode_entry_requested")
 	var now_ms: int = int(
 		Time.get_ticks_msec()
 	)
@@ -180647,7 +180652,7 @@ func _ensure_mini_game_panel() -> void:
 		_ensure_mini_game_session_observation_bridge()
 		return
 
-	mini_game_panel = MiniGamePanel.new()
+	mini_game_panel = load("res://ui/panels/minigames/MiniGamePanel.gd").new()
 	mini_game_panel.name = "MiniGamePanel"
 	mini_game_panel.visible = false
 	mini_game_panel.mouse_filter = (
@@ -182526,7 +182531,7 @@ func _ensure_reality_intake_panel() -> void:
 	):
 		return
 
-	reality_intake_panel = RealityIntakePanel.new()
+	reality_intake_panel = load("res://ui/panels/realities/RealityIntakePanel.gd").new()
 	reality_intake_panel.name = (
 		"RealityIntakePanel"
 	)
@@ -182760,7 +182765,7 @@ func _ensure_eraccount_profile_panel() -> void:
 		return
 
 	eraccount_profile_panel = (
-		ErAccountProfilePanel.new()
+		load("res://ui/panels/network/ErAccountProfilePanel.gd").new()
 	)
 	eraccount_profile_panel.name = (
 		"ErAccountProfilePanel"
@@ -185238,12 +185243,12 @@ func _append_world_feed_compact_entry_block(_entry: Dictionary, text: String, ac
 	var remaining: int = max(0, lines.size() - 1 - detail_count)
 	if remaining > 0:
 		_append_world_feed_colored_line("… +%d more details" % remaining, detail_color.lerp(Color(1.0, 1.0, 1.0, 1.0), 0.08), false, 13)
-func _ensure_life_diary_contract_engine() -> LifeDiaryContractEngine:
+func _ensure_life_diary_contract_engine() -> Variant:
 	if gs == null:
 		return null
 
 	if gs.life_diary_contract_engine == null:
-		gs.life_diary_contract_engine = LifeDiaryContractEngine.new(
+		gs.life_diary_contract_engine = load("res://systems/narrative/LifeDiaryContractEngine.gd").new(
 			gs
 		)
 
@@ -185610,7 +185615,7 @@ func _life_diary_sync_runtime_cache_from_contract(actor_id: int, reason: String 
 	if gs == null:
 		return
 
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine == null:
 		return
 
@@ -185648,7 +185653,7 @@ func _emit_birth_intro_diary_contract_for_current_actor(lines: Array, reason: St
 	if gs == null or gs.player == null:
 		return
 
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine == null:
 		return
 
@@ -185666,7 +185671,7 @@ func _save_active_life_diary_state() -> void:
 	if gs == null or owner_id <= 0:
 		return
 
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine != null:
 		var contract_entries: Array = engine.diary_entries_for_actor(owner_id, {
 			"source": "save_active_life_diary_state"
@@ -185720,7 +185725,7 @@ func _load_life_diary_state_for_active_player(force_rebuild: bool = false) -> vo
 	var global_memories: Array = gs.memory_engine.get_memories(player_memory_id) if gs.memory_engine != null else []
 	var player_memories: Array = gs.player.memories if gs.player.memories != null else []
 
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine != null:
 		var engine_state_raw: Variant = gs.scenario_state.get("life_diary_contract_engine_state", {})
 		if typeof(engine_state_raw) == TYPE_DICTIONARY and not (engine_state_raw as Dictionary).is_empty():
@@ -186346,7 +186351,7 @@ func _append_diary_entry(lines: Array) -> void:
 		incoming.append("This year passed quietly, but time still moved forward.")
 
 	var owner_id: int = DiarySceneSupport._current_life_diary_owner_id(gs)
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine == null:
 		return
 
@@ -186379,7 +186384,7 @@ func _append_text_to_diary(text: String, start_new_block: bool = false) -> void:
 	_ensure_active_life_diary_loaded(false)
 
 	var owner_id: int = DiarySceneSupport._current_life_diary_owner_id(gs)
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine == null:
 		return
 
@@ -198623,7 +198628,7 @@ func _ensure_modification_panel() -> void:
 		return
 
 	modification_panel = (
-		ModificationPanel.new()
+		load("res://ui/panels/mods/ModificationPanel.gd").new()
 	)
 	modification_panel.name = (
 		"ModificationPanel"
@@ -206987,7 +206992,7 @@ func _restore_life_diary_for_actor(actor: Person, switch_text: String = "") -> v
 	set_meta("life_diary_render_cached_lines", _flatten_life_diary_lines().duplicate(true))
 	set_meta("life_diary_render_cached_signature", _life_diary_render_signature())
 func _restore_life_diary_for_actor_zero_frame(actor: Person, switch_text: String = "") -> Array:
-	var engine:= _ensure_life_diary_contract_engine()
+	var engine: Variant = _ensure_life_diary_contract_engine()
 	if engine != null:
 		if int(actor.age) <= 0 and not engine.has_diary_for_actor(int(actor.id)):
 			engine.ensure_birth_intro_for_actor(actor, {
@@ -210743,7 +210748,7 @@ func _ensure_school_hub_panel() -> SchoolHubPanel:
 	return school_hub_panel
 
 
-func _ensure_relationships_hub_contract_engine() -> RelationshipsHubContractEngine:
+func _ensure_relationships_hub_contract_engine() -> Variant:
 	if gs != null:
 		RealitiesSceneSupport._ensure_universal_switch_contract_engine(gs)
 
@@ -210756,7 +210761,7 @@ func _ensure_relationships_hub_contract_engine() -> RelationshipsHubContractEngi
 
 
 		relationships_hub_contract_engine = (
-			RelationshipsHubContractEngine.new()
+			load("res://systems/relationships/RelationshipsHubContractEngine.gd").new()
 		)
 
 	if gs != null:
@@ -211209,6 +211214,7 @@ func _on_relationship_hub_panel_close_requested() -> void:
 		relationship_hub_panel.hide_surface()
 
 	current_panel = "life"
+	_open_life_diary_native_surface("relationship_hub_panel_close")
 
 	_apply_main_tab_press_frame_nav_state(
 		"life",
@@ -211360,6 +211366,7 @@ func _on_school_hub_panel_close_requested() -> void:
 		school_hub_panel.hide_surface()
 
 	current_panel = "life"
+	_open_life_diary_native_surface("school_hub_panel_close")
 
 	_apply_main_tab_press_frame_nav_state(
 		"life",
@@ -211958,7 +211965,7 @@ func _relationship_hub_render_hot_shell(packet: Dictionary, section: String = "f
 	var clean_section: String = RelationshipsSceneSupport._relationship_hub_resolve_section_id(gs, section)
 	var packet_mode: String = str(packet.get("relationship_hub_packet_mode", packet.get("stability_tier", "hot_packet"))).strip_edges()
 
-	var engine: RelationshipsHubContractEngine = _ensure_relationships_hub_contract_engine()
+	var engine: Variant = _ensure_relationships_hub_contract_engine()
 	var hub_contract: Dictionary = ValueSceneSupport._safe_dictionary(packet.get("relationships_hub_contract", {}))
 	if hub_contract.is_empty() and engine != null and gs != null and gs.player != null:
 		hub_contract = engine.emit_hub_contract(gs.player, {
@@ -212070,7 +212077,7 @@ func _relationship_hub_background_reconcile_packet(section: String = "family", r
 	context ["relationship_contract_engine_authority"] = true
 	context ["relationship_background_main_tab_rebuild_forbidden"] = true
 
-	var engine: RelationshipsHubContractEngine = _ensure_relationships_hub_contract_engine()
+	var engine: Variant = _ensure_relationships_hub_contract_engine()
 	var hub_contract: Dictionary = {}
 
 	if engine != null and gs != null and gs.player != null:
@@ -212514,7 +212521,7 @@ func _relationship_hub_person_preview_snapshot(observer: Person, npc: Person) ->
 			"card_contract": {}
 		}
 
-	var engine: RelationshipsHubContractEngine = _ensure_relationships_hub_contract_engine()
+	var engine: Variant = _ensure_relationships_hub_contract_engine()
 	var contract: Dictionary = engine.emit_card_contract(observer, npc, {
 		"source": "mainscene.relationship_hub_person_preview_snapshot",
 		"section_key": institution_hub_current_section,
@@ -212546,7 +212553,7 @@ func _relationship_hub_person_preview_snapshot(observer: Person, npc: Person) ->
 		"card_contract": contract.duplicate(true)
 	}
 func _relationship_hub_bond_score_for_pair(observer: Person, npc: Person) -> int:
-	var engine: RelationshipsHubContractEngine = _ensure_relationships_hub_contract_engine()
+	var engine: Variant = _ensure_relationships_hub_contract_engine()
 	if engine == null:
 		return 0
 
@@ -213144,7 +213151,7 @@ func _institution_hub_add_people_group(title_text: String, ids: Array, empty_tex
 	var columns: int = int(options.get("columns", 0))
 
 	if relationships_mode:
-		var engine: RelationshipsHubContractEngine = _ensure_relationships_hub_contract_engine()
+		var engine: Variant = _ensure_relationships_hub_contract_engine()
 		var group_contract: Dictionary = {}
 
 		if engine != null and gs != null and gs.player != null:
@@ -213453,7 +213460,7 @@ func _institution_hub_add_person_button(npc: Person, prefix: String = "", suffix
 	if relationships_mode:
 		var featured: bool = bool(target_parent.get_meta("relationship_group_featured", false))
 		var section_key: String = str(target_parent.get_meta("relationship_group_section", institution_hub_current_section)).strip_edges().to_lower()
-		var engine: RelationshipsHubContractEngine = _ensure_relationships_hub_contract_engine()
+		var engine: Variant = _ensure_relationships_hub_contract_engine()
 		var card_contract: Dictionary = {}
 
 		if engine != null:
