@@ -10,6 +10,7 @@ var years_per_run := 1
 var years_completed := 0
 var checkpoints_restored := 0
 var choices_made := 0
+var last_hydration_diagnostic_ms := -10000
 const PERSISTED_PLAYER_FIELDS := ["job", "income", "job_performance", "job_experience", "unemployed_years", "school_mode", "school_name", "school_status", "education_level", "health", "mental_health", "smarts", "friends", "children", "marital_status"]
 const RUNTIME_SHORTCUT_LABELS := {
 	"belongings": "Belongings", "food_lifestyle": "Food", "restaurant_lifestyle": "Dining",
@@ -528,6 +529,9 @@ func _restore() -> void:
 	var expected: Dictionary = parsed
 	if not _check(not expected.is_empty(), "No saved test expectation in this isolated profile"):
 		return
+	var saved_payload: Dictionary = BinarySaveEngine.decode(FileAccess.get_file_as_bytes(str(expected.path)))
+	if not _check(not saved_payload.is_empty(), "Saved checkpoint could not be decoded before Continue"):
+		return
 	origin_mode = str(expected.mode)
 	years_completed = int(expected.get("years_completed", 0))
 	checkpoints_restored = int(expected.get("checkpoints_restored", 0)) + 1
@@ -548,6 +552,7 @@ func _restore() -> void:
 	if not _check(await _wait_for(_hydration_complete, 90), "Checkpoint hydration did not finish"):
 		return
 	var state: GameState = current_scene.get("gs")
+	_verify_shared_checkpoint(saved_payload, state)
 	for field in ["id", "first_name", "last_name", "age"]:
 		_check(state.player.get(field) == expected[field], "Reload changed player " + field)
 	_check(state.year == expected.year, "Reload changed year")
@@ -581,10 +586,52 @@ func _restore() -> void:
 	elif not failed and OS.get_environment("ERA_EXPLORE") == "1":
 		await _inspect_gameplay()
 
+func _verify_shared_checkpoint(payload: Dictionary, state: GameState) -> void:
+	var saved_businesses: Dictionary = payload.get("scenario_state", {}).get("family_businesses", {})
+	if saved_businesses.get("ventures", {}).is_empty():
+		return
+	_check(JSON.parse_string(JSON.stringify(state.scenario_state.get("family_businesses", {}))) == saved_businesses, "Reload changed company ownership, cast, settlement year or history")
+	_check(JSON.parse_string(JSON.stringify(state.scenario_state.get("life_stories", {}))) == payload.scenario_state.get("life_stories", {}), "Reload changed story choices, cast or history")
+	if not _check(state.bank_engine != null, "Reload did not initialize banking"):
+		return
+	var saved_accounts: Dictionary = payload.get("bank_engine_state", {}).get("accounts", {})
+	for account_id in saved_accounts:
+		var live: Dictionary = state.bank_engine.accounts.get(account_id, {})
+		for field in ["owner_id", "world_id", "currency", "balance", "status"]:
+			_check(live.get(field) == saved_accounts[account_id].get(field), "Reload changed bank account %s field %s" % [account_id, field])
+	var businesses := FamilyBusinessEngine.new(state)
+	var before: Dictionary = state.scenario_state.get("family_businesses", {}).duplicate(true)
+	var balances: Dictionary = {}
+	for venture_id in saved_businesses.ventures:
+		var saved: Dictionary = saved_businesses.ventures[venture_id]
+		var venture: Dictionary = before.get("ventures", {}).get(venture_id, {})
+		balances[venture_id] = businesses.balance(venture)
+		for cast in saved.get("cast", {}).values():
+			var person: Person = state.get_npc_by_id(int(cast.get("id", -1)), false)
+			_check(person != null, "Reload dropped a recurring business participant")
+	businesses.service_actor(state.player)
+	businesses.service_actor(state.player)
+	_check(before == state.scenario_state.get("family_businesses", {}), "Repeated same-year business servicing changed settlement history")
+	for venture_id in balances:
+		_check(businesses.balance(before.ventures[venture_id]) == balances[venture_id], "Reload awarded duplicate company income")
+	print("DESKTOP BUSINESS RESTORED: actor=", state.player_id, " personal=", state.player.bank_balance, " reserves=", JSON.stringify(balances))
+
 func _hydration_complete() -> bool:
 	var host: GameState = current_scene.get("reality_residency_host_game_state")
 	if host == null or host.reality_residency_manager == null:
 		return false
 	var signature: String = current_scene.get("reality_residency_attached_signature")
 	var record: Dictionary = host.reality_residency_manager.resident_records.get(signature, {})
-	return not record.is_empty() and not record.get("checkpoint_payload_apply_pending", true) and record.get("resident_chassis_tail_complete", false)
+	if Time.get_ticks_msec() - last_hydration_diagnostic_ms >= 10000:
+		last_hydration_diagnostic_ms = Time.get_ticks_msec()
+		var diagnostic := {"signature": signature, "at_ms": last_hydration_diagnostic_ms}
+		for key in ["state", "service_attempts", "lens_attached", "resident_chassis_tail_complete", "checkpoint_payload_apply_pending", "checkpoint_payload_tail_failed", "checkpoint_payload_tail_failure_reason", "checkpoint_progressive_hydration_started", "checkpoint_progressive_hydration_current_tier", "checkpoint_engine_graph_main_thread_report", "checkpoint_progressive_hydration_last_slice_report"]:
+			diagnostic[key] = record.get(key)
+		var state: GameState = current_scene.get("gs")
+		diagnostic["actor_id"] = state.player_id
+		if state.game_state_hydration_runtime != null:
+			var hydration = state.game_state_hydration_runtime
+			diagnostic["queue_front"] = hydration.background_hydration_queue.front() if not hydration.background_hydration_queue.is_empty() else {}
+			diagnostic["last_slice"] = hydration.last_background_hydration_report
+		print("DESKTOP HYDRATION: ", JSON.stringify(diagnostic))
+	return not record.is_empty() and not record.get("checkpoint_payload_apply_pending", true) and record.get("resident_chassis_tail_complete", false) and record.get("checkpoint_payload_tail_complete", false) and not record.get("checkpoint_payload_tail_failed", false)

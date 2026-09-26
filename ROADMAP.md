@@ -1,6 +1,6 @@
 # EraLife roadmap
 
-Updated **2026-09-26**. This is the shared plan for desktop EraLife and EraLife
+Updated **2026-09-27**. This is the shared plan for desktop EraLife and EraLife
 Portrait. Use [the agent handoff](docs/AGENT-HANDOFF.md) to find the active
 branches, worktrees, commands, and evidence; use [AGENTS.md](AGENTS.md) for code
 ownership and repository rules.
@@ -35,15 +35,15 @@ smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 
 ## Work queue
 
-No implementation item is claimed by this roadmap-writing task. All items below
-are **unclaimed**. When starting one, replace its status with `In progress`, record
+R01 is claimed by the save/continue task on `codex/shared-lives-desktop`, with
+Portrait verification to follow. Other items remain **unclaimed**. When starting one, replace its status with `In progress`, record
 the task/branch in the work log, and keep the change small enough to review.
 `Queued` means prioritized; `Proposed` means the product direction needs refinement
 before implementation. `Verified` requires the evidence in its completion criteria.
 
 | ID | Item | Target | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| R01 | Reliable save → cold restart → continue | Desktop, then Portrait | Queued: first shared task | None |
+| R01 | Reliable save → cold restart → continue | Desktop, then Portrait | In progress: desktop verified; Portrait pending | None |
 | R02 | Character / Back / Explore navigation | Portrait | Queued | None; can be an independent fix |
 | R03 | God Mode → Begin Life phone crash | Portrait | Queued; device access needed for final verification | None; keep separate from R02 |
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Queued | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
@@ -190,6 +190,7 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | --- | --- | --- | --- |
 | 2026-09-26 | Baseline | Desktop `32ad0fb`; Portrait `ebaf71c` | Shared Lives implemented and ported, with the documented validation limits. Next shared implementation item: reproduce R01 on desktop. |
 | 2026-09-26 | Planning | Shared roadmap on both Shared Lives branches | Priorities and completion criteria recorded. R01–R08 remain unclaimed; no new gameplay or crash fix is claimed here. |
+| 2026-09-27 | R01 | Save/continue task, `codex/shared-lives-desktop` | Desktop: reproduced hydration starvation, a concurrent projection crash, and missing company banking. Desktop verified: 19 regressions, fresh business cycle with second cold restart, pre-fix business save, and older a174e11 fixture pass. Portrait port and checks next. See [cold-restore evidence](docs/COLD-RESTORE.md). |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take R01 (or the user-selected item), reproduce it,

@@ -3,6 +3,9 @@ extends "smoke_desktop_modes.gd"
 # Real Household entry and UI input; the isolated fixture supplies two known
 # existing contacts so the ensemble story is repeatable without random casting.
 func _age_and_save() -> void:
+	if mode == "restore":
+		await super._age_and_save()
+		return
 	var state: GameState = current_scene.get("gs")
 	current_scene.call("_ensure_pending_situation_engines")
 	if not _check(await _wait_for(func(): return state.player.realm_id >= 0), "Household realm did not finish loading"):

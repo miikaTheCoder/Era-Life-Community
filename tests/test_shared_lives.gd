@@ -240,6 +240,12 @@ func _test_shared_checkpoint() -> void:
 	_check(shell.get("success", false), "Shared story checkpoint shell failed")
 	restored.era = {"name":payload.era_name}
 	restored.bank_engine = BankEngine.new(restored)
+	# A live runtime can have a partial contract registry. Compact checkpoint
+	# banking must still load even when another slice makes that registry nonempty.
+	restored.game_state_contract_engine = GameStateContractEngine.new(restored)
+	restored.game_state_contract_engine.save_slice_registry = {
+		"life_diary_contract_engine_state": {"id": "life_diary_contract_engine_state", "save_key": "life_diary_contract_engine_state", "engine_id": "life_diary_contract_engine", "import_method": "import_state"}
+	}
 	var hydration := GameStateHydrationRuntime.new(restored)
 	hydration.begin_resident_checkpoint_spatial_hydration(payload, {"household":payload.npcs,"city":[],"realm":[],"world":[]},
 		{"resident_restore":true,"runtime_scene_tree_access_allowed":false,"strict_one_item_per_slice":true})
