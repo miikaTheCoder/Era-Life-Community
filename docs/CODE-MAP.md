@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-373 scripts; 922,260 source lines.
+374 scripts; 922,670 source lines.
 
 ## Largest files
 
@@ -278,9 +278,10 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [BankEngine.gd](../project/systems/economy/BankEngine.gd) | BankEngine | 55 |
+| [BankEngine.gd](../project/systems/economy/BankEngine.gd) | BankEngine | 57 |
 | [DebtContractEngine.gd](../project/systems/economy/DebtContractEngine.gd) | DebtContractEngine | 15 |
 | [EconomyEngine.gd](../project/systems/economy/EconomyEngine.gd) | EconomyEngine | 40 |
+| [FamilyBusinessEngine.gd](../project/systems/economy/FamilyBusinessEngine.gd) | FamilyBusinessEngine | 17 |
 | [GlobalMarketEngine.gd](../project/systems/economy/GlobalMarketEngine.gd) | GlobalMarketEngine | 13 |
 | [LuxuryShopEngine.gd](../project/systems/economy/LuxuryShopEngine.gd) | LuxuryShopEngine | 64 |
 | [MeatMarketContractEngine.gd](../project/systems/economy/MeatMarketContractEngine.gd) | MeatMarketContractEngine | 32 |
@@ -339,7 +340,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [EmergentNPCStoryEngine.gd](../project/systems/narrative/EmergentNPCStoryEngine.gd) | EmergentNPCStoryEngine | 5 |
 | [GoalPlanningEngine.gd](../project/systems/narrative/GoalPlanningEngine.gd) | GoalPlanningEngine | 7 |
 | [LifeDiaryContractEngine.gd](../project/systems/narrative/LifeDiaryContractEngine.gd) | LifeDiaryContractEngine | 72 |
-| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 22 |
+| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 27 |
 | [NarrativeEngine.gd](../project/systems/narrative/NarrativeEngine.gd) | NarrativeEngine | 35 |
 | [NarrativeGovernor.gd](../project/systems/narrative/NarrativeGovernor.gd) | NarrativeGovernor | 4 |
 | [OpportunityEngine.gd](../project/systems/narrative/OpportunityEngine.gd) | OpportunityEngine | 4 |
@@ -380,7 +381,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [AssetsContractEngine.gd](../project/systems/property/AssetsContractEngine.gd) | AssetsContractEngine | 38 |
+| [AssetsContractEngine.gd](../project/systems/property/AssetsContractEngine.gd) | AssetsContractEngine | 39 |
 | [DealershipContractEngine.gd](../project/systems/property/DealershipContractEngine.gd) | DealershipContractEngine | 46 |
 | [PropertyAmenitySynthesisContractEngine.gd](../project/systems/property/PropertyAmenitySynthesisContractEngine.gd) | PropertyAmenitySynthesisContractEngine | 31 |
 | [PropertyEngine.gd](../project/systems/property/PropertyEngine.gd) | PropertyEngine | 84 |

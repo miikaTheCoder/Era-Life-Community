@@ -16,6 +16,10 @@ with recurring characters, delayed consequences, and inherited family history.
 They appear in Pending Situations during ordinary lives. See
 [Life Stories](docs/LIFE-STORIES.md) for eligibility, authoring, and validation.
 
+**Shared Lives** adds a family-business saga and its inherited sequel: 16 chapters,
+46 responses, a recurring ensemble, real company reserves, and ownership that
+passes between generations. See [Shared Lives](docs/SHARED-LIVES.md).
+
 ## Working on the code
 
 Start with [architecture and ownership](docs/ARCHITECTURE.md), then use the

@@ -518,6 +518,13 @@ func _interactive_checkpoint_actor_ids(
 		queue.append(int(raw_actor_id))
 		for story in story_actors[raw_actor_id].get("stories", {}).values():
 			queue.append(int(story.get("cast_id", -1)))
+			for participant in story.get("ensemble", {}).values():
+				queue.append(int(participant.get("id", -1)))
+	for venture in gs.scenario_state.get("family_businesses", {}).get("ventures", {}).values():
+		for owner_id in venture.get("stakes", {}):
+			queue.append(int(owner_id))
+		for participant in venture.get("cast", {}).values():
+			queue.append(int(participant.get("id", -1)))
 
 	while (
 		not queue.is_empty()
@@ -600,6 +607,7 @@ func _interactive_checkpoint_scenario_capsule(
 		"custom_household_birth_intro_suppressed",
 		"choose_adventure",
 		"life_stories",
+		"family_businesses",
 		"choose_adventure_birth_trigger",
 		"narrative_birth_bias",
 		"choose_adventure_lineage_birth",
@@ -1054,6 +1062,13 @@ func _build_interactive_checkpoint_payload(
 		}
 	}
 
+	if gs.bank_engine != null and scenario_capsule.has("family_businesses"):
+		var bank_owners: Array = []
+		for actor_id in actor_ids:
+			bank_owners.append("person:%d" % int(actor_id))
+		for venture in scenario_capsule.family_businesses.get("ventures", {}).values():
+			bank_owners.append(str(venture.bank_owner))
+		payload["bank_engine_state"] = gs.bank_engine.export_checkpoint_state(bank_owners)
 	return _make_binary_safe(payload)
 func save_interactive_reality_checkpoint(
 		path: String,

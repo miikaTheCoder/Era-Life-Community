@@ -1,0 +1,1053 @@
+{
+  "schema": "eralife.life_stories",
+  "version": 1,
+  "stories": [
+    {
+      "id": "family_business",
+      "title": "The Business We Built",
+      "series": "Shared Lives",
+      "category": "Family",
+      "cast": "business_partners",
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 65
+      },
+      "start": "offer",
+      "death_node": "loss",
+      "nodes": {
+        "offer": {
+          "title": "A table big enough for three",
+          "text": "{cofounder} has brought a notebook full of plans for a small repair and supply business. You bring the opening capital; they bring their time and contacts. {mentor} offers to help you read the books, but refuses to settle every argument for you.\n\nThe proposal gives you a 60% stake and {cofounder} 40%. This begins as a side business: both of you keep your current work. Its reserves will be separate from your personal money.",
+          "deadline": 2,
+          "default": "decline",
+          "choices": [
+            {
+              "id": "found",
+              "label": "Put up the opening capital",
+              "result": "I founded a business with {cofounder}. We agreed that my money and their work both deserved a place in the books.",
+              "next": "agreement",
+              "delay": 1,
+              "business": {
+                "action": "found",
+                "amount": 1200
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 6
+                },
+                {
+                  "from": "mentor",
+                  "to": "cofounder",
+                  "delta": 4
+                }
+              ]
+            },
+            {
+              "id": "small",
+              "label": "Start with a smaller reserve",
+              "result": "We started with fewer tools and less cash. {mentor} warned that one bad season could use up our small reserve.",
+              "next": "agreement",
+              "delay": 1,
+              "business": {
+                "action": "found",
+                "quality": -15,
+                "reputation": -5,
+                "amount": 400
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 3
+                }
+              ]
+            },
+            {
+              "id": "decline",
+              "label": "Keep this friendship out of business",
+              "result": "I thanked {cofounder} and {mentor}, but decided that this was not the right venture for us.",
+              "outcome": "A proposal left on the table",
+              "legacy": "private"
+            }
+          ]
+        },
+        "agreement": {
+          "title": "Whose name is on the door?",
+          "text": "The first sign for {business} is ready. {cofounder} wants a voice in decisions, not just a place behind the counter. {mentor} thinks one person should make the final call. Both are waiting for your answer.",
+          "deadline": 2,
+          "default": "informal",
+          "choices": [
+            {
+              "id": "shared",
+              "label": "Agree on a shared charter",
+              "result": "We wrote down how we would decide together. {cofounder} finally signed without looking over at {mentor}.",
+              "next": "first_order",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "policy": "shared_decisions",
+                "quality": 5,
+                "legacy": "shared_charter"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 12
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 6
+                }
+              ]
+            },
+            {
+              "id": "control",
+              "label": "Keep the final say",
+              "result": "I kept the final say because I had put up the money. {mentor} approved; {cofounder} folded their copy of the agreement and said little.",
+              "next": "first_order",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "policy": "founder_control",
+                "reputation": 3,
+                "legacy": "unequal_partnership"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -18
+                },
+                {
+                  "from": "player",
+                  "to": "mentor",
+                  "delta": 6
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": -8
+                }
+              ]
+            },
+            {
+              "id": "informal",
+              "label": "Rely on our existing trust",
+              "result": "We left the difficult rules unwritten. It felt easier at the time.",
+              "next": "first_order",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "policy": "informal_promises"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -3
+                }
+              ]
+            }
+          ]
+        },
+        "first_order": {
+          "title": "The order we cannot afford to get wrong",
+          "text": "A customer offers {business} its first substantial order. {cofounder} knows the work will take longer than the estimate. {mentor} points to the reserve and asks whether you are willing to spend it on doing the job properly.",
+          "deadline": 2,
+          "default": "smaller",
+          "choices": [
+            {
+              "id": "tools",
+              "label": "Pay for better tools from the business",
+              "result": "We bought better tools before accepting the order. {cofounder} stayed late to learn them, and {mentor} checked the final work.",
+              "next": "work",
+              "delay": 1,
+              "business": {
+                "action": "expense",
+                "quality": 12,
+                "reputation": 8,
+                "amount": 250
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 8
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 5
+                }
+              ]
+            },
+            {
+              "id": "rush",
+              "label": "Promise the full order with what we have",
+              "result": "I promised more than our equipment could handle. {cofounder} had to explain the delays to the customer.",
+              "next": "work",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "quality": -8,
+                "reputation": -12
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -12
+                },
+                {
+                  "from": "player",
+                  "to": "mentor",
+                  "delta": -5
+                }
+              ]
+            },
+            {
+              "id": "smaller",
+              "label": "Negotiate a smaller first order",
+              "result": "We took less work and finished what we promised. Our first customer learned exactly what we could do.",
+              "next": "work",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "quality": 3,
+                "reputation": 4
+              }
+            }
+          ]
+        },
+        "work": {
+          "title": "Who gets the good work?",
+          "text": "{cofounder} says you keep the interesting work while they handle complaints and closing time. {mentor} proposes teaching them to run the accounts. There is no new employee to solve this for you: the three of you have to divide the work already on the table.",
+          "deadline": 2,
+          "default": "rotate",
+          "choices": [
+            {
+              "id": "train",
+              "label": "Fund training for my cofounder",
+              "result": "We paid for {cofounder} to learn the accounts. Working alongside {mentor} gave them a relationship that no longer depended on me.",
+              "next": "overtime",
+              "delay": 1,
+              "business": {
+                "action": "expense",
+                "quality": 8,
+                "amount": 150
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 10
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 12
+                }
+              ]
+            },
+            {
+              "id": "favor",
+              "label": "Give the best tasks to my mentor",
+              "result": "I gave {mentor} the work they asked for. {cofounder} began calling the business a family favor instead of a partnership.",
+              "next": "overtime",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "quality": 4,
+                "legacy": "favoritism"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "mentor",
+                  "delta": 8
+                },
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -15
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": -12
+                }
+              ]
+            },
+            {
+              "id": "rotate",
+              "label": "Rotate the unpleasant shifts",
+              "result": "We made a rota that put each of us on the difficult shifts. Nobody loved it, but nobody could claim to be exempt.",
+              "next": "overtime",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "policy": "shared_shifts"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 5
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 3
+                }
+              ]
+            }
+          ]
+        },
+        "overtime": {
+          "title": "A promise after closing time",
+          "text": "{cofounder} has missed another evening at home. They ask you to reduce the workload. At the same time, your own household could use money from the business. {mentor} says the figures will record whichever promise you choose to keep.",
+          "deadline": 2,
+          "default": "reduce",
+          "choices": [
+            {
+              "id": "support",
+              "label": "Spend business reserves to reduce the backlog",
+              "result": "We spent some reserves on clearing the backlog. {cofounder} went home before dark for the first time in weeks.",
+              "next": "accounts",
+              "delay": 1,
+              "business": {
+                "action": "expense",
+                "quality": 5,
+                "amount": 200
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 12
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 4
+                }
+              ]
+            },
+            {
+              "id": "draw",
+              "label": "Take an owner draw for my own household",
+              "result": "I took a draw for my household while {cofounder} kept working. The money helped at home, but they remembered the timing.",
+              "next": "accounts",
+              "delay": 1,
+              "business": {
+                "action": "draw",
+                "legacy": "private_draws",
+                "amount": 300
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -20
+                },
+                {
+                  "from": "player",
+                  "to": "mentor",
+                  "delta": -6
+                }
+              ]
+            },
+            {
+              "id": "reduce",
+              "label": "Accept fewer orders for now",
+              "result": "We took fewer orders and let the backlog shrink. {cofounder} said that a smaller business was better than an absent family.",
+              "next": "accounts",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "reputation": -3,
+                "policy": "sustainable_hours"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 6
+                }
+              ]
+            }
+          ]
+        },
+        "accounts": {
+          "title": "Three versions of the same year",
+          "text": "At the annual review, {mentor} lays out the figures and {cofounder} lays out the hours. You remember the risks you took. The next question is whether everyone still trusts this partnership enough to grow it.\n\nIf your relationship with {cofounder} is below 45 after this decision, they will refuse expansion and bring their own terms to the next meeting.",
+          "deadline": 2,
+          "default": "listen",
+          "choices": [
+            {
+              "id": "open",
+              "label": "Let everyone examine the books",
+              "result": "We reviewed the money and the hours together. I let {cofounder} question my decisions in front of {mentor}.",
+              "next": "expansion",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "reputation": 6,
+                "legacy": "open_books"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 10
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 6
+                }
+              ],
+              "next_untrusted": "ultimatum"
+            },
+            {
+              "id": "dismiss",
+              "label": "Remind them who funded it",
+              "result": "I reminded everyone whose money had opened the doors. {cofounder} stopped arguing, which did not mean they agreed.",
+              "next": "expansion",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "legacy": "resented_control"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -16
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": -5
+                }
+              ],
+              "next_untrusted": "ultimatum"
+            },
+            {
+              "id": "listen",
+              "label": "Listen without making another promise",
+              "result": "I listened to both accounts of the year and promised only to think before committing us to more work.",
+              "next": "expansion",
+              "delay": 1,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 2
+                }
+              ],
+              "next_untrusted": "ultimatum"
+            }
+          ]
+        },
+        "expansion": {
+          "title": "A second workbench",
+          "text": "{cofounder} is willing to grow {business}. {mentor} has found a way to improve the workshop without giving up your existing customers. The decision is whether to spend the company reserve, add your own money, or remain small.",
+          "deadline": 2,
+          "default": "stay",
+          "choices": [
+            {
+              "id": "expand",
+              "label": "Use company money to improve the workshop",
+              "result": "We paid for a second workbench out of the company reserve. {cofounder} helped choose it, and {mentor} taught us to maintain it.",
+              "next": "crisis",
+              "delay": 2,
+              "business": {
+                "action": "expense",
+                "quality": 15,
+                "reputation": 8,
+                "amount": 400
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 6
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 4
+                }
+              ]
+            },
+            {
+              "id": "invest",
+              "label": "Add personal money to our reserves",
+              "result": "I put more of my own money into the business without changing our shares. {cofounder} knew it was a contribution, not a new claim over their work.",
+              "next": "crisis",
+              "delay": 2,
+              "business": {
+                "action": "invest",
+                "reputation": 4,
+                "amount": 500
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 7
+                }
+              ]
+            },
+            {
+              "id": "stay",
+              "label": "Stay small and keep the reserve",
+              "result": "We kept the business at a size we understood. Some opportunities passed us by, but the reserve stayed intact.",
+              "next": "crisis",
+              "delay": 2,
+              "business": {
+                "action": "policy",
+                "policy": "stay_small"
+              }
+            }
+          ]
+        },
+        "ultimatum": {
+          "title": "Your partner says no",
+          "text": "{cofounder} refuses to take on an expansion. They have kept a record of broken promises, and {mentor} cannot talk them out of it. They will stay only if the workload and decision rules change. This is their choice, made from the relationship you have built.",
+          "deadline": 2,
+          "default": "respect",
+          "choices": [
+            {
+              "id": "repair",
+              "label": "Accept new rules and acknowledge my part",
+              "result": "I accepted {cofounder}'s terms in front of {mentor}. An apology did not erase our history, but it gave us something specific to try.",
+              "next": "crisis",
+              "delay": 2,
+              "business": {
+                "action": "policy",
+                "policy": "shared_decisions",
+                "legacy": "repaired_partnership"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 25
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 5
+                }
+              ]
+            },
+            {
+              "id": "leave",
+              "label": "Cash out my share and leave them the company",
+              "result": "I took my share of the liquid reserves and transferred my ownership to {cofounder}. The business continued without me.",
+              "business": {
+                "action": "leave",
+                "legacy": "founder_departed"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -5
+                }
+              ],
+              "outcome": "A partnership ended",
+              "legacy": "walked_away"
+            },
+            {
+              "id": "respect",
+              "label": "Respect their refusal and stop expanding",
+              "result": "We stopped planning an expansion. {cofounder} kept their stake and their boundaries.",
+              "next": "crisis",
+              "delay": 2,
+              "business": {
+                "action": "policy",
+                "quality": -5,
+                "policy": "stay_small",
+                "legacy": "fragile_truce"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 4
+                }
+              ]
+            }
+          ]
+        },
+        "crisis": {
+          "title": "Water under the door",
+          "text": "A flood damages tools and interrupts supplies at {business}. {cofounder} makes a list of customers who are still waiting. {mentor} checks the reserve. Years of earlier decisions are now sitting in those two lists.",
+          "deadline": 2,
+          "default": "scale_back",
+          "choices": [
+            {
+              "id": "repair",
+              "label": "Pay for repairs from the company reserve",
+              "result": "We paid for repairs and protected the orders already promised. {cofounder} called the waiting customers personally.",
+              "next": "recovery",
+              "delay": 1,
+              "business": {
+                "action": "expense",
+                "quality": 8,
+                "reputation": 10,
+                "amount": 600
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 9
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 4
+                }
+              ]
+            },
+            {
+              "id": "rescue",
+              "label": "Add personal savings to the emergency reserve",
+              "result": "I added personal savings to our emergency reserve. It did not undo the damage, but it gave the three of us time to recover.",
+              "next": "recovery",
+              "delay": 1,
+              "business": {
+                "action": "invest",
+                "quality": 3,
+                "amount": 500
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 7
+                },
+                {
+                  "from": "player",
+                  "to": "mentor",
+                  "delta": 5
+                }
+              ]
+            },
+            {
+              "id": "scale_back",
+              "label": "Scale back and tell customers the truth",
+              "result": "We reduced the work we could accept and explained why. The company survived on a smaller footing.",
+              "next": "recovery",
+              "delay": 1,
+              "business": {
+                "action": "policy",
+                "quality": -10,
+                "reputation": -15,
+                "legacy": "weathered_hard_times"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 3
+                }
+              ]
+            }
+          ]
+        },
+        "recovery": {
+          "title": "Who pays for the recovery?",
+          "text": "Work returns slowly. {cofounder} wants to repair your reputation with disappointed customers. Your household has its own needs. {mentor} asks which of those needs the company should carry.",
+          "deadline": 2,
+          "default": "steady",
+          "choices": [
+            {
+              "id": "customers",
+              "label": "Fund the customer recovery work",
+              "result": "We used business reserves to put old work right. {cofounder} said that people would remember what we did after the flood.",
+              "next": "succession",
+              "delay": 3,
+              "business": {
+                "action": "expense",
+                "reputation": 20,
+                "legacy": "kept_our_word",
+                "amount": 200
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 8
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 5
+                }
+              ]
+            },
+            {
+              "id": "household",
+              "label": "Take a draw for my household",
+              "result": "I took a personal draw during the recovery. {cofounder} and {mentor} disagreed with the timing, even though the money was within my share.",
+              "next": "succession",
+              "delay": 3,
+              "business": {
+                "action": "draw",
+                "quality": -5,
+                "legacy": "family_first_at_a_cost",
+                "amount": 400
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -12
+                },
+                {
+                  "from": "player",
+                  "to": "mentor",
+                  "delta": -10
+                }
+              ]
+            },
+            {
+              "id": "steady",
+              "label": "Rebuild steadily without a new expense",
+              "result": "We rebuilt slowly and made no promises the business could not keep.",
+              "next": "succession",
+              "delay": 3,
+              "business": {
+                "action": "policy",
+                "quality": 2,
+                "legacy": "patient_recovery"
+              }
+            }
+          ]
+        },
+        "succession": {
+          "title": "The chair at the head of the table",
+          "text": "Running {business} has become part of your family history. The books record {legacy}. {cofounder}'s original stake still matters, and {mentor}'s notes are crowded into the margins.\n\nYou can transfer your stake and management to your oldest living adult child, keep managing, or leave the company to your original cofounder. A handover needs that child to be present; their own story begins when you control their life.",
+          "deadline": 2,
+          "default": "keep",
+          "choices": [
+            {
+              "id": "handover",
+              "label": "Hand my stake to my adult child",
+              "result": "I transferred my stake and management to my oldest adult child. They inherited the actual reserves, working rules, and unfinished feelings of our company.",
+              "business": {
+                "action": "handover",
+                "legacy": "passed_the_keys"
+              },
+              "outcome": "The next generation takes the keys",
+              "legacy": "shared_business_legacy"
+            },
+            {
+              "id": "keep",
+              "label": "Keep managing with a family charter",
+              "result": "I kept managing, but wrote a charter for the family that would eventually inherit my stake.",
+              "next": "settled",
+              "delay": 3,
+              "business": {
+                "action": "policy",
+                "policy": "family_charter",
+                "legacy": "charter_for_the_future"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 3
+                }
+              ]
+            },
+            {
+              "id": "leave",
+              "label": "Take my share and let my cofounder carry on",
+              "result": "I took my share of the remaining reserves and transferred my stake to {cofounder}. They kept the company and its history.",
+              "business": {
+                "action": "leave",
+                "legacy": "cofounder_continues"
+              },
+              "outcome": "The company continues without its founder",
+              "legacy": "walked_away"
+            }
+          ]
+        },
+        "settled": {
+          "title": "What people will remember",
+          "text": "The people who knew {business} at the start now tell different versions of its history. {cofounder} remembers the work. {mentor} remembers the arguments. Your family will inherit both the asset and the record of how you ran it.",
+          "deadline": 2,
+          "default": "reserve",
+          "choices": [
+            {
+              "id": "community",
+              "label": "Spend company money on work for the community",
+              "result": "We funded useful work for the people who had kept us going. {cofounder} wanted that decision in the last page of our founding minutes.",
+              "business": {
+                "action": "expense",
+                "reputation": 12,
+                "legacy": "community_kept_us",
+                "amount": 400
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 7
+                },
+                {
+                  "from": "cofounder",
+                  "to": "mentor",
+                  "delta": 4
+                }
+              ],
+              "outcome": "A business with roots",
+              "legacy": "community_business"
+            },
+            {
+              "id": "reward",
+              "label": "Take a final founder draw",
+              "result": "I took a final founder draw and left the company operating. My family would inherit the remaining stake and whatever the business earned afterward.",
+              "business": {
+                "action": "draw",
+                "legacy": "founder_rewarded",
+                "amount": 800
+              },
+              "outcome": "The founder takes a reward",
+              "legacy": "profitable_business"
+            },
+            {
+              "id": "reserve",
+              "label": "Leave the money and the charter in place",
+              "result": "I left our reserves inside the business. The charter and the people who remembered us would matter as much as the money.",
+              "business": {
+                "action": "policy",
+                "legacy": "reserves_and_promises"
+              },
+              "outcome": "Something to pass on",
+              "legacy": "shared_business_legacy"
+            }
+          ]
+        },
+        "loss": {
+          "title": "An empty place at the table",
+          "text": "{lost_person} has died. There will be no replacement cast member to say their lines or make their promises. {business} remains a real business, with the same accounts and ownership record. You have to decide how to carry its story forward.",
+          "deadline": 2,
+          "default": "remember",
+          "choices": [
+            {
+              "id": "remember",
+              "label": "Preserve their part in our history",
+              "result": "I kept {lost_person}'s part in the company history. Our founding story ended with an empty place at the table, but the business and its stakes remained.",
+              "business": {
+                "action": "policy",
+                "legacy": "remembered_a_partner"
+              },
+              "stats": {
+                "mental_health": -3
+              },
+              "outcome": "An empty chair, a continuing business",
+              "legacy": "remembered_partner"
+            },
+            {
+              "id": "quiet",
+              "label": "Keep the business small while we grieve",
+              "result": "We kept the business small after {lost_person}'s death. I left its ownership intact and gave myself room to grieve.",
+              "business": {
+                "action": "policy",
+                "quality": -5,
+                "policy": "stay_small",
+                "legacy": "carried_through_grief"
+              },
+              "stats": {
+                "mental_health": 2
+              },
+              "outcome": "Time to grieve",
+              "legacy": "remembered_partner"
+            }
+          ]
+        }
+      },
+      "era_context": {
+        "Ancient Era": "Trade rests on local workshops, hand tools, and a reputation carried by word of mouth.",
+        "Medieval Era": "A workshop depends on patient craft and the goodwill of its neighbors.",
+        "Industrial Era": "New machinery brings opportunities, but a small shop still lives by the work it can finish.",
+        "Modern Era": "A small repair and supply business must balance its books with the lives of the people doing the work.",
+        "Future Era": "New tools change the work; trust, ownership, and family obligations still have to be negotiated."
+      }
+    },
+    {
+      "id": "family_business_heir",
+      "title": "The Keys They Left",
+      "series": "Shared Lives",
+      "category": "Family",
+      "cast": "business_heir",
+      "allow_deceased_cast": true,
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 150
+      },
+      "start": "books",
+      "nodes": {
+        "books": {
+          "title": "The business inside the inheritance",
+          "text": "You now hold a real stake in {business}. Its founding record names {cofounder} and {mentor}, and the last legacy entry reads: {legacy}. The reserves and operating policy have come with the stake. The old participants may be gone; their names in these books will not change.",
+          "deadline": 2,
+          "default": "read",
+          "choices": [
+            {
+              "id": "read",
+              "label": "Read the founding minutes before changing anything",
+              "result": "I read the founding minutes of {business}. The numbers explained what I owned; the names explained what it had cost the family.",
+              "next": "choice",
+              "delay": 2,
+              "business": {
+                "action": "policy",
+                "reputation": 3
+              },
+              "stats": {
+                "smarts": 3
+              }
+            },
+            {
+              "id": "rewrite",
+              "label": "Announce that I will do things differently",
+              "result": "I announced a new direction for {business}. I inherited the company, but I did not promise to repeat every decision that built it.",
+              "next": "choice",
+              "delay": 2,
+              "business": {
+                "action": "policy",
+                "policy": "new_generation",
+                "legacy": "a_new_direction"
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -8
+                }
+              ]
+            },
+            {
+              "id": "draw",
+              "label": "Take a small draw from my inherited share",
+              "result": "I took a small draw from my inherited share of {business}. It made the inheritance feel real, while reducing what remained in reserve.",
+              "next": "choice",
+              "delay": 2,
+              "business": {
+                "action": "draw",
+                "amount": 300
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": -4
+                }
+              ]
+            }
+          ]
+        },
+        "choice": {
+          "title": "The promise in the margins",
+          "text": "An old note in the books describes work the founders hoped the family would continue. You can fund that work, add new capital of your own, or keep the existing policy. This decision belongs to your life now.",
+          "deadline": 2,
+          "default": "keep",
+          "choices": [
+            {
+              "id": "honor",
+              "label": "Fund the work the founders wanted to finish",
+              "result": "I used company reserves to finish work mentioned in the founding minutes. The inheritance became something I had helped build, too.",
+              "next": "future",
+              "delay": 3,
+              "business": {
+                "action": "expense",
+                "reputation": 15,
+                "legacy": "an_old_promise_kept",
+                "amount": 400
+              },
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "cofounder",
+                  "delta": 12
+                }
+              ]
+            },
+            {
+              "id": "invest",
+              "label": "Put my own savings into its future",
+              "result": "I added my own savings to {business}. I wanted the next family member to inherit something I had contributed, not only something I had received.",
+              "next": "future",
+              "delay": 3,
+              "business": {
+                "action": "invest",
+                "quality": 5,
+                "legacy": "second_generation_builder",
+                "amount": 500
+              }
+            },
+            {
+              "id": "keep",
+              "label": "Preserve the company without another commitment",
+              "result": "I kept the existing business operating without making a new commitment in someone else's name.",
+              "next": "future",
+              "delay": 3,
+              "business": {
+                "action": "policy",
+                "legacy": "careful_stewardship"
+              }
+            }
+          ]
+        },
+        "future": {
+          "title": "Our name, our decision",
+          "text": "{business} has outlived its founding chapter. You can pass your stake onward to an adult child or remain its steward. Ownership, money, and the founding cast will stay attached to the same company.",
+          "deadline": 2,
+          "default": "steward",
+          "choices": [
+            {
+              "id": "pass",
+              "label": "Pass my stake to the next generation",
+              "result": "I passed my stake and management in {business} to my oldest living adult child. Another life would decide what to do with our name.",
+              "business": {
+                "action": "handover",
+                "legacy": "another_generation"
+              },
+              "outcome": "A third place in the family history",
+              "legacy": "shared_business_legacy"
+            },
+            {
+              "id": "steward",
+              "label": "Remain its steward",
+              "result": "I kept my stake in {business} and accepted responsibility for its next years. The family business had become part of my own story.",
+              "business": {
+                "action": "policy",
+                "legacy": "a_living_family_business"
+              },
+              "outcome": "An inheritance made my own",
+              "legacy": "shared_business_legacy"
+            }
+          ]
+        }
+      },
+      "era_context": {
+        "Ancient Era": "Trade rests on local workshops, hand tools, and a reputation carried by word of mouth.",
+        "Medieval Era": "A workshop depends on patient craft and the goodwill of its neighbors.",
+        "Industrial Era": "New machinery brings opportunities, but a small shop still lives by the work it can finish.",
+        "Modern Era": "A small repair and supply business must balance its books with the lives of the people doing the work.",
+        "Future Era": "New tools change the work; trust, ownership, and family obligations still have to be negotiated."
+      }
+    }
+  ]
+}
