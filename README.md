@@ -20,6 +20,9 @@ They appear in Pending Situations during ordinary lives. See
 46 responses, a recurring ensemble, real company reserves, and ownership that
 passes between generations. See [Shared Lives](docs/SHARED-LIVES.md).
 
+See the [roadmap](ROADMAP.md) for current priorities, the proposed next content
+chapter, completion criteria, and work that another task can pick up.
+
 ## Working on the code
 
 Agents: start with [AGENTS.md](AGENTS.md) and the

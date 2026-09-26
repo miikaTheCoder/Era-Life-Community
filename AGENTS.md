@@ -9,6 +9,13 @@ commands, and unresolved issues. Check `git status --short --branch` and
 mobile branch contains the current work. Preserve another task's checkout and
 uncommitted changes. Keep shared gameplay changes and platform presentation clear.
 
+## Continue from the roadmap
+
+Use [ROADMAP.md](ROADMAP.md) when planning or choosing follow-up work. When working
+on an item, record its status, task/branch, verification, and next action before
+handoff. Keep the roadmap aligned on desktop and Portrait. Its proposed work does
+not expand or override the user's current task.
+
 ## Find the owner first
 
 - Read `docs/ARCHITECTURE.md` for responsibilities and common change paths.
