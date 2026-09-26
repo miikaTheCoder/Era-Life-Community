@@ -1,8 +1,8 @@
 # R01: save, cold restart, Continue
 
-Work started **2026-09-27** on `codex/shared-lives-desktop`. R01 remains in
-progress until the desktop and Portrait checks below are complete. Follow
-[ROADMAP.md](../ROADMAP.md) for its current status.
+R01 verified **2026-09-27** on desktop and in Portrait preview, against the
+completion criteria in [ROADMAP.md](../ROADMAP.md). Phone testing and the separate
+Portrait creation failures below remain open.
 
 ## Reproduction and repairs
 
@@ -32,6 +32,14 @@ omitted its hydration contract. The company, cast, ownership, and history surviv
 its reserves appeared as zero. The resolver now includes the compact checkpoint's
 bank and diary owners when missing, preserving existing contracts. A partial-registry
 regression reproduces the missing account before this repair.
+
+The Portrait entry check found one additional presentation bug. Its early menu
+can display the title before deferred identity discovery finishes. The saved life
+became available in the contract, but the touch Continue button and prompt still
+showed the earlier empty state. Portrait now refreshes those controls after
+identity discovery. Its cold-restore harness enters through MobileBoot's
+**Saved life & account** button and taps **Continue**, retaining the failing route
+as a graphical regression.
 
 ## Repeatable checks
 
@@ -90,6 +98,33 @@ second cold Continue: $8,800 personal funds and $1,470 then $1,740 company reser
 with the same actor, cast, ownership, relationships, and history. The second restore
 performed no additional age-up or settlement. See `build/r01/desktop-fresh`.
 
-Portrait results and source commits will be recorded before R01 is marked verified. Phone verification, the
-Portrait Back issue, full-lifetime play, and native Windows/macOS checks remain
-separate roadmap work.
+The shared repair is desktop commit `e2424ff`, ported as Portrait `e538708`.
+Portrait's title update and entry-menu regression are `74e8b07`. All 23 Portrait
+regressions passed with that update in `headless-nux39kip`.
+
+The original Portrait business fixture passed cold Continue, exact balance and
+history comparisons, age 36 to 37, and save in a 420×900 viewport. Its failure
+before the title repair and successful rerun are retained under
+`build/r01/portrait-existing`; the original data is preserved in
+`build/r01/portrait-existing-fixture`. Its second cold process restored age 37,
+year 2002, diary entries, $8,800 personal funds, and $1,740 company reserves with
+no extra age-up or settlement.
+
+Two fresh Portrait creation attempts did not complete and are not counted as
+passing: a world-preparation tap did not activate; a repeat showed blank, narrow
+member buttons and exited without a completion marker. Their logs and screenshots
+are retained in `build/r01/portrait-creation-missed-tap` and
+`build/r01/portrait-creation-repeat`. R04 tracks this separate entry coverage gap.
+The fresh desktop-generated fixture also passed Portrait's cold-Continue route:
+age 37/year 2002, $8,800 personal funds and $1,740 company reserves restored
+exactly; it then aged to 38/year 2003 and saved four diary entries. Evidence is in
+`build/r01/portrait-new-checkpoint/restore-focused.log`. Its first attempt timed
+out at MobileBoot; the repeat explicitly focused the test window. The timeout's
+cause is not established, and that attempt is not counted as a pass.
+
+These results use Godot 4.4.1 on Linux and Portrait's desktop preview. Phone
+verification, the Portrait Back issue, full-lifetime play, and native
+Windows/macOS checks remain separate roadmap work. Existing `snapshot_not_found`
+diagnostics and resource cleanup warnings also remain; the passing runs did not
+contain other Godot script or engine errors. Builds exported before these commits
+do not contain the repairs.

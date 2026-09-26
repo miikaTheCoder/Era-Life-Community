@@ -1,6 +1,6 @@
 # EraLife desktop and Portrait: agent handoff
 
-Last checked: **2026-09-26**. Read [AGENTS.md](../AGENTS.md) for repository rules
+Last checked: **2026-09-27**. Read [AGENTS.md](../AGENTS.md) for repository rules
 and [Architecture](ARCHITECTURE.md) for ownership. This guide is kept on both
 active branches so a new task can continue without the original conversation.
 Branch names, worktree paths, build files, and test results below are a dated
@@ -18,11 +18,12 @@ branches/worktrees, not two modes that can be selected by copying one config fil
 
 | Target | Shared Lives branch | Latest gameplay commit in this snapshot | Local checkout on this host |
 | --- | --- | --- | --- |
-| Desktop | `codex/shared-lives-desktop` | `32ad0fb` | `/home/nextg/opencode-sandbox/Era-Life-Community` |
-| EraLife Portrait | `codex/shared-lives-portrait` | `ebaf71c` (port begins at `c35a6e5`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
+| Desktop | `codex/shared-lives-desktop` | `e2424ff` | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| EraLife Portrait | `codex/shared-lives-portrait` | `74e8b07` (shared R01 port: `e538708`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
-These branches are pushed to GitHub; this does **not** mean they are merged into
-`main` or published as a release. Older starting points include `era-life-new-ui`
+The earlier Shared Lives work is pushed to GitHub. The R01 commits above are
+local and have not been pushed or packaged. Neither state means a branch is
+merged into `main` or published as a release. Older starting points include `era-life-new-ui`
 (desktop, `a3799d2`) and `codex/mobile-startup-performance` (Portrait, `7673961`).
 `mobile` and `codex/mobile-portrait` are older mobile work. Do not choose `main`
 or those older branches merely because a historical README paragraph names them.
@@ -133,6 +134,7 @@ Desktop graphical checks and Linux export:
 
 ```sh
 bash scripts/test-shared-lives.sh
+bash scripts/test-shared-lives.sh cycle /tmp/eralife-new-cold-test
 bash scripts/test-desktop-modes.sh household
 bash scripts/build.sh linux
 ```
@@ -199,13 +201,21 @@ Open issues to retain in future handoffs:
 - Portrait Character → Android Back → Menu can produce an exit confirmation that
   blocks Explore. The general graphical run failed; the focused Shared Lives
   smoke skips general drawer checks while retaining its content/layout checks.
-- The earlier on-device God Mode → Begin Life crash and guest cold-restore issues
-  were not fixed by Shared Lives. The new Shared Lives APK was not retested on the
-  Honor phone. Prior phone startup measurements apply to their recorded builds.
-- Broader cold-restore hydration, `snapshot_not_found`, and shutdown resource
-  warnings remain documented. A successful save is not a successful cold restore.
+- The earlier on-device God Mode → Begin Life crash remains R03. R01's cold
+  Continue repairs passed desktop and Portrait preview checks, but have not been
+  packaged or retested on the Honor phone. Prior phone measurements apply only
+  to their recorded builds.
+- New Portrait Household creation checks did not complete: one missed world
+  preparation; another showed blank, narrow member buttons. R04 retains these
+  failures separately from the successful cold-Continue route.
+- `snapshot_not_found` diagnostics and shutdown resource warnings remain.
 - Native Windows/macOS checks and complete birth-to-death playthroughs are not
   established by the Linux/Portrait checks above.
+
+R01 evidence: desktop 19/19 regressions (`headless-c0fg00yq`) and Portrait 23/23
+(`headless-nux39kip`), plus separate-process Continue, age/save, and another cold
+Continue with exact personal/company balances and history checks. See
+[cold-restore validation](COLD-RESTORE.md) for fixtures, repairs, and retained logs.
 
 Start follow-up investigations with [Shared Lives](SHARED-LIVES.md),
 [desktop gameplay](DESKTOP-GAMEPLAY.md), and

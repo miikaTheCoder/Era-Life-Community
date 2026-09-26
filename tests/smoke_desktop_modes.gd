@@ -346,6 +346,9 @@ func _run() -> void:
 				return false
 			return current_scene.has_method("_title_card_continue_available") if mode == "restore" else is_instance_valid(current_scene.get("choose_adventure_entry_overlay"))
 		, 120), "Mobile entry did not reach the main scene"):
+			if is_instance_valid(boot):
+				print("MOBILE ENTRY TIMEOUT: ", JSON.stringify({"pending_entry": boot.pending_entry, "load_started": boot.load_started, "handoff_started": boot.handoff_started, "scene_loaded": boot.packed_game != null, "status": boot.status_label.text}))
+			await _capture("entry-timeout")
 			quit(1)
 			return
 		await create_timer(2).timeout

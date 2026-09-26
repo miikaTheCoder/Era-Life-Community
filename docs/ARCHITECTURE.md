@@ -129,9 +129,10 @@ tries several historical folders after global-class lookup. The organization
 pass preserves those behaviors; repairing them may change feature admission and
 needs separate coverage. Dynamic lookup strings are not all statically verifiable.
 
-The graphical cold-restore test also exposes a checkpoint hydration timeout that
-was reproduced on the original code. See [organization validation](ORGANIZATION-VALIDATION.md)
-for the comparison, passing routes and limits before changing the restore lifecycle.
+The graphical cold-restore timeout reproduced on the original code was repaired
+by R01, together with resumed projection scheduling and partial-registry bank
+hydration. See [cold-restore validation](COLD-RESTORE.md) for the current checks;
+[organization validation](ORGANIZATION-VALIDATION.md) retains the original comparison.
 
 ## Validation and maintenance
 
