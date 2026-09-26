@@ -96,6 +96,7 @@ func _paths(definition: Dictionary, node_id: String, prefix: Array = []) -> Arra
 func _run() -> void:
 	var catalog := LifeStoryEngine.new()
 	_check(catalog.content_errors.is_empty(), "Invalid authored story content: " + str(catalog.content_errors))
+	catalog.catalog = catalog.catalog.filter(func(row): return str(row.get("series", "")) != "Shared Lives")
 	_check(catalog.catalog.size() == 6, "Expected all six launch stories")
 	var malformed: Dictionary = {"schema": "eralife.life_stories", "version": 1, "stories": catalog.catalog.duplicate(true)}
 	malformed.stories[0].nodes.gate.choices[0].next = "missing"

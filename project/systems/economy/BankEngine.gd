@@ -111,33 +111,51 @@ func import_state(data: Dictionary) -> Dictionary:
 	}
 	return last_report.duplicate(true)
 
+func export_checkpoint_state(owner_ids: Array) -> Dictionary:
+	# Copy only indexed accounts needed by the saved household and its ventures.
+	# A company account has no Person.bank_balance mirror to restore from.
+	var selected: Dictionary = {}
+	var wallets: Dictionary = {}
+	for raw_owner in owner_ids:
+		var owner := str(raw_owner)
+		for id in _accounts_for_owner(owner):
+			if not accounts.has(id):
+				continue
+			var account: Dictionary = accounts[id]
+			selected[id] = account.duplicate(true)
+			var wallet_id := _wallet_id(owner, str(account.world_id), str(account.currency))
+			if cash_on_hand.has(wallet_id):
+				wallets[wallet_id] = cash_on_hand[wallet_id].duplicate(true)
+	return {"schema": "eralife.bank_engine_state", "version": CONTRACT_VERSION,
+		"active_contract": active_contract.duplicate(true), "accounts": selected, "cash_on_hand": wallets,
+		"world_bank_policies": world_bank_policies.duplicate(true), "tx_seq": _tx_seq,
+		"ledger": ledger.filter(func(row): return str(row.get("data", {}).get("owner_id", "")) in owner_ids or str(row.get("data", {}).get("extra", {}).get("target_owner_id", "")) in owner_ids)}
+
+func credit_bank(owner_id: String, amount: float, world_id: String = "", currency: String = DEFAULT_CURRENCY, payload: Dictionary = {}) -> Dictionary:
+	amount = _money_amount(amount)
+	if owner_id.strip_edges() == "" or amount <= 0.0:
+		return {"success": false, "reason": "Bank income needs an owner and a positive amount."}
+	var account := ensure_account(owner_id, _resolve_world_id({"world_id": world_id}), ACCOUNT_KIND_BANK, currency)
+	var id := str(account.account_id)
+	var gate := _can_credit_or_debit(id, amount, "credit", {})
+	if not bool(gate.get("allowed", false)):
+		return {"success": false, "reason": str(gate.get("reason", "Income blocked."))}
+	accounts[id].balance = float(accounts[id].balance) + amount
+	accounts[id].updated_at_ms = int(Time.get_ticks_msec())
+	_sync_actor_by_owner(owner_id)
+	var report := _finish_money_action("bank_income", owner_id, amount, str(account.world_id), str(account.currency), payload)
+	last_report = report.duplicate(true)
+	return report
+
 func repair_legacy_player_money_mirror() -> Dictionary:
 	if gs == null or gs.player == null:
 		return { "success": false, "reason": "No player to repair."}
 
 	var actor = gs.player
-	var context:= {
-		"source": "legacy_bank_balance_repair",
-		"world_id": _resolve_world_id({}),
-		"currency": DEFAULT_CURRENCY
-	}
+	var context := {"source": "legacy_bank_balance_repair", "import_legacy_balance": true}
 	var account: Dictionary = ensure_bank_account_for_actor(actor, context)
-	var account_id: String = str(account.get("account_id", ""))
-	if account_id == "":
-		return { "success": false, "reason": "Could not resolve player bank account."}
-
-	if float(accounts [account_id].get("balance", 0.0)) <= 0.0 and actor.get("bank_balance") != null:
-		var legacy_amount: float = max(0.0, float(actor.bank_balance))
-		if legacy_amount > 0.0:
-			accounts [account_id] ["balance"] = legacy_amount
-			_record_ledger("legacy_money_imported", {
-				"owner_id": str(account.get("owner_id", "")),
-				"account_id": account_id,
-				"amount": legacy_amount,
-				"currency": str(account.get("currency", DEFAULT_CURRENCY)),
-				"world_id": str(account.get("world_id", DEFAULT_WORLD_ID)),
-				"source": "Person.bank_balance"
-			})
+	if account.is_empty():
+		return {"success": false, "reason": "Could not resolve player bank account."}
 
 	_sync_actor_money_mirror(actor)
 	return get_owner_summary_for_actor(actor, context)
@@ -148,11 +166,17 @@ func ensure_bank_account_for_actor(actor, context: Dictionary = {}) -> Dictionar
 	var owner_id: String = owner_key_from_actor(actor)
 	var world_id: String = _resolve_world_id(context)
 	var currency: String = _resolve_currency(context)
+	var has_bank := false
+	for id in _accounts_for_owner(owner_id):
+		if str(accounts.get(id, {}).get("type", "")) == ACCOUNT_KIND_BANK:
+			has_bank = true
+			break
+	var import_legacy := bool(context.get("import_legacy_balance", false)) and not has_bank
 	return ensure_account(owner_id, world_id, ACCOUNT_KIND_BANK, currency, {
 		"actor_id": int(actor.id) if actor.get("id") != null else -1,
-		# Import a resident NPC's legacy balance only when creating its first
-		# account. Existing accounts, including empty ones, remain authoritative.
-		"starting_balance": max(0.0, float(actor.bank_balance)) if bool(context.get("import_legacy_balance", false)) else 0.0,
+		# Import once per owner, not once per realm. Empty accounts also remain
+		# authoritative: repairing a stale mirror must never restore spent funds.
+		"starting_balance": max(0.0, float(actor.bank_balance)) if import_legacy else 0.0,
 		"transfer_scope": TRANSFER_SCOPE_LOCAL
 	})
 
@@ -661,6 +685,9 @@ func transfer_owner_to_owner(from_owner_id: String, to_owner_id: String, amount:
 	var gate: Dictionary = _can_credit_or_debit(from_account_id, amount, "debit", context)
 	if not bool(gate.get("allowed", true)):
 		return { "success": false, "reason": str(gate.get("reason", "Transfer blocked.")), "gate": gate}
+	var target_gate: Dictionary = _can_credit_or_debit(to_account_id, amount, "credit", context)
+	if not bool(target_gate.get("allowed", true)):
+		return {"success": false, "reason": str(target_gate.get("reason", "Transfer blocked.")), "gate": target_gate}
 
 	accounts [from_account_id] ["balance"] = max(0.0, balance - amount)
 	accounts [from_account_id] ["updated_at_ms"] = int(Time.get_ticks_msec())

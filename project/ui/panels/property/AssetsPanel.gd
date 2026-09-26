@@ -566,10 +566,12 @@ func apply_progressive_surface_patch(
 					"Available Wealth: %s • Controlled Assets: %d"
 					% [
 						bank_text,
-						property_count + vehicle_count
+						int(active_contract.get("total_asset_count", property_count + vehicle_count))
 					]
 				)
 
+			if securities_label != null:
+				securities_label.text = str(active_contract.get("markets_and_securities_text", ""))
 			if status_label != null:
 				status_label.text = (
 					"Asset truth is live."
@@ -713,6 +715,7 @@ func render_surface_contract(
 			"|".join(action_signature_parts)
 		]
 	)
+	projection_signature += "|wealth:" + str(normalized.get("markets_and_securities_text", ""))
 
 	if (
 		projection_signature == active_render_signature
@@ -1531,7 +1534,7 @@ func _ensure_surface() -> void:
 
 	right_column.add_child(
 		_section_heading(
-			"MARKETS / SECURITIES",
+			"FAMILY BUSINESS / WEALTH",
 			Color(0.56, 1.0, 0.72, 1.0)
 		)
 	)

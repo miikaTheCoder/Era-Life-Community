@@ -484,20 +484,23 @@ func _household() -> void:
 		return
 	var list: VBoxContainer = current_scene.get("household_creator_start_selection_list")
 	await _capture("select-member")
-	if not await _click(list.get_child(1)):
+	var start_index := int(OS.get_environment("ERA_HOUSEHOLD_START_INDEX")) if OS.has_environment("ERA_HOUSEHOLD_START_INDEX") else 1
+	if not await _click(list.get_child(start_index)):
 		return
 	if not _check(await _wait_for(func(): return not current_scene.get_meta("prepared_mode_entry_pending", false) and current_scene.call("_playable_life_shell_has_visible_sovereignty"), 125), "Household did not enter a life"):
 		return
 	var state: GameState = current_scene.get("gs")
-	_check(state.player.first_name == "Bea" and state.player.age == 8, "Selected household member was not used")
-	_check(state.player.smarts == 88 and state.player.job == "Student", "Selected member's stats or school identity were lost")
+	var expected_member: Array = [["Ada", 35], ["Bea", 8], ["Cora", 30]][start_index]
+	_check(state.player.first_name == expected_member[0] and state.player.age == expected_member[1], "Selected household member was not used")
+	if start_index == 1:
+		_check(state.player.smarts == 88 and state.player.job == "Student", "Selected member's stats or school identity were lost")
 	_check(state.scenario_state.get("custom_household_member_index", {}).size() == 3, "World did not keep all authored household members")
 	var mother: Person = null
 	for actor in state.npcs:
 		if actor.first_name == "Ada" and actor.last_name == "Desktop":
 			mother = actor
 	_check(mother != null, "Created parent missing")
-	if mother != null:
+	if mother != null and start_index == 1:
 		_check(state.player.parents.has(mother.id) and mother.children.has(state.player.id), "Household family links are not reciprocal")
 	print("DESKTOP LIFE: ", state.player.first_name, " age=", state.player.age, " year=", state.year, " parents=", state.player.parents)
 	await _capture("life")

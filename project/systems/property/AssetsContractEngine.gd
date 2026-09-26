@@ -1057,6 +1057,7 @@ func service_actor_portfolio_observation_quantum(
 					5
 				)
 
+			var business_portfolio := _business_portfolio(actor)
 			var surface_contract: Dictionary = {
 				"success": true,
 				"schema": ASSETS_SURFACE_SCHEMA,
@@ -1097,12 +1098,12 @@ func service_actor_portfolio_observation_quantum(
 				"vehicle_asset_rows": vehicle_rows,
 				"faction_pressure_rows": faction_rows,
 				"actions": _assets_observable_actions(),
-				"markets_and_securities_text": (
-					"Stocks, funds, commodities, crypto, businesses, and future wealth systems can join this contract without changing the panel."
-				),
+				"business_asset_rows": business_portfolio.rows,
+				"markets_and_securities_text": business_portfolio.text,
 				"total_asset_count": (
 					property_rows.size()
 					+ vehicle_rows.size()
+					+ business_portfolio.rows.size()
 				),
 				"truth_state": "observable",
 				"surface_signature": job_key,
@@ -2265,6 +2266,14 @@ func _visible_property_portfolio_payload_for_actor(
 		"visible_click_work_forbidden": true,
 		"ui_is_renderer_only": true
 	}
+func _business_portfolio(actor: Person) -> Dictionary:
+	var out: Dictionary = {"rows": [], "text": ""}
+	if gs != null and gs.scenario_state.has("family_businesses"):
+		out = load("res://systems/economy/FamilyBusinessEngine.gd").new(gs).portfolio(actor.id)
+	if out.rows.is_empty():
+		out.text = "No family business stake. Shared Lives opportunities appear in Pending Situations when you have an adult friend or sibling and an older mentor."
+	return out
+
 func emit_assets_surface_contract(
 	actor: Person,
 	context: Dictionary = {}
@@ -2397,6 +2406,7 @@ func emit_assets_surface_contract(
 		}
 	]
 
+	var business_portfolio := _business_portfolio(actor)
 	var surface_contract: Dictionary = {
 		"success": true,
 		"schema": ASSETS_SURFACE_SCHEMA,
@@ -2432,10 +2442,12 @@ func emit_assets_surface_contract(
 			actor
 		),
 		"actions": actions,
-		"markets_and_securities_text": "Stocks, funds, commodities, crypto, businesses, and future wealth systems can join this contract without changing the panel.",
+		"business_asset_rows": business_portfolio.rows,
+		"markets_and_securities_text": business_portfolio.text,
 		"total_asset_count": (
 			property_rows.size()
 			+ vehicle_rows.size()
+			+ business_portfolio.rows.size()
 		),
 		"truth_state": "observable",
 		"surface_signature": cache_key,
