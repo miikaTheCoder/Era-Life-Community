@@ -1,6 +1,16 @@
 extends Node
 const Design = preload("res://ui/EraTheme.gd")
 const BranchMark = preload("res://ui/EraBranchMark.gd")
+const TOOL_SIZE := Vector2(112, 46)
+const TOOL_GAP := 12.0
+const TOOL_RIGHT := 20.0
+const TOOL_BOTTOM := 88.0
+const TOOL_TOP := 84.0
+# Match the runtime stack order; gameplay still owns availability and modal layering.
+const TOOL_LABELS := {
+	"boxing": "Boxing", "belongings": "Belongings", "food_lifestyle": "Food",
+	"restaurant_lifestyle": "Dining", "rick_weapon_shop": "Weapons", "bending": "Bending",
+	"crown": "Realm", "superpower": "Superpowers", "power": "Powers", "wizard": "Magic"}
 var host: Control
 var navigation: HBoxContainer
 var navigation_scroll: ScrollContainer
@@ -236,6 +246,7 @@ func _process(_delta: float) -> void:
 			button.set_meta("era_selected_panel", last_panel)
 			host.get_node("EraInterface")._queue(button.get_instance_id())
 	root.move_child(footer, root.get_child_count() - 1)
+	_layout_tools()
 	layout_live(host)
 	identity.text = "%s  /  Age %d" % [gs.player._display_name(), gs.player.age]
 	identity.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -244,29 +255,70 @@ func _process(_delta: float) -> void:
 	year_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	year_label.clip_text = true
 	chapter.text = "Life journal" if last_panel == "life" else last_panel.capitalize()
-	_layout_tools()
 
 func _layout_tools() -> void:
-	var labels := {
-		"belongings": "Belongings", "food_lifestyle": "Food", "restaurant_lifestyle": "Dining",
-		"bending": "Bending", "crown": "Realm", "boxing": "Boxing", "superpower": "Superpowers",
-		"power": "Powers", "wizard": "Magic", "rick_weapon_shop": "Weapons"}
-	for key in labels:
+	var stack_index := 0
+	var adapter := host.get_node("EraInterface")
+	for key in TOOL_LABELS:
 		var button := host.get(key + "_hud_button") as Button
-		if not is_instance_valid(button) or not button.is_visible_in_tree():
+		if not is_instance_valid(button):
 			continue
-		button.text = labels[key]
-		button.add_theme_font_size_override("font_size", 13)
-		button.scale = Vector2.ONE
-		button.rotation = 0
-		button.modulate = Color.WHITE
-		button.custom_minimum_size.x = 104
-		button.offset_left = button.offset_right - 104
+		# Clip and set the font before replacing an icon with a word. Otherwise
+		# the old 28px font expands the minimum size and shifts right-anchored buttons.
+		adapter.style_tool_button(button, TOOL_LABELS[key])
 		button.focus_mode = Control.FOCUS_ALL
+		if not button.is_visible_in_tree():
+			continue
+		button.modulate = Color.WHITE
+		layout_tool_button(button, stack_index, host.get_viewport_rect().size)
+		stack_index += 1
+	var bending_border := host.get("bending_hud_button_border_overlay") as Control
+	if is_instance_valid(bending_border):
+		bending_border.hide()
 	var crime := host.get("crime_hud_button") as Button
 	if is_instance_valid(crime):
 		crime.text = "Crime & justice"
 		crime.custom_minimum_size.y = 40
+
+static func tool_rows_per_column(viewport: Vector2) -> int:
+	var usable_height := maxf(TOOL_SIZE.y, viewport.y - TOOL_BOTTOM - TOOL_TOP)
+	return maxi(1, int(floor((usable_height + TOOL_GAP) / (TOOL_SIZE.y + TOOL_GAP))))
+
+static func layout_tool_button(button: Button, stack_index: int, viewport: Vector2) -> void:
+	if not is_instance_valid(button):
+		return
+	var index := maxi(0, stack_index)
+	var rows := tool_rows_per_column(viewport)
+	var column := int(floor(float(index) / rows))
+	var row := index % rows
+	var right := -TOOL_RIGHT - column * (TOOL_SIZE.x + TOOL_GAP)
+	var bottom := -TOOL_BOTTOM - row * (TOOL_SIZE.y + TOOL_GAP)
+	button.clip_text = true
+	button.custom_minimum_size = TOOL_SIZE
+	button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	button.scale = Vector2.ONE
+	button.rotation = 0.0
+	button.pivot_offset = TOOL_SIZE * 0.5
+	# Assign size before position and restore the whole rectangle. Individual
+	# offset writes can retain shifts caused by a previous minimum-size change.
+	button.size = TOOL_SIZE
+	button.position = viewport + Vector2(right, bottom) - TOOL_SIZE
+	button.set_meta("runtime_floating_hud_stack_index", index)
+	button.set_meta("runtime_floating_hud_stack_row", row)
+	button.set_meta("runtime_floating_hud_stack_column", column)
+	button.set_meta("runtime_floating_hud_rows_per_column", rows)
+	button.set_meta("runtime_floating_hud_stack_slot_top", bottom - TOOL_SIZE.y)
+	button.set_meta("runtime_floating_hud_stack_slot_bottom", bottom)
+	button.set_meta("runtime_floating_hud_stack_horizontal_gap", TOOL_GAP)
+	button.set_meta("runtime_floating_hud_stack_vertical_gap", TOOL_GAP)
+	button.set_meta("runtime_floating_hud_stack_geometry_resolved", true)
+	button.set_meta("runtime_floating_hud_stack_geometry_resolved_at_ms", Time.get_ticks_msec())
+	button.set_meta("runtime_floating_hud_never_requires_fullscreen", true)
+	if MobileSupport.is_enabled():
+		button.set_meta("mobile_stack_viewport", viewport)
+		button.set_meta("mobile_stack_rect", button.get_rect())
 
 static func layout_live(scene: Control) -> void:
 	var root := scene.get_node_or_null("UIContainer") as Control
@@ -275,7 +327,13 @@ static func layout_live(scene: Control) -> void:
 	var viewport := scene.get_viewport_rect().size
 	var narrow := viewport.x < 1000
 	var left := 16.0 if narrow else 288.0
-	var right := viewport.x - 132.0
+	var tool_count := 0
+	for key in TOOL_LABELS:
+		var button := scene.get(key + "_hud_button") as Button
+		if is_instance_valid(button) and button.is_visible_in_tree():
+			tool_count += 1
+	var columns := maxi(1, int(ceil(float(tool_count) / tool_rows_per_column(viewport))))
+	var right := viewport.x - TOOL_RIGHT - columns * (TOOL_SIZE.x + TOOL_GAP)
 	root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	root.position = Vector2(left, 18)
 	root.size = Vector2(maxf(280, right - left), viewport.y - 36)

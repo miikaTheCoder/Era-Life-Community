@@ -22,8 +22,8 @@ run/flush_stdout_on_print.android=true
 
 [autoload]
 
-SelfHostRuntime="*res://SelfHostRuntimeLayer.gd"
-ReleaseUpdateRuntimeLayer="*res://ReleaseUpdateRuntimeLayer.gd"
+SelfHostRuntime="*res://integrations/network/SelfHostRuntimeLayer.gd"
+ReleaseUpdateRuntimeLayer="*res://integrations/updates/ReleaseUpdateRuntimeLayer.gd"
 
 [community]
 

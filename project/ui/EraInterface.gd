@@ -56,6 +56,22 @@ func _process(_delta: float) -> void:
 			_style(control)
 	applying = false
 
+func style_tool_button(button: Button, text: String) -> void:
+	var id := button.get_instance_id()
+	var changed: bool = button.get_meta("era_tool_label", "") != text
+	button.set_meta("era_tool_label", text)
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Flush a legacy theme replacement before the shell assigns its rectangle.
+	# Waiting for the next adapter frame lets the old padding/font enlarge it.
+	if changed or pending.has(id) or button.get_theme_font_size("font_size") != 13:
+		var was_applying := applying
+		applying = true
+		_style(button)
+		applying = was_applying
+		pending.erase(id)
+	button.text = text
+
 func _style(control: Control) -> void:
 	if control.has_meta("era_owned"):
 		return
@@ -76,6 +92,8 @@ func _style(control: Control) -> void:
 				text_color = Design.AMBER
 		control.add_theme_font_override("font", Design.BOLD if control is BaseButton else Design.BODY)
 		var font_size := clampi(control.get_theme_font_size("font_size"), 13, 28)
+		if control.has_meta("era_tool_label"):
+			font_size = 13
 		control.add_theme_font_size_override("font_size", font_size)
 		for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 			control.add_theme_color_override(key, text_color)

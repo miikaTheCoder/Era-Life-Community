@@ -53,11 +53,11 @@ func _run() -> void:
 
 	var shop_button := Button.new()
 	root.add_child(shop_button)
-	MainSceneLogic._style_rick_weapon_shop_button(shop_button, 0.0)
+	ItemsSceneSupport._style_rick_weapon_shop_button(shop_button, 0.0)
 	var theme_changes: Array[int] = [0]
 	shop_button.theme_changed.connect(func(): theme_changes[0] += 1)
 	for pulse in [0.25, 0.5, 0.75, 1.0]:
-		MainSceneLogic._style_rick_weapon_shop_button(shop_button, pulse)
+		ItemsSceneSupport._style_rick_weapon_shop_button(shop_button, pulse)
 	_check(theme_changes[0] == 0, "Mobile shop animation must not reapply its theme every frame")
 	_check(not shop_button.text.is_empty(), "Mobile shop styling removed the button label")
 	shop_button.queue_free()

@@ -11,6 +11,11 @@ var years_completed := 0
 var checkpoints_restored := 0
 var choices_made := 0
 const PERSISTED_PLAYER_FIELDS := ["job", "income", "job_performance", "job_experience", "unemployed_years", "school_mode", "school_name", "school_status", "education_level", "health", "mental_health", "smarts", "friends", "children", "marital_status"]
+const RUNTIME_SHORTCUT_LABELS := {
+	"belongings": "Belongings", "food_lifestyle": "Food", "restaurant_lifestyle": "Dining",
+	"bending": "Bending", "crown": "Realm", "boxing": "Boxing", "superpower": "Superpowers",
+	"power": "Powers", "wizard": "Magic", "rick_weapon_shop": "Weapons",
+}
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -56,6 +61,7 @@ func _capture_ui_sizes(label: String, directory: String) -> void:
 			print("DESKTOP UI SIZE: requested=", dimensions, " viewport=", current_scene.get_viewport_rect().size, " age_up=", age_up.get_global_rect(), " diary=", diary.get_global_rect())
 			_check(age_up != null and age_up.get_global_rect().end.x <= dimensions.x + 1 and age_up.get_global_rect().end.y <= dimensions.y + 1, "Age Up leaves the viewport at " + str(dimensions))
 			_check(diary.size.x >= 280 and diary.size.y >= 200, "Diary became unusably small at " + str(dimensions))
+			await _check_runtime_shortcuts(dimensions, diary, age_up)
 			if dimensions.x < 1000:
 				var shell: Node = current_scene.get_node("EraShell")
 				await _click(shell.stats_toggle)
@@ -67,6 +73,61 @@ func _capture_ui_sizes(label: String, directory: String) -> void:
 	current_scene.set("ui_presentation_density_applied_signature", "")
 	current_scene.call("_repair_playable_life_shell_after_viewport_resize", "ui_gallery_restore")
 	await create_timer(0.5).timeout
+
+func _check_runtime_shortcuts(dimensions: Vector2i, diary: Control, age_up: Control) -> void:
+	# Observe the real buttons through normal legacy refresh ticks. Available
+	# shortcuts can change as engines finish bootstrapping, so compare positions
+	# only while a button keeps its stack index; never create gameplay fixtures.
+	var previous: Dictionary = {}
+	var observed: Dictionary = {}
+	var samples := 0
+	var deadline := Time.get_ticks_msec() + 1000
+	while samples < 2 or Time.get_ticks_msec() < deadline:
+		await RenderingServer.frame_post_draw
+		samples += 1
+		var snapshot: Dictionary = {}
+		var columns: Dictionary = {}
+		var occupied: Dictionary = {}
+		var sample_ok := true
+		var overlay := current_scene.get("bending_hud_button_border_overlay") as Control
+		if is_instance_valid(overlay):
+			sample_ok = _check(not overlay.visible, "Legacy Bending border returned at " + str(dimensions)) and sample_ok
+		for key in RUNTIME_SHORTCUT_LABELS:
+			var button := current_scene.get(key + "_hud_button") as Button
+			if not is_instance_valid(button) or not button.is_visible_in_tree():
+				continue
+			var rect := button.get_global_rect()
+			var stack_index := int(button.get_meta("runtime_floating_hud_stack_index", -1))
+			var column := int(button.get_meta("runtime_floating_hud_stack_column", -1))
+			var context := "%s at %s (frame %d, stack %d): %s" % [key, dimensions, samples, stack_index, rect]
+			observed[key] = true
+			sample_ok = _check(button.text == RUNTIME_SHORTCUT_LABELS[key], "Shortcut label changed: " + context) and sample_ok
+			var text_width := button.get_theme_font("font").get_string_size(button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, button.get_theme_font_size("font_size")).x
+			var horizontal_padding := button.get_theme_stylebox("normal").get_minimum_size().x
+			sample_ok = _check(rect.size.x + 1 >= text_width + horizontal_padding, "Shortcut label is clipped: " + context) and sample_ok
+			sample_ok = _check(stack_index >= 0 and column >= 0, "Shortcut has no stack slot: " + context) and sample_ok
+			sample_ok = _check(rect.position.x >= -1 and rect.position.y >= -1 and rect.end.x <= dimensions.x + 1 and rect.end.y <= dimensions.y + 1, "Shortcut leaves the viewport: " + context) and sample_ok
+			sample_ok = _check(not rect.intersects(diary.get_global_rect()), "Shortcut overlaps the diary: " + context) and sample_ok
+			sample_ok = _check(not rect.intersects(age_up.get_global_rect()), "Shortcut overlaps Age Up: " + context) and sample_ok
+			if columns.has(column):
+				var column_rect: Rect2 = columns[column]
+				sample_ok = _check(absf(rect.position.x - column_rect.position.x) <= 1 and absf(rect.end.x - column_rect.end.x) <= 1, "Shortcut column is misaligned: " + context) and sample_ok
+			else:
+				columns[column] = rect
+			for other_key in occupied:
+				sample_ok = _check(not rect.intersects(occupied[other_key]), "Shortcuts overlap (%s): %s" % [other_key, context]) and sample_ok
+			occupied[key] = rect
+			if previous.has(key):
+				var before: Dictionary = previous[key]
+				if before["instance_id"] == button.get_instance_id() and before["stack_index"] == stack_index:
+					var previous_rect: Rect2 = before["rect"]
+					sample_ok = _check(rect.is_equal_approx(previous_rect), "Shortcut moved between rendered frames: " + context + "; previous=" + str(previous_rect)) and sample_ok
+			snapshot[key] = {"instance_id": button.get_instance_id(), "stack_index": stack_index, "rect": rect}
+		previous = snapshot
+		if not sample_ok:
+			return
+	_check(not observed.is_empty(), "No visible runtime shortcuts were checked at " + str(dimensions))
+	print("DESKTOP UI SHORTCUTS: viewport=", dimensions, " rendered_frames=", samples, " observed=", observed.keys())
 
 func _click_at(point: Vector2) -> void:
 	var position := root.get_final_transform() * point

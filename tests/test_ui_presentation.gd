@@ -3,6 +3,7 @@ extends SceneTree
 const Design = preload("res://ui/EraTheme.gd")
 const Interface = preload("res://ui/EraInterface.gd")
 const Shell = preload("res://ui/EraShell.gd")
+const TOOL_KEYS := ["boxing", "belongings", "food_lifestyle", "restaurant_lifestyle", "rick_weapon_shop", "bending", "crown", "superpower", "power", "wizard"]
 var failed := false
 
 class Host extends Control:
@@ -12,6 +13,20 @@ class Host extends Control:
 	var choose_adventure_entry_overlay: Control
 	var choose_adventure_entry_shell: Container
 	var output_label: RichTextLabel
+	var ui_nav_buttons: Dictionary = {}
+	var player_stats_overlay: Control
+	var boxing_hud_button: Button
+	var belongings_hud_button: Button
+	var food_lifestyle_hud_button: Button
+	var restaurant_lifestyle_hud_button: Button
+	var rick_weapon_shop_hud_button: Button
+	var bending_hud_button: Button
+	var crown_hud_button: Button
+	var superpower_hud_button: Button
+	var power_hud_button: Button
+	var wizard_hud_button: Button
+	var crime_hud_button: Button
+	var bending_hud_button_border_overlay: Control
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -24,6 +39,97 @@ func _check(condition: bool, message: String) -> void:
 func _settle() -> void:
 	await process_frame
 	await process_frame
+	await process_frame
+
+func _check_tool_rects(buttons: Array[Button], dimensions: Vector2i) -> void:
+	for index in buttons.size():
+		var button := buttons[index]
+		var rect := button.get_global_rect()
+		_check(rect.size.is_equal_approx(Vector2(112, 46)), "Shortcut changed size at " + str(dimensions) + ": " + buttons[index].text + " " + str(rect))
+		_check(rect.position.x >= 0 and rect.position.y >= 0 and rect.end.x <= dimensions.x and rect.end.y <= dimensions.y, "Shortcut escaped viewport at " + str(dimensions))
+		var text_width := button.get_theme_font("font").get_string_size(button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, button.get_theme_font_size("font_size")).x
+		var padding_width := button.get_theme_stylebox("normal").get_minimum_size().x
+		_check(text_width + padding_width <= rect.size.x, "Shortcut label is clipped at " + str(dimensions) + ": " + button.text + " needs " + str(text_width + padding_width) + "px")
+		for other_index in range(index):
+			var other_rect := buttons[other_index].get_global_rect()
+			_check(not rect.intersects(other_rect), "Shortcuts overlap at " + str(dimensions))
+			if rect.position.x < other_rect.end.x and other_rect.position.x < rect.end.x:
+				_check(is_equal_approx(rect.end.x, other_rect.end.x), "Shortcut column has staggered right edges at " + str(dimensions))
+
+func _test_tool_stability(host: Host, adapter: Node) -> void:
+	var buttons: Array[Button] = []
+	var invoked := [false]
+	for key in TOOL_KEYS:
+		var button := Button.new()
+		button.name = key + "_shortcut"
+		button.text = "🔫"
+		button.set_meta("action_id", key + "_action")
+		button.mouse_filter = Control.MOUSE_FILTER_STOP
+		host.set(key + "_hud_button", button)
+		host.add_child(button)
+		buttons.append(button)
+	host.belongings_hud_button.pressed.connect(func(): invoked[0] = true)
+	host.wizard_hud_button.disabled = true
+	host.bending_hud_button_border_overlay = Control.new()
+	host.bending_hud_button.add_child(host.bending_hud_button_border_overlay)
+	await _settle()
+	var shell: Node = adapter.shell
+	var legacy := StyleBoxFlat.new()
+	legacy.bg_color = Color.MAGENTA
+	legacy.set_content_margin_all(12)
+	for dimensions in [Vector2i(768, 1024), Vector2i(1280, 800), Vector2i(1920, 1080), Vector2i(768, 480)]:
+		root.content_scale_size = dimensions
+		await _settle()
+		shell._layout_tools()
+		await _settle()
+		_check_tool_rects(buttons, dimensions)
+		var settled_rects: Array[Rect2] = []
+		for button in buttons:
+			settled_rects.append(button.get_global_rect())
+		for frame in range(8):
+			# Runtime HUD refreshes still publish icon styles, including font size 28.
+			# The new label must not expand at that old font size or retain shifted edges.
+			for index in buttons.size():
+				var button := buttons[index]
+				button.text = "🔫"
+				button.add_theme_font_size_override("font_size", 28)
+				button.add_theme_stylebox_override("normal", legacy)
+				button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+				button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+				if frame % 3 == 0:
+					Shell.layout_tool_button(button, index, Vector2(dimensions))
+			host.bending_hud_button_border_overlay.visible = true
+			shell._layout_tools()
+			await _settle()
+			_check_tool_rects(buttons, dimensions)
+			for index in buttons.size():
+				var button := buttons[index]
+				_check(button.get_global_rect().is_equal_approx(settled_rects[index]), "Shortcut moved after legacy refresh: " + TOOL_KEYS[index])
+				_check(button.text == button.get_meta("era_tool_label", ""), "Legacy icon replaced shortcut label")
+				_check(button.get_meta("action_id") == TOOL_KEYS[index] + "_action", "Shortcut action identity changed")
+			_check(host.wizard_hud_button.disabled, "Shortcut styling enabled an unavailable action")
+			_check(not host.bending_hud_button_border_overlay.visible, "Legacy animated Bending border reappeared")
+	host.bending_hud_button.visible = false
+	host.bending_hud_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shell._layout_tools()
+	await _settle()
+	_check(not host.bending_hud_button.visible, "Shortcut layout revived a hidden feature")
+	_check(host.bending_hud_button.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Shortcut layout changed input ownership")
+	host.belongings_hud_button.grab_focus()
+	_check(root.gui_get_focus_owner() == host.belongings_hud_button, "Shortcut is not keyboard reachable")
+	var accept := InputEventAction.new()
+	accept.action = "ui_accept"
+	accept.pressed = true
+	Input.parse_input_event(accept)
+	await process_frame
+	accept = InputEventAction.new()
+	accept.action = "ui_accept"
+	accept.pressed = false
+	Input.parse_input_event(accept)
+	await _settle()
+	_check(invoked[0], "Shortcut keyboard activation lost the original action signal")
+	for button in buttons:
+		button.queue_free()
 	await process_frame
 
 func _run() -> void:
@@ -85,6 +191,7 @@ func _run() -> void:
 	health.value = 80
 	await _settle()
 	_check(fill.get_theme_stylebox("panel").bg_color != danger_color, "Health warning did not clear after recovery")
+	await _test_tool_stability(host, adapter)
 	host.choose_adventure_entry_overlay = Control.new()
 	host.add_child(host.choose_adventure_entry_overlay)
 	host.choose_adventure_entry_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

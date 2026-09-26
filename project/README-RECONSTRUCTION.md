@@ -61,7 +61,7 @@ sets no `popup_text`, the UI skipped the popup branch entirely and showed nothin
 overwriting `id` with the view ID. The view ID now goes in `view_contract_id` where it
 belongs, and `id` keeps the source contract ID.
 
-**2. `Engine/PendingSituationsEngine.gd`** — new `_resolve_source_contract_id()`
+**2. `systems/narrative/PendingSituationsEngine.gd`** — new `_resolve_source_contract_id()`
 normalizes any incoming ID (`view_<source>_<viewer>`, `pending_item:<source>`, or a
 registry alias) back to the runtime source ID. Called at the top of
 `resolve_pending_contract()`. Cleanup now also erases the ID the UI actually used, and
@@ -78,7 +78,7 @@ Search for `# FIX:` to find all three.
 
 ## Known issue not yet fixed
 
-`Engine/GlobalIntentContractEngine.gd` calls `_mark_signature()` on **rejected**
+`core/events/GlobalIntentContractEngine.gd` calls `_mark_signature()` on **rejected**
 intents too, so once a click fails, repeated identical clicks inside the dedupe window
 get swallowed as duplicates — which is why mashing the button also did nothing.
 Consider only deduping successful commits.

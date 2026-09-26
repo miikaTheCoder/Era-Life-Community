@@ -1,0 +1,1134 @@
+{
+  "schema": "eralife.life_stories",
+  "version": 1,
+  "stories": [
+    {
+      "id": "childhood_pact",
+      "title": "The Promise at the Gate",
+      "cast": "friend",
+      "category": "relationships",
+      "eligibility": {
+        "min_age": 8,
+        "max_age": 15
+      },
+      "start": "gate",
+      "era_context": {
+        "Ancient Era": "Your families share the same meeting ground; word travels quickly.",
+        "Medieval Era": "The village sees who stands beside whom.",
+        "Industrial Era": "The school gate is crowded with children heading home to work.",
+        "Modern Era": "The journey home is where your friendship usually feels safest.",
+        "Future Era": "Even a connected city has places where children feel alone."
+      },
+      "nodes": {
+        "gate": {
+          "title": "Someone to stand beside",
+          "text": "{person} is being left out by your friends. They ask whether you will still walk home together.",
+          "default": "look_away",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "stand_beside",
+              "label": "Walk home together",
+              "result": "I stood beside {person} when it would have been easier to join the crowd.",
+              "relationship": 10,
+              "legacy": "stood_together",
+              "stats": {
+                "mental_health": 3
+              },
+              "next": "reunion",
+              "delay": 6
+            },
+            {
+              "id": "private_help",
+              "label": "Offer support in private",
+              "result": "I comforted {person} privately, but could not bring myself to stand beside them in public.",
+              "relationship": 3,
+              "legacy": "private",
+              "next": "distance",
+              "delay": 5
+            },
+            {
+              "id": "look_away",
+              "label": "Follow the crowd",
+              "result": "I left {person} alone at the gate. We stopped taking the same way home.",
+              "relationship": -10,
+              "legacy": "turned_away",
+              "next": "distance",
+              "delay": 6
+            }
+          ]
+        },
+        "reunion": {
+          "title": "The same familiar face",
+          "text": "Years after that walk home, {person} wants to build something together: a small community project where nobody has to feel left out.",
+          "default": "drift",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "commit",
+              "label": "Commit your time",
+              "result": "I promised {person} I would help turn our old friendship into something useful.",
+              "relationship": 6,
+              "stats": {
+                "smarts": 3
+              },
+              "next": "opening",
+              "delay": 2
+            },
+            {
+              "id": "honest_limit",
+              "label": "Offer a smaller, honest commitment",
+              "result": "I told {person} what I could actually manage. We found a smaller way to work together.",
+              "relationship": 4,
+              "stats": {
+                "mental_health": 2
+              },
+              "next": "opening",
+              "delay": 3
+            },
+            {
+              "id": "drift",
+              "label": "Let the invitation pass",
+              "result": "I let {person}'s invitation go unanswered. A good memory remained, but we drifted apart.",
+              "relationship": -5,
+              "outcome": "A childhood memory",
+              "legacy": "private"
+            }
+          ]
+        },
+        "distance": {
+          "title": "A chance to speak",
+          "text": "You meet {person} again. They remember the gate more clearly than you expected. There is room for a conversation, if you want one.",
+          "default": "avoid",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "apologize",
+              "label": "Own your part in it",
+              "result": "I apologized to {person} without asking them to pretend it never happened.",
+              "relationship": 7,
+              "legacy": "repair_started",
+              "next": "repair",
+              "delay": 2
+            },
+            {
+              "id": "listen",
+              "label": "Ask how they remember it",
+              "result": "I listened as {person} described the day differently from the story I had told myself.",
+              "relationship": 4,
+              "stats": {
+                "mental_health": 2
+              },
+              "next": "repair",
+              "delay": 3
+            },
+            {
+              "id": "avoid",
+              "label": "Keep your distance",
+              "result": "I avoided a difficult conversation with {person}. We went our separate ways.",
+              "relationship": -3,
+              "outcome": "Separate paths",
+              "legacy": "turned_away"
+            }
+          ]
+        },
+        "repair": {
+          "title": "Trust takes practice",
+          "text": "{person} invites you to a small gathering. Showing up will matter more than another apology.",
+          "default": "miss",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "show_up",
+              "label": "Show up and stay",
+              "result": "I kept my word to {person}. Our friendship began to feel possible again.",
+              "relationship": 10,
+              "outcome": "A friendship rebuilt",
+              "legacy": "repaired_trust",
+              "stats": {
+                "mental_health": 4
+              }
+            },
+            {
+              "id": "explain",
+              "label": "Explain your limits in advance",
+              "result": "I warned {person} before changing our plans. This time, they were not left waiting.",
+              "relationship": 3,
+              "outcome": "An honest new beginning",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "miss",
+              "label": "Leave them waiting",
+              "result": "I left {person} waiting again. My apology no longer carried much weight.",
+              "relationship": -12,
+              "outcome": "An old pattern repeated",
+              "legacy": "broken_word"
+            }
+          ]
+        },
+        "opening": {
+          "title": "Opening day",
+          "text": "The project you planned with {person} is ready. They ask you to speak about why it matters.",
+          "default": "stay_home",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "share_credit",
+              "label": "Tell the story and share the credit",
+              "result": "I thanked {person} in front of everyone. What began at a school gate became a place where others belonged.",
+              "relationship": 9,
+              "outcome": "Something built together",
+              "legacy": "stood_together",
+              "stats": {
+                "mental_health": 5
+              }
+            },
+            {
+              "id": "quiet_work",
+              "label": "Help quietly behind the scenes",
+              "result": "I worked beside {person} without making a speech. The promise mattered more than the applause.",
+              "relationship": 6,
+              "outcome": "A quiet lifelong bond",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "stay_home",
+              "label": "Stay away",
+              "result": "I stayed away on the day {person} had been counting on me.",
+              "relationship": -8,
+              "outcome": "A promise left unfinished",
+              "legacy": "broken_word"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "family_loan",
+      "title": "The Family Loan",
+      "cast": "relative",
+      "category": "family",
+      "eligibility": {
+        "min_age": 16,
+        "max_age": 28
+      },
+      "start": "offer",
+      "era_context": {
+        "Ancient Era": "Training and tools can change your place in a household.",
+        "Medieval Era": "An apprenticeship can open doors that a family name alone cannot.",
+        "Industrial Era": "Training offers a route away from the least secure work.",
+        "Modern Era": "Course fees and materials have put pressure on your plans.",
+        "Future Era": "Retraining is valuable in a world where skills become obsolete quickly."
+      },
+      "nodes": {
+        "offer": {
+          "title": "A little help to begin",
+          "text": "{person} offers money for your training and materials. It is a family loan, with a promise to repay when you can.",
+          "default": "decline",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "accept",
+              "label": "Accept and promise to repay",
+              "result": "I borrowed from {person} to invest in my future, promising to repay them.",
+              "transfer": 600,
+              "relationship": 5,
+              "stats": {
+                "smarts": 3
+              },
+              "legacy": "money_owed",
+              "next": "repayment",
+              "delay": 3
+            },
+            {
+              "id": "advice",
+              "label": "Ask for advice instead of money",
+              "result": "I asked {person} to help me plan a path I could afford myself.",
+              "relationship": 4,
+              "stats": {
+                "smarts": 2
+              },
+              "legacy": "private",
+              "next": "independence",
+              "delay": 3
+            },
+            {
+              "id": "decline",
+              "label": "Make your own way",
+              "result": "I thanked {person} and chose to fund my plans myself.",
+              "legacy": "private",
+              "next": "independence",
+              "delay": 4
+            }
+          ]
+        },
+        "repayment": {
+          "title": "The promise comes due",
+          "text": "{person} now needs the money back. They remember the promise that helped you get started.",
+          "default": "refuse",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "repay",
+              "label": "Repay the loan",
+              "result": "I repaid {person}. My opportunity had become a promise kept.",
+              "transfer": -600,
+              "relationship": 10,
+              "legacy": "kept_word",
+              "next": "support",
+              "delay": 3
+            },
+            {
+              "id": "extension",
+              "label": "Ask for two more years",
+              "result": "I asked {person} for more time and made a new repayment promise.",
+              "relationship": -2,
+              "legacy": "money_owed",
+              "next": "extension",
+              "delay": 2
+            },
+            {
+              "id": "refuse",
+              "label": "Refuse to discuss repayment",
+              "result": "I refused to discuss the money I owed {person}. The debt became a family grievance.",
+              "relationship": -15,
+              "legacy": "broken_word",
+              "next": "rift",
+              "delay": 3
+            }
+          ]
+        },
+        "extension": {
+          "title": "A second deadline",
+          "text": "{person} has already waited longer than planned. This is a chance to show what your renewed promise meant.",
+          "default": "admit",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "repay",
+              "label": "Repay the full loan",
+              "result": "I finally repaid {person}. It had taken longer, but I had kept the renewed promise.",
+              "transfer": -600,
+              "relationship": 8,
+              "legacy": "kept_word",
+              "next": "support",
+              "delay": 3
+            },
+            {
+              "id": "part",
+              "label": "Repay part and acknowledge the rest",
+              "result": "I repaid part of what I owed {person}, openly acknowledging that our agreement remained unfinished.",
+              "transfer": -200,
+              "relationship": 2,
+              "legacy": "partly_repaid",
+              "next": "rift",
+              "delay": 2
+            },
+            {
+              "id": "admit",
+              "label": "Admit you cannot repay",
+              "result": "I admitted to {person} that I could not repay the loan. Honesty did not erase the strain.",
+              "relationship": -5,
+              "legacy": "money_owed",
+              "next": "rift",
+              "delay": 2
+            }
+          ]
+        },
+        "support": {
+          "title": "Now they need you",
+          "text": "{person}, who once backed your future, is facing a difficult year. They ask for help with household costs or simply someone dependable beside them.",
+          "default": "decline",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "money",
+              "label": "Help with the household costs",
+              "result": "I helped {person} through a difficult year, returning the support that once changed my own life.",
+              "transfer": -400,
+              "relationship": 12,
+              "outcome": "A family that helps each other",
+              "legacy": "stood_together"
+            },
+            {
+              "id": "time",
+              "label": "Give your time and attention",
+              "result": "I made time for {person}, accepting a little strain on my own work to help them through the year.",
+              "relationship": 8,
+              "stats": {
+                "job_performance": -2,
+                "mental_health": 3
+              },
+              "outcome": "Support beyond money",
+              "legacy": "stood_together"
+            },
+            {
+              "id": "decline",
+              "label": "Keep your distance",
+              "result": "I had repaid the money, but chose not to stand beside {person} when they needed me.",
+              "relationship": -6,
+              "outcome": "Accounts settled, distance remains",
+              "legacy": "private"
+            }
+          ]
+        },
+        "rift": {
+          "title": "More than an account",
+          "text": "A family gathering brings you and {person} together. The old loan still hangs between you. A payment or an honest conversation could change what comes next.",
+          "default": "avoid",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "repair",
+              "label": "Offer a concrete gesture of repair",
+              "result": "I made a payment to {person} and asked to rebuild our relationship. It was a beginning, not a claim that everything was settled.",
+              "transfer": -400,
+              "relationship": 8,
+              "outcome": "Repair has a beginning",
+              "legacy": "repaired_trust"
+            },
+            {
+              "id": "own_it",
+              "label": "Acknowledge the hurt without excuses",
+              "result": "I acknowledged what my choices had cost {person}, without demanding forgiveness.",
+              "relationship": 4,
+              "outcome": "An honest unfinished history",
+              "legacy": "repair_started"
+            },
+            {
+              "id": "avoid",
+              "label": "Avoid the conversation",
+              "result": "I kept away from {person}. The family learned to work around our silence.",
+              "relationship": -6,
+              "outcome": "The family silence",
+              "legacy": "broken_word"
+            }
+          ]
+        },
+        "independence": {
+          "title": "A different kind of support",
+          "text": "{person} asks how your plans turned out. They would still like to have a place in your life.",
+          "default": "brush_off",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "share",
+              "label": "Share what you learned",
+              "result": "I shared my progress with {person}. Choosing independence had not meant choosing isolation.",
+              "relationship": 8,
+              "stats": {
+                "mental_health": 3
+              },
+              "outcome": "Independent, still connected",
+              "legacy": "stood_together"
+            },
+            {
+              "id": "teach",
+              "label": "Offer to teach them something",
+              "result": "I spent time sharing a skill with {person}. Our relationship became more equal.",
+              "relationship": 6,
+              "stats": {
+                "smarts": 2
+              },
+              "outcome": "Learning goes both ways",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "brush_off",
+              "label": "Brush off the question",
+              "result": "I kept my plans to myself when {person} tried to reconnect.",
+              "relationship": -3,
+              "outcome": "A private path",
+              "legacy": "private"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mentor_door",
+      "title": "The Door Someone Opened",
+      "cast": "mentor",
+      "category": "career",
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 55,
+        "employed": true
+      },
+      "start": "offer",
+      "era_context": {
+        "Ancient Era": "A respected senior worker can introduce you to a patron.",
+        "Medieval Era": "A craftsperson's recommendation carries weight with a guild.",
+        "Industrial Era": "Experienced workers know which opportunities are worth the risk.",
+        "Modern Era": "A trusted colleague offers guidance beyond the job description.",
+        "Future Era": "Experienced colleagues can help you navigate a changing profession."
+      },
+      "nodes": {
+        "offer": {
+          "title": "An offer of guidance",
+          "text": "{person}, an older colleague, offers to help you improve your work. They ask you to take the effort seriously.",
+          "default": "decline",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "learn",
+              "label": "Put in the work",
+              "result": "I took {person}'s guidance seriously and practiced the skills they showed me.",
+              "relationship": 6,
+              "stats": {
+                "job_performance": 7,
+                "mental_health": -2
+              },
+              "next": "credit",
+              "delay": 2
+            },
+            {
+              "id": "shortcut",
+              "label": "Ask only for an introduction",
+              "result": "I asked {person} for an introduction before doing the work they recommended.",
+              "relationship": -3,
+              "stats": {
+                "job_performance": 2
+              },
+              "next": "test",
+              "delay": 2
+            },
+            {
+              "id": "decline",
+              "label": "Pass on the offer",
+              "result": "I passed on {person}'s offer of guidance.",
+              "outcome": "A door left closed",
+              "legacy": "private"
+            }
+          ]
+        },
+        "credit": {
+          "title": "Who helped you get here?",
+          "text": "People have noticed your improvement. {person}'s contribution is easy to leave out of the story.",
+          "default": "silence",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "credit",
+              "label": "Give your mentor credit",
+              "result": "I acknowledged how much {person} had taught me.",
+              "relationship": 9,
+              "stats": {
+                "job_performance": 3
+              },
+              "legacy": "kept_word",
+              "next": "return",
+              "delay": 3
+            },
+            {
+              "id": "claim",
+              "label": "Claim all the credit",
+              "result": "I presented my improvement as entirely my own achievement. {person} heard about it.",
+              "relationship": -12,
+              "legacy": "broken_word",
+              "next": "reckoning",
+              "delay": 3
+            },
+            {
+              "id": "silence",
+              "label": "Let the subject pass",
+              "result": "I stayed silent about {person}'s help. Our working relationship cooled.",
+              "relationship": -4,
+              "legacy": "private",
+              "next": "reckoning",
+              "delay": 3
+            }
+          ]
+        },
+        "test": {
+          "title": "The introduction is not enough",
+          "text": "{person} asks whether you are ready to put in the practice behind the opportunity they offered.",
+          "default": "quit",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "practice",
+              "label": "Accept the feedback and practice",
+              "result": "I accepted {person}'s feedback and began doing the work I had tried to skip.",
+              "relationship": 4,
+              "stats": {
+                "job_performance": 6
+              },
+              "next": "credit",
+              "delay": 2
+            },
+            {
+              "id": "honest",
+              "label": "Admit this path is not for you",
+              "result": "I told {person} honestly that this opportunity did not suit me.",
+              "relationship": 2,
+              "outcome": "An honest change of direction",
+              "legacy": "private"
+            },
+            {
+              "id": "quit",
+              "label": "Stop responding",
+              "result": "I stopped responding to {person}. The introduction led nowhere.",
+              "relationship": -5,
+              "outcome": "An opportunity allowed to fade",
+              "legacy": "turned_away"
+            }
+          ]
+        },
+        "return": {
+          "title": "Guidance runs both ways",
+          "text": "{person} asks you to share what you have learned with others. Doing so will take time from your own ambitions.",
+          "default": "decline",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "teach",
+              "label": "Make time to teach",
+              "result": "I passed on what {person} had taught me. Their generosity reached beyond the two of us.",
+              "relationship": 8,
+              "stats": {
+                "smarts": 4,
+                "mental_health": 3
+              },
+              "outcome": "A tradition of mentorship",
+              "legacy": "stood_together"
+            },
+            {
+              "id": "limited",
+              "label": "Offer a smaller session",
+              "result": "I offered a manageable amount of help and followed through.",
+              "relationship": 4,
+              "stats": {
+                "smarts": 2
+              },
+              "outcome": "A promise within your limits",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "decline",
+              "label": "Keep your knowledge to yourself",
+              "result": "I chose not to pass on the guidance {person} had given me.",
+              "relationship": -5,
+              "outcome": "The chain stops here",
+              "legacy": "turned_away"
+            }
+          ]
+        },
+        "reckoning": {
+          "title": "A difficult conversation",
+          "text": "{person} asks what their support meant to you. This is about trust as much as work.",
+          "default": "dismiss",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "apologize",
+              "label": "Acknowledge what you took for granted",
+              "result": "I apologized to {person} and gave them the credit I had withheld.",
+              "relationship": 8,
+              "outcome": "Credit given at last",
+              "legacy": "repaired_trust"
+            },
+            {
+              "id": "learn",
+              "label": "Ask what repair would look like",
+              "result": "I asked {person} how I could begin repairing our working relationship.",
+              "relationship": 4,
+              "stats": {
+                "smarts": 2
+              },
+              "outcome": "A humbler beginning",
+              "legacy": "repair_started"
+            },
+            {
+              "id": "dismiss",
+              "label": "Dismiss their concerns",
+              "result": "I dismissed {person}'s concerns. They stopped investing in my progress.",
+              "relationship": -8,
+              "stats": {
+                "job_performance": -3
+              },
+              "outcome": "A mentor lost",
+              "legacy": "broken_word"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "family_care",
+      "title": "When Roles Change",
+      "cast": "parent",
+      "category": "family",
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 90
+      },
+      "start": "signs",
+      "era_context": {
+        "Ancient Era": "Households depend on several generations helping one another.",
+        "Medieval Era": "Neighbors and relatives form most of the support a household can rely on.",
+        "Industrial Era": "Work schedules make family care difficult to arrange.",
+        "Modern Era": "Care, work, and your own wellbeing are competing for the same hours.",
+        "Future Era": "New services exist, but your parent still wants a familiar person to listen."
+      },
+      "nodes": {
+        "signs": {
+          "title": "Small things becoming difficult",
+          "text": "{person} admits that everyday household tasks are becoming harder. They want a say in what happens next.",
+          "default": "ignore",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "plan",
+              "label": "Make a plan together",
+              "result": "I listened to {person} and made a care plan with them, keeping their wishes at its center.",
+              "relationship": 8,
+              "stats": {
+                "mental_health": 2
+              },
+              "next": "strain",
+              "delay": 2
+            },
+            {
+              "id": "take_over",
+              "label": "Take over without asking",
+              "result": "I took over arrangements for {person} before asking what they wanted.",
+              "relationship": -5,
+              "stats": {
+                "mental_health": -3
+              },
+              "next": "control",
+              "delay": 2
+            },
+            {
+              "id": "ignore",
+              "label": "Put off the conversation",
+              "result": "I put off talking with {person} about the help they needed.",
+              "relationship": -7,
+              "legacy": "turned_away",
+              "next": "strain",
+              "delay": 2
+            }
+          ]
+        },
+        "strain": {
+          "title": "A year with too few hours",
+          "text": "{person} needs more support. You can help with costs, make time yourself, or set a limit and explain it.",
+          "default": "absent",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "fund",
+              "label": "Help cover support costs",
+              "result": "I helped {person} pay for practical support, making the year more manageable.",
+              "transfer": -300,
+              "relationship": 8,
+              "legacy": "stood_together",
+              "next": "gratitude",
+              "delay": 2
+            },
+            {
+              "id": "visit",
+              "label": "Make regular time for them",
+              "result": "I made regular time for {person}, even when it complicated my own work.",
+              "relationship": 10,
+              "stats": {
+                "job_performance": -3,
+                "mental_health": -2
+              },
+              "legacy": "stood_together",
+              "next": "gratitude",
+              "delay": 2
+            },
+            {
+              "id": "boundary",
+              "label": "Explain your limits and plan around them",
+              "result": "I explained my limits to {person} and helped them plan around what I could realistically offer.",
+              "relationship": 4,
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "kept_word",
+              "next": "gratitude",
+              "delay": 2
+            },
+            {
+              "id": "absent",
+              "label": "Leave the request unanswered",
+              "result": "I left {person}'s request unanswered. They stopped assuming I would be there.",
+              "relationship": -12,
+              "outcome": "Absence becomes an answer",
+              "legacy": "turned_away"
+            }
+          ]
+        },
+        "control": {
+          "title": "Their life, too",
+          "text": "{person} says they feel managed rather than heard. They want their choices back.",
+          "default": "insist",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Return to the plan together",
+              "result": "I apologized to {person} and rebuilt the plan around their choices.",
+              "relationship": 8,
+              "legacy": "repair_started",
+              "next": "strain",
+              "delay": 1
+            },
+            {
+              "id": "step_back",
+              "label": "Step back and offer help on request",
+              "result": "I gave {person} room to decide what help they actually wanted.",
+              "relationship": 4,
+              "stats": {
+                "mental_health": 2
+              },
+              "outcome": "Care with room to breathe",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "insist",
+              "label": "Insist you know best",
+              "result": "I insisted that I knew what was best for {person}. Practical help came at the cost of trust.",
+              "relationship": -10,
+              "outcome": "Help without trust",
+              "legacy": "broken_word"
+            }
+          ]
+        },
+        "gratitude": {
+          "title": "What they want remembered",
+          "text": "{person} asks you to spend an afternoon listening to a story from before you were born.",
+          "default": "postpone",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Listen and write it down",
+              "result": "I listened to {person}'s memories and wrote them down. Caring for them also taught me who they had been.",
+              "relationship": 10,
+              "stats": {
+                "mental_health": 5
+              },
+              "outcome": "A history carried forward",
+              "legacy": "stood_together"
+            },
+            {
+              "id": "share",
+              "label": "Share a memory of your own",
+              "result": "I shared a memory with {person}. We found a moment of closeness amid the practical demands.",
+              "relationship": 7,
+              "stats": {
+                "mental_health": 3
+              },
+              "outcome": "A moment that stays",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "postpone",
+              "label": "Keep postponing it",
+              "result": "I kept postponing a quiet afternoon with {person}. We spoke mostly about tasks after that.",
+              "relationship": -3,
+              "outcome": "Practical care, an untold story",
+              "legacy": "private"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "old_accomplice",
+      "title": "Someone from Before",
+      "cast": "accomplice",
+      "category": "crime",
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 85,
+        "crime_history": true
+      },
+      "start": "return",
+      "era_context": {
+        "Ancient Era": "An old contact from the trade roads recognizes you.",
+        "Medieval Era": "Old ties to an outlaw band are hard to keep separate from village life.",
+        "Industrial Era": "An old underworld contact knows where you work now.",
+        "Modern Era": "A familiar name brings back a chapter you had stopped talking about.",
+        "Future Era": "An old contact can still find you despite a changed life."
+      },
+      "nodes": {
+        "return": {
+          "title": "An unexpected request",
+          "text": "{person}, a contact from your earlier underworld work, asks for help getting through a difficult month. They hint that you owe them.",
+          "default": "refuse",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "help",
+              "label": "Help once, with clear limits",
+              "result": "I helped {person} once and made clear that it bought no future favors.",
+              "transfer": -250,
+              "relationship": 5,
+              "legacy": "kept_word",
+              "next": "boundary",
+              "delay": 2
+            },
+            {
+              "id": "listen",
+              "label": "Listen without promising money",
+              "result": "I listened to {person}, but did not accept their claim that I owed an open-ended favor.",
+              "relationship": 2,
+              "next": "pressure",
+              "delay": 2
+            },
+            {
+              "id": "refuse",
+              "label": "Refuse the request",
+              "result": "I refused {person}'s request. The old connection remained uncomfortable.",
+              "relationship": -5,
+              "legacy": "turned_away",
+              "next": "pressure",
+              "delay": 3
+            }
+          ]
+        },
+        "boundary": {
+          "title": "Was once really once?",
+          "text": "{person} returns with another request. They remember your help, but seem to have forgotten your limit.",
+          "default": "give_in",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "hold",
+              "label": "Hold the boundary calmly",
+              "result": "I reminded {person} of our agreement and held the boundary without humiliating them.",
+              "relationship": 2,
+              "stats": {
+                "mental_health": 4
+              },
+              "outcome": "A boundary that held",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "alternative",
+              "label": "Offer help finding a different path",
+              "result": "I helped {person} think about a more stable way forward, without becoming their source of money.",
+              "relationship": 5,
+              "stats": {
+                "smarts": 2
+              },
+              "next": "change",
+              "delay": 3
+            },
+            {
+              "id": "give_in",
+              "label": "Avoid the conversation",
+              "result": "I avoided another difficult conversation with {person}. The pressure of the unfinished boundary stayed with me.",
+              "stats": {
+                "mental_health": -3
+              },
+              "next": "pressure",
+              "delay": 2
+            }
+          ]
+        },
+        "pressure": {
+          "title": "The old story follows you",
+          "text": "{person} brings up your shared past in front of someone you know. You have to decide how to respond.",
+          "default": "withdraw",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "own_past",
+              "label": "Acknowledge your past and set a limit",
+              "result": "I acknowledged my past without letting {person} use it to decide my future.",
+              "relationship": -2,
+              "stats": {
+                "mental_health": 4
+              },
+              "outcome": "Your own next chapter",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "private",
+              "label": "Ask for a private conversation",
+              "result": "I asked {person} to speak privately, hoping we could agree on a way forward.",
+              "relationship": 3,
+              "next": "change",
+              "delay": 2
+            },
+            {
+              "id": "withdraw",
+              "label": "Withdraw from the conversation",
+              "result": "I withdrew when {person} brought up our past. The encounter left me unsettled.",
+              "stats": {
+                "mental_health": -4
+              },
+              "outcome": "An uneasy distance",
+              "legacy": "private"
+            }
+          ]
+        },
+        "change": {
+          "title": "A different sort of favor",
+          "text": "{person} asks you to help them practice for an ordinary job interview or introduction. This time the request points toward a different future.",
+          "default": "ignore",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "practice",
+              "label": "Help them prepare",
+              "result": "I helped {person} prepare for a chance at a steadier life. For once, our shared past led somewhere new.",
+              "relationship": 10,
+              "stats": {
+                "mental_health": 3
+              },
+              "outcome": "A connection turned around",
+              "legacy": "stood_together"
+            },
+            {
+              "id": "encourage",
+              "label": "Encourage them honestly",
+              "result": "I encouraged {person} while being honest about how much help I could offer.",
+              "relationship": 4,
+              "outcome": "A smaller, healthier connection",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "ignore",
+              "label": "Let the message go unanswered",
+              "result": "I let {person}'s request go unanswered. We lost the chance to know each other differently.",
+              "relationship": -5,
+              "outcome": "A chance left behind",
+              "legacy": "turned_away"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "family_legacy",
+      "title": "The Name You Inherited",
+      "cast": "legacy",
+      "category": "family",
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 90
+      },
+      "start": "history",
+      "era_context": {
+        "Ancient Era": "A household's reputation often arrives before its younger members.",
+        "Medieval Era": "A family name can open a door or close it.",
+        "Industrial Era": "Family stories travel through workplaces and neighborhoods.",
+        "Modern Era": "You are finding out which family stories other people still carry.",
+        "Future Era": "Even in a changing world, old promises can outlive the people who made them."
+      },
+      "nodes": {
+        "history": {
+          "title": "They remember your parent",
+          "text": "{person} knew your parent through a consequential chapter of their life. Before getting to know you, they want to tell you what they remember.",
+          "default": "avoid",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Hear their side of the story",
+              "result": "I listened to {person}'s account of my parent. The family history was more complicated than a name.",
+              "relationship": 4,
+              "stats": {
+                "smarts": 2
+              },
+              "next": "choice",
+              "delay": 2
+            },
+            {
+              "id": "independent",
+              "label": "Ask to be known as yourself",
+              "result": "I asked {person} to get to know me through my own choices, while acknowledging our shared history.",
+              "relationship": 2,
+              "legacy": "private",
+              "next": "choice",
+              "delay": 2
+            },
+            {
+              "id": "avoid",
+              "label": "Avoid the family history",
+              "result": "I avoided talking with {person} about my parent. The old story remained between us.",
+              "relationship": -3,
+              "outcome": "A history left unexamined",
+              "legacy": "private"
+            }
+          ]
+        },
+        "choice": {
+          "title": "What will you carry forward?",
+          "text": "{person} asks whether the next generation will do things differently. There is a chance to build trust through a small shared commitment.",
+          "default": "decline",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "commit",
+              "label": "Make a promise of your own",
+              "result": "I made a modest promise to {person}, determined to let my own actions speak.",
+              "relationship": 4,
+              "next": "proof",
+              "delay": 2
+            },
+            {
+              "id": "honest",
+              "label": "Be honest about your limits",
+              "result": "I was honest with {person} about my limits. I would not make a promise just to improve a family story.",
+              "relationship": 5,
+              "outcome": "A name defined by honesty",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "decline",
+              "label": "End the conversation",
+              "result": "I chose not to build a new connection with {person}.",
+              "relationship": -2,
+              "outcome": "A separate life",
+              "legacy": "private"
+            }
+          ]
+        },
+        "proof": {
+          "title": "Your turn to be remembered",
+          "text": "{person} is waiting for you to keep the promise you made. Whatever your parent did, this part of the story belongs to you.",
+          "default": "miss",
+          "deadline": 2,
+          "choices": [
+            {
+              "id": "keep",
+              "label": "Keep your promise",
+              "result": "I kept my promise to {person}. Our family name now carried a story I had written myself.",
+              "relationship": 12,
+              "stats": {
+                "mental_health": 4
+              },
+              "outcome": "A new family story",
+              "legacy": "stood_together"
+            },
+            {
+              "id": "renegotiate",
+              "label": "Speak before changing the plan",
+              "result": "I spoke to {person} before changing our agreement. Trust survived because they were not left guessing.",
+              "relationship": 5,
+              "outcome": "Trust through honesty",
+              "legacy": "kept_word"
+            },
+            {
+              "id": "miss",
+              "label": "Leave them waiting",
+              "result": "I left {person} waiting. Another generation had added an unanswered promise to the family history.",
+              "relationship": -12,
+              "outcome": "History repeats",
+              "legacy": "broken_word"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
