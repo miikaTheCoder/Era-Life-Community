@@ -43,7 +43,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 
 | ID | Item | Target | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| R01 | Reliable save → cold restart → continue | Desktop, then Portrait | Queued — first shared task | None |
+| R01 | Reliable save → cold restart → continue | Desktop, then Portrait | Queued: first shared task | None |
 | R02 | Character / Back / Explore navigation | Portrait | Queued | None; can be an independent fix |
 | R03 | God Mode → Begin Life phone crash | Portrait | Queued; device access needed for final verification | None; keep separate from R02 |
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Queued | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
@@ -60,7 +60,7 @@ have separate branches. Recheck the work log and Git before claiming work.
 
 ## Now: finish a dependable Shared Lives milestone
 
-### R01 — Continue the same life after closing the game
+### R01: Continue the same life after closing the game
 
 **First step:** reproduce the documented cold-restore failure in a fresh desktop
 test profile. Retain the save, log, selected actor, and last completed hydration
@@ -75,7 +75,7 @@ and an existing supported fixture. Run the relevant regressions and full suite
 for shared persistence changes. Port the fix and repeat the cold-restore route
 in Portrait; a same-process hydration test alone does not close this item.
 
-### R02 — Back closes the current surface exactly once
+### R02: Back closes the current surface exactly once
 
 **First step:** reproduce Character → Android Back → Menu at an actual 420×900
 viewport with the general mode harness, retaining the unexpected exit dialog.
@@ -88,7 +88,7 @@ including while background initialization completes. Retain the regression in th
 general harness and verify the route on the phone when available. Do not close
 this item using the focused content smoke that skips drawer checks.
 
-### R03 — Enter a generated life on the Honor phone
+### R03: Enter a generated life on the Honor phone
 
 **First step:** obtain a fresh authorized debugging connection and reproduce on
 the current APK while preserving app data. Record APK hash, version, architecture,
@@ -102,7 +102,7 @@ Desktop preview success, switching architecture, or hiding the route is not proo
 of a fix. If a device is unavailable, leave the final verification open and record
 the missing access rather than claiming the crash is resolved.
 
-### R04 — A playable milestone someone else can try
+### R04: A playable milestone someone else can try
 
 **First step:** play Shared Lives through ordinary eligibility with the full
 catalog enabled. The deterministic fixture proves mechanics but forces the
@@ -122,7 +122,7 @@ request. A roadmap entry by itself does not publish a build or merge a branch.
 
 ## Next: Living Households (proposed)
 
-### R05 — Make the people at home affect the life you are building
+### R05: Make the people at home affect the life you are building
 
 **Proposed first slice:** one recurring family arc about dividing time between
 work, a relationship, and caring for a relative. Existing household members should
@@ -143,7 +143,7 @@ Deeper content is the aim, not a fixed chapter quota. Use playtesting to decide
 whether the next addition should be caregiving, sibling conflict, a partnership,
 or another household situation before committing a larger batch of stories.
 
-### R06 — Carry that same family arc into Portrait
+### R06: Carry that same family arc into Portrait
 
 **Done when:** the shared gameplay port preserves saves, cast, actions, and lazy
 startup dependencies; choices and history remain readable and reachable at
@@ -152,7 +152,7 @@ and the exact APK on a phone. Record desktop-preview and device results separate
 
 ## Later: make continued development easier
 
-### R07 — Improve performance against reproducible measurements
+### R07: Improve performance against reproducible measurements
 
 Profile cold startup, entry into a life, repeated age-ups, and a longer session
 before choosing the next bottleneck. Preserve the earlier under-10-second creation
@@ -164,7 +164,7 @@ without dropping simulation phases, content, save fidelity, or readable feedback
 Use those measurements to choose a small dependency reduction or an extraction
 from `MainScene.gd`/`GameState.gd`. Avoid turning this milestone into a broad rewrite.
 
-### R08 — Let another contributor add a story safely
+### R08: Let another contributor add a story safely
 
 Build on the existing authored JSON and mod/content owners. Provide a small sample
 pack, supported schema/version notes, and validation for cast roles, missing nodes,
