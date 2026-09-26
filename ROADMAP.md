@@ -35,15 +35,16 @@ smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 
 ## Work queue
 
-R01 is claimed by the save/continue task on `codex/shared-lives-desktop`, with
-Portrait verification to follow. Other items remain **unclaimed**. When starting one, replace its status with `In progress`, record
-the task/branch in the work log, and keep the change small enough to review.
+R01 is **verified** on desktop and in Portrait preview, with evidence below.
+Other items remain **unclaimed**. When starting one, replace its status with
+`In progress`, record the task/branch in the work log, and keep the change small
+enough to review.
 `Queued` means prioritized; `Proposed` means the product direction needs refinement
 before implementation. `Verified` requires the evidence in its completion criteria.
 
 | ID | Item | Target | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| R01 | Reliable save → cold restart → continue | Desktop, then Portrait | In progress: desktop verified; Portrait pending | None |
+| R01 | Reliable save → cold restart → continue | Desktop, then Portrait | Verified: desktop + Portrait preview | None |
 | R02 | Character / Back / Explore navigation | Portrait | Queued | None; can be an independent fix |
 | R03 | God Mode → Begin Life phone crash | Portrait | Queued; device access needed for final verification | None; keep separate from R02 |
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Queued | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
@@ -74,6 +75,16 @@ and after; no duplicate settlement is allowed. Cover both a newly created save
 and an existing supported fixture. Run the relevant regressions and full suite
 for shared persistence changes. Port the fix and repeat the cold-restore route
 in Portrait; a same-process hydration test alone does not close this item.
+
+**Verified 2026-09-27:** desktop `e2424ff`; Portrait shared port `e538708` plus
+mobile Continue update `74e8b07`. All 19 desktop and 23 Portrait regressions passed.
+Fresh desktop creation and repeated cold Continue passed, as did older fixtures.
+Portrait passed cold Continue, age/save, and another cold Continue at 420×900,
+using its existing fixture; it also continued and saved the newly generated
+desktop fixture. Exact balances, cast, ownership, relationships, diary/history,
+and duplicate settlement checks passed. See [retained evidence](docs/COLD-RESTORE.md).
+This verifies R01's persistence route on Linux desktop and in Portrait preview.
+It does not certify a phone build or the unsuccessful fresh Portrait creation runs recorded under R04.
 
 ### R02: Back closes the current surface exactly once
 
@@ -107,6 +118,11 @@ the missing access rather than claiming the crash is resolved.
 **First step:** play Shared Lives through ordinary eligibility with the full
 catalog enabled. The deterministic fixture proves mechanics but forces the
 business story; establish whether a normal player can discover it and continue it.
+
+The 2026-09-27 Portrait creation checks also need follow-up: one run's world
+preparation tap did not activate; a repeat showed blank, narrow household member
+buttons and exited without completing entry. Retain these failures separately
+from the passing cold-Continue checks in [R01 evidence](docs/COLD-RESTORE.md).
 
 **Done when:** a founder route and an inherited continuation are exercised with
 readable costs, understandable deadlines, reachable company details, and saved
@@ -190,9 +206,9 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | --- | --- | --- | --- |
 | 2026-09-26 | Baseline | Desktop `32ad0fb`; Portrait `ebaf71c` | Shared Lives implemented and ported, with the documented validation limits. Next shared implementation item: reproduce R01 on desktop. |
 | 2026-09-26 | Planning | Shared roadmap on both Shared Lives branches | Priorities and completion criteria recorded. R01–R08 remain unclaimed; no new gameplay or crash fix is claimed here. |
-| 2026-09-27 | R01 | Save/continue task, `codex/shared-lives-desktop` | Desktop: reproduced hydration starvation, a concurrent projection crash, and missing company banking. Desktop verified: 19 regressions, fresh business cycle with second cold restart, pre-fix business save, and older a174e11 fixture pass. Portrait port and checks next. See [cold-restore evidence](docs/COLD-RESTORE.md). |
+| 2026-09-27 | R01 | Save/continue task; desktop `e2424ff`, Portrait `e538708` + `74e8b07` | Verified: hydration progress, projection scheduling, company banking, and mobile Continue update. 19 desktop and 23 Portrait regressions pass. New and existing saves passed separate-process Continue, age/save, and repeated restore checks. See [cold-restore evidence](docs/COLD-RESTORE.md). Next: desktop R04 readiness and R05 content; Portrait creation gaps, R02, and R03 remain open. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
-inspect the target checkout; take R01 (or the user-selected item), reproduce it,
+inspect the target checkout; take an open item selected with the user, reproduce it,
 and leave a verified result or a precise handoff.”** The user's current task
 always takes precedence over this suggested queue.

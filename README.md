@@ -20,6 +20,10 @@ They appear in Pending Situations during ordinary lives. See
 46 responses, a recurring ensemble, real company reserves, and ownership that
 passes between generations. See [Shared Lives](docs/SHARED-LIVES.md).
 
+The Shared Lives branches also include repairs for cold Continue, business bank
+restoration, and Portrait's saved-life button. See [cold-restore validation](docs/COLD-RESTORE.md)
+for tested source commits, preserved fixtures, and device limitations.
+
 See the [roadmap](ROADMAP.md) for current priorities, the proposed next content
 chapter, completion criteria, and work that another task can pick up.
 
