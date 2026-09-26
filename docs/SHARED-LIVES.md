@@ -141,3 +141,31 @@ full birth-to-death playthrough or the existing broader cold-restore lifecycle.
 - Existing shutdown resource warnings and the checkpoint `snapshot_not_found`
   diagnostic remain. The broader cold-restore issue documented in Architecture
   is outside this content change.
+
+### Portrait port and validation, 2026-09-26
+
+Desktop was completed first (`32ad0fb`), then ported onto
+`codex/shared-lives-portrait`. The gameplay, authored content, bank authority,
+and save format are shared. The existing Portrait adapter now includes the
+Assets / Wealth panel: actions and asset columns stack, company text wraps to
+the phone width, and Android Back uses the original Assets close handler.
+
+- All **23 Portrait headless regressions passed** (`headless-r27wrtkc`).
+- After the Assets layout addition, the focused Shared Lives and startup
+  dependency checks passed (`headless-6zcooyu0`), and the final mobile-panel
+  regression passed (`headless-w7d3hklp`). It checks 420×900 and 360×640 bounds,
+  readable full-width company text, and the original Back route.
+- The focused graphical content route passed at **420×900**
+  (`/tmp/eralife-shared-klLf3r`): investment, visible $8,800 personal funds and
+  $1,200 company reserve, a full year, and a save containing $1,470 reserves.
+  Screenshots were inspected. This is a desktop mobile preview, not a phone run.
+- The ARM64 performance APK includes both JSON catalogs and passes independent
+  APK signature verification. It retains the existing development signing setup.
+
+The general Character → Android Back → Menu smoke sequence failed before reaching
+content (`/tmp/eralife-shared-4VcQZn`): an exit confirmation blocked Explore.
+That failure remains unresolved and is not counted as a pass. The focused content
+smoke retains phone layout checks but leaves general drawer navigation to the
+separate desktop-modes harness. This port also does not claim to fix the previously
+recorded on-device God Mode → Begin Life crash or guest cold-restore limitation.
+The updated APK has not been installed or retested on the Honor phone in this pass.

@@ -23,6 +23,9 @@ class Host extends Control:
 	func _on_world_feed_popup_back_pressed() -> void:
 		last_back = "world_feed_popup"
 		controls[last_back].hide()
+	func _hide_assets_panel() -> void:
+		last_back = "assets_panel"
+		controls[last_back].hide()
 	func _close_title_card_account_panel() -> void:
 		last_back = "title_card_account_popup"
 		controls[last_back].hide()
@@ -291,6 +294,28 @@ func _world_subpage(host: Host, adapter: Node) -> void:
 	host.controls.erase("world_feed_popup")
 	await process_frame
 
+func _business_assets(host: Host, adapter: Node) -> void:
+	var panel := AssetsPanel.new()
+	host.controls["assets_panel"] = panel
+	host.add_child(panel)
+	panel.open_for_actor(null, {"title":"ASSETS • WEALTH", "bank_balance_text":"$8,800 USD", "total_asset_count":1,
+		"markets_and_securities_text":"Story & Co. · 60% ownership\nBusiness reserves: $1200 · Quality: 50/100 · Reputation: 50/100\nPolicy: shared decisions. Legacy: new partnership.",
+		"actions":[{"action_id":"look_for_property","label":"Look For Property"},{"action_id":"look_for_vehicles","label":"Look For Vehicles"}]})
+	for dimensions in [Vector2i(420,900),Vector2i(360,640)]:
+		root.content_scale_size = dimensions
+		await _settle()
+		var safe := MobileSupport.safe_viewport_rect(host)
+		_check(safe.grow(1).encloses(panel.get_global_rect()), "Business Assets panel leaves phone viewport")
+		_check(panel.action_grid.columns == 1, "Assets actions retained desktop columns")
+		_check(panel.securities_label.size.x >= dimensions.x - 90, "Company details did not become full width")
+		for label in [panel.title_label,panel.wealth_label,panel.securities_label]:
+			var rect: Rect2 = label.get_global_rect()
+			_check(rect.position.x >= 0 and rect.end.x <= dimensions.x, "Business Assets text is clipped horizontally")
+	_check(adapter.handle_back() and host.last_back == "assets_panel" and not panel.visible, "Assets Back bypassed the original close route")
+	host.controls.erase("assets_panel")
+	panel.queue_free()
+	await process_frame
+
 func _run() -> void:
 	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
@@ -346,6 +371,7 @@ func _run() -> void:
 	host.controls.action_result_popup.hide()
 	await _real_hubs(host, adapter)
 	await _subpages(host, adapter)
+	await _business_assets(host, adapter)
 	# Narrative rebuilds its top actions with queue_free before the next frame.
 	var row := HBoxContainer.new()
 	host.add_child(row)

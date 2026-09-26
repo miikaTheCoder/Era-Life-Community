@@ -2,6 +2,13 @@ extends "smoke_desktop_modes.gd"
 
 # Real Household entry and UI input; the isolated fixture supplies two known
 # existing contacts so the ensemble story is repeatable without random casting.
+func _capture(label: String) -> void:
+	# This content smoke retains phone layout checks. The general mode harness
+	# separately owns Character/Explore navigation (see SHARED-LIVES validation).
+	if portrait and label == "life":
+		portrait_drawers_checked = true
+	await super._capture(label)
+
 func _age_and_save() -> void:
 	var state: GameState = current_scene.get("gs")
 	current_scene.call("_ensure_pending_situation_engines")
@@ -90,6 +97,16 @@ func _age_and_save() -> void:
 		return panel != null and panel.is_visible_in_tree() and panel.securities_label.text.contains(str(venture.name)) and panel.wealth_label.text.contains("Controlled Assets: 1")
 	, 30), "Assets did not show the new business stake"):
 		return
+	if portrait:
+		await create_timer(0.5).timeout
+		var panel: AssetsPanel = current_scene.get("assets_panel")
+		var ancestor := panel.securities_label.get_parent()
+		while ancestor != null:
+			if ancestor is ScrollContainer:
+				ancestor.ensure_control_visible(panel.securities_label)
+			ancestor = ancestor.get_parent()
+		await create_timer(0.5).timeout
+		_check(MobileSupport.safe_viewport_rect(current_scene).encloses(panel.securities_label.get_global_rect()), "Company details are clipped on the phone")
 	await _capture("shared-lives-assets")
 	current_scene.call("_hide_assets_panel")
 	await create_timer(1).timeout

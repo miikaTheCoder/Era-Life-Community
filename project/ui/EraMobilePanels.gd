@@ -7,7 +7,7 @@ const ROOTS := [
 	"god_mode_viewer", "choose_adventure_scenario_panel", "standard_tab_popup",
 	"action_result_popup", "popup_viewer",
 	"activities_hub_panel", "career_hub_panel", "relationship_hub_panel", "school_hub_panel",
-	"institution_hub_overlay", "belongings_hud_panel", "bending_hud_panel",
+	"institution_hub_overlay", "assets_panel", "belongings_hud_panel", "bending_hud_panel",
 	"rick_weapon_shop_popup", "ui_contract_surface_panel",
 	"belongings_item_popup", "belongings_item_target_popup", "relationship_profile_panel",
 	"world_feed_popup", "title_card_account_popup", "saved_life_picker_popup",
@@ -61,7 +61,7 @@ func refresh() -> void:
 			continue
 		if adapt or not prepared.has(surface.get_instance_id()):
 			_adapt_tree(surface, property in ["household_creator_overlay", "god_mode_viewer", "household_creator_prompt_overlay"])
-			if property in ["activities_hub_panel", "career_hub_panel", "relationship_hub_panel", "school_hub_panel", "institution_hub_overlay", "belongings_hud_panel", "bending_hud_panel", "rick_weapon_shop_popup", "ui_contract_surface_panel", "belongings_item_popup", "belongings_item_target_popup", "relationship_profile_panel", "world_feed_popup", "title_card_account_popup"]:
+			if property in ["activities_hub_panel", "career_hub_panel", "relationship_hub_panel", "school_hub_panel", "institution_hub_overlay", "assets_panel", "belongings_hud_panel", "bending_hud_panel", "rick_weapon_shop_popup", "ui_contract_surface_panel", "belongings_item_popup", "belongings_item_target_popup", "relationship_profile_panel", "world_feed_popup", "title_card_account_popup"]:
 				_adapt_hub_content(surface)
 			prepared[surface.get_instance_id()] = true
 		match property:
@@ -79,7 +79,7 @@ func refresh() -> void:
 				var tabs := _control("institution_hub_section_bar") as GridContainer
 				if tabs != null:
 					tabs.columns = 2
-			"belongings_hud_panel", "bending_hud_panel", "rick_weapon_shop_popup", "ui_contract_surface_panel", "belongings_item_popup", "belongings_item_target_popup", "title_card_account_popup": _layout_modal_panel(surface, property, safe)
+			"assets_panel", "belongings_hud_panel", "bending_hud_panel", "rick_weapon_shop_popup", "ui_contract_surface_panel", "belongings_item_popup", "belongings_item_target_popup", "title_card_account_popup": _layout_modal_panel(surface, property, safe)
 			"relationship_profile_panel": _layout_profile(surface, safe)
 			"world_feed_popup": _layout_world(surface, safe)
 			"saved_life_picker_popup": _set_rect(surface, safe.grow(-8))
@@ -583,6 +583,7 @@ func handle_back() -> bool:
 		"rick_weapon_shop_popup": "_close_rick_weapon_shop_popup",
 		"bending_hud_panel": "_toggle_bending_hud",
 		"belongings_hud_panel": "_toggle_belongings_hud",
+		"assets_panel": "_hide_assets_panel",
 		"household_creator_prompt_overlay": "_household_creator_close_choice_prompt",
 		"household_creator_unfinished_overlay": "_household_creator_close_unfinished_households_popup",
 		"standard_tab_popup": "_on_standard_tab_popup_back_pressed",
