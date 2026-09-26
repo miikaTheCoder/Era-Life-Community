@@ -178663,6 +178663,13 @@ func _finish_mainscene_ready_after_first_cinematic_paint() -> void:
 	_apply_ui_nav_button_visuals()
 	_sync_global_reality_intake_button()
 
+	# The mobile menu can show the title before deferred identity resolution.
+	# Publish the resolved save availability to its touch controls and prompt.
+	if MobileSupport.is_enabled() and bool(get_meta("startup_intro_title_card_visible_surface", false)):
+		if is_instance_valid(startup_intro_prompt_label):
+			startup_intro_prompt_label.text = _title_card_identity_prompt_text()
+		MobileSupport.add_title_actions(self)
+
 	set_meta(
 		"startup_ready_nonvisual_contracts_complete",
 		true

@@ -332,7 +332,7 @@ func _run() -> void:
 	root.unresizable = true
 	root.min_size = dimensions
 	root.max_size = dimensions
-	if portrait and mode != "restore":
+	if portrait:
 		change_scene_to_file("res://scenes/mobile_boot.tscn")
 		if not _check(await _wait_for(func(): return current_scene != null and current_scene.has_method("_choose_entry")), "Mobile entry menu did not appear"):
 			quit(1)
@@ -340,11 +340,22 @@ func _run() -> void:
 		await _capture("early-menu")
 		var boot := current_scene
 		var boot_id := boot.get_instance_id()
-		await _click(boot.find_child("Boot_new_life", true, false))
-		if not _check(await _wait_for(func(): return current_scene != null and current_scene.get_instance_id() != boot_id and is_instance_valid(current_scene.get("choose_adventure_entry_overlay")), 120), "Mobile New life did not reach mode selection"):
+		await _click(boot.find_child("Boot_title" if mode == "restore" else "Boot_new_life", true, false))
+		if not _check(await _wait_for(func():
+			if current_scene == null or current_scene.get_instance_id() == boot_id:
+				return false
+			return current_scene.has_method("_title_card_continue_available") if mode == "restore" else is_instance_valid(current_scene.get("choose_adventure_entry_overlay"))
+		, 120), "Mobile entry did not reach the main scene"):
 			quit(1)
 			return
 		await create_timer(2).timeout
+		if mode == "restore":
+			await _capture("title")
+			await _restore()
+			await _capture("restored")
+			print("DESKTOP MODES: restore ", "FAIL" if failed else "PASS")
+			quit(1 if failed else 0)
+			return
 	else:
 		change_scene_to_file("res://scenes/main.scn")
 		await create_timer(3).timeout
