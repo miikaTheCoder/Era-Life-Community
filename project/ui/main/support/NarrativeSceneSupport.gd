@@ -184,6 +184,10 @@ static func _pending_situations_current_era_name(gs: GameState) -> String:
 
 
 static func _pending_situation_result_diary_text_from_result(result: Dictionary) -> String:
+	# Some domain owners commit history at resolution time so unattended choices
+	# are recorded too. Their presentation must not append the same event again.
+	if bool(result.get("diary_already_committed", false)):
+		return ""
 	if typeof(result) != TYPE_DICTIONARY:
 		return ""
 

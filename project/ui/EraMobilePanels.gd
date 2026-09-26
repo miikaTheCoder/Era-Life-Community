@@ -10,7 +10,7 @@ const ROOTS := [
 	"institution_hub_overlay", "belongings_hud_panel", "bending_hud_panel",
 	"rick_weapon_shop_popup", "ui_contract_surface_panel",
 	"belongings_item_popup", "belongings_item_target_popup", "relationship_profile_panel",
-	"world_feed_popup", "title_card_account_popup",
+	"world_feed_popup", "title_card_account_popup", "saved_life_picker_popup",
 ]
 var host: Control
 var dirty := true
@@ -82,6 +82,7 @@ func refresh() -> void:
 			"belongings_hud_panel", "bending_hud_panel", "rick_weapon_shop_popup", "ui_contract_surface_panel", "belongings_item_popup", "belongings_item_target_popup", "title_card_account_popup": _layout_modal_panel(surface, property, safe)
 			"relationship_profile_panel": _layout_profile(surface, safe)
 			"world_feed_popup": _layout_world(surface, safe)
+			"saved_life_picker_popup": _set_rect(surface, safe.grow(-8))
 			_: _layout_centered_prompt(surface, safe)
 
 func _adapt_tree(node: Node, stack_forms: bool) -> void:
@@ -184,6 +185,11 @@ func _layout_household(surface: Control, safe: Rect2) -> void:
 	var title := _named(surface, "HouseholdCreatorTitle") as Label
 	if title != null:
 		title.add_theme_font_size_override("font_size", 20)
+	# The desktop CenterContainer shrink-wraps this stack. Restore its mobile
+	# width after adaptation clears the desktop minimum and clips button text.
+	var empty_actions := _named(surface, "HouseholdCreatorEmptyActionStack") as Control
+	if empty_actions != null:
+		empty_actions.custom_minimum_size.x = maxf(0, safe.size.x - 64)
 	var scroll := _control("household_creator_scroll") as ScrollContainer
 	if scroll != null:
 		scroll.custom_minimum_size = Vector2.ZERO
@@ -306,7 +312,12 @@ func _layout_pending(surface: Control, safe: Rect2) -> void:
 	if options != null:
 		var scroll := _wrap_scroll(options, "EraPendingOptionsScroll")
 		scroll.visible = options.visible and options.get_child_count() > 0
-		scroll.custom_minimum_size.y = 100 if scroll.visible else 0
+		# A chapter needs reading space above its responses. Do not let a short
+		# response list consume the screen while its story is trapped in 100px.
+		scroll.size_flags_vertical = Control.SIZE_FILL
+		scroll.custom_minimum_size.y = clampf(options.get_combined_minimum_size().y, 100, safe.size.y * 0.4) if scroll.visible else 0
+		if body != null:
+			body.size_flags_vertical = Control.SIZE_EXPAND_FILL if scroll.visible else Control.SIZE_FILL
 
 func _layout_centered_prompt(surface: Control, safe: Rect2) -> void:
 	for child in surface.get_children():
@@ -521,14 +532,18 @@ func handle_back() -> bool:
 	var topmost: Control = null
 	var property := ""
 	var top_z := -100000
+	var top_layer := -100000
 	for key in ROOTS:
 		var panel := _control(key)
 		if is_instance_valid(panel) and panel.is_visible_in_tree():
-			var layer := MobileSupport._effective_z(panel)
-			if layer >= top_z:
+			var canvas := panel.get_canvas_layer_node()
+			var layer := canvas.layer if canvas != null else 0
+			var draw_z := MobileSupport._effective_z(panel)
+			if layer > top_layer or (layer == top_layer and draw_z >= top_z):
 				topmost = panel
 				property = key
-				top_z = layer
+				top_layer = layer
+				top_z = draw_z
 	if topmost == null:
 		return false
 	if property == "action_result_popup":
@@ -562,6 +577,7 @@ func handle_back() -> bool:
 		"belongings_item_popup": "_back_to_belongings_list_from_item_popup",
 		"belongings_item_target_popup": "_back_to_belongings_list_from_artifact_target_popup",
 		"world_feed_popup": "_on_world_feed_popup_back_pressed",
+		"saved_life_picker_popup": "_close_saved_life_picker",
 		"title_card_account_popup": "_close_title_card_account_panel",
 		"ui_contract_surface_panel": "_close_contract_surface_panel",
 		"rick_weapon_shop_popup": "_close_rick_weapon_shop_popup",

@@ -433,13 +433,22 @@ func _god() -> void:
 func _household() -> void:
 	if not _check(await _wait_for(func(): return is_instance_valid(current_scene.get("household_creator_overlay")) and current_scene.get("household_creator_overlay").visible), "Household did not open on first click"):
 		return
-	if not await _click(current_scene.find_child("HouseholdCreatorBigCreateButton", true, false)):
+	var create: Button = current_scene.find_child("HouseholdCreatorBigCreateButton", true, false)
+	await create_timer(0.5).timeout
+	if MobileSupport.is_enabled():
+		_check(create.size.x >= 280, "Household create button is too narrow to read on a phone")
+	if not await _click(create):
 		return
 	await _click(current_scene.get("household_creator_reality_buttons").get("realistic"))
 	await _capture("world-setup")
 	if not await _click(current_scene.get("household_creator_prewarm_button")):
 		return
 	if not _check(await _wait_for(func(): return current_scene.get("household_creator_world_prewarmed")), "Household world seed was not created"):
+		return
+	if not _check(await _wait_for(func():
+		var button = current_scene.get("household_creator_create_member_button")
+		return is_instance_valid(button) and button.is_visible_in_tree()
+	), "Household member form was not presented after world preparation"):
 		return
 	for member in [{"name": "Ada", "age": 35}, {"name": "Bea", "age": 8}, {"name": "Cora", "age": 30}]:
 		if not await _click(current_scene.get("household_creator_create_member_button")):
@@ -468,9 +477,12 @@ func _household() -> void:
 	await _capture("household")
 	if not await _click(current_scene.get("household_creator_continue_button")):
 		return
-	var list: VBoxContainer = current_scene.get("household_creator_start_selection_list")
-	if not _check(is_instance_valid(list) and list.get_child_count() == 3, "Household start selection missing"):
+	if not _check(await _wait_for(func():
+		var selection = current_scene.get("household_creator_start_selection_list")
+		return is_instance_valid(selection) and selection.is_visible_in_tree() and selection.get_child_count() == 3
+	), "Household start selection missing"):
 		return
+	var list: VBoxContainer = current_scene.get("household_creator_start_selection_list")
 	await _capture("select-member")
 	if not await _click(list.get_child(1)):
 		return

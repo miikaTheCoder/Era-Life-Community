@@ -11,6 +11,11 @@ the entry/save repairs, repeatable checks, and remaining limitations.
 The `era-life-new-ui` branch introduces the dark life-journal interface. See
 [UI design and validation](docs/NEW-UI.md) for layout, implementation, and checks.
 
+The first **Life Stories & Legacies** content release adds six branching stories
+with recurring characters, delayed consequences, and inherited family history.
+They appear in Pending Situations during ordinary lives. See
+[Life Stories](docs/LIFE-STORIES.md) for eligibility, authoring, and validation.
+
 ## Working on the code
 
 Start with [architecture and ownership](docs/ARCHITECTURE.md), then use the

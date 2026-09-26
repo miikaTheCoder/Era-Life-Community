@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-376 scripts; 923,134 source lines.
+377 scripts; 923,627 source lines.
 
 ## Largest files
 
@@ -340,6 +340,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [EmergentNPCStoryEngine.gd](../project/systems/narrative/EmergentNPCStoryEngine.gd) | EmergentNPCStoryEngine | 5 |
 | [GoalPlanningEngine.gd](../project/systems/narrative/GoalPlanningEngine.gd) | GoalPlanningEngine | 7 |
 | [LifeDiaryContractEngine.gd](../project/systems/narrative/LifeDiaryContractEngine.gd) | LifeDiaryContractEngine | 72 |
+| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 22 |
 | [NarrativeEngine.gd](../project/systems/narrative/NarrativeEngine.gd) | NarrativeEngine | 35 |
 | [NarrativeGovernor.gd](../project/systems/narrative/NarrativeGovernor.gd) | NarrativeGovernor | 4 |
 | [OpportunityEngine.gd](../project/systems/narrative/OpportunityEngine.gd) | OpportunityEngine | 4 |
@@ -347,7 +348,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [ScenarioEngine.gd](../project/systems/narrative/ScenarioEngine.gd) | ScenarioEngine | 190 |
 | [ScenarioPopupContractEngine.gd](../project/systems/narrative/ScenarioPopupContractEngine.gd) | ScenarioPopupContractEngine | 18 |
 | [ScenarioResolver.gd](../project/systems/narrative/ScenarioResolver.gd) | ScenarioResolver | 10 |
-| [ScenarioRuntimeContractEngine.gd](../project/systems/narrative/ScenarioRuntimeContractEngine.gd) | ScenarioRuntimeContractEngine | 26 |
+| [ScenarioRuntimeContractEngine.gd](../project/systems/narrative/ScenarioRuntimeContractEngine.gd) | ScenarioRuntimeContractEngine | 28 |
 | [WorldChronicleEngine.gd](../project/systems/narrative/WorldChronicleEngine.gd) | WorldChronicleEngine | 8 |
 | [WorldFeedEngine.gd](../project/systems/narrative/WorldFeedEngine.gd) | WorldFeedEngine | 30 |
 

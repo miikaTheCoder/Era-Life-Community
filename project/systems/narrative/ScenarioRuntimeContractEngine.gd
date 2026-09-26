@@ -33,6 +33,34 @@ var runtime_scan_automatic_resolutions: Array = []
 var runtime_scan_automatic_cursor: int = 0
 var runtime_scan_automatic_reports: Array = []
 
+# Load authored story rules only after entering a playable life. In particular,
+# keep this script out of Portrait's startup dependency closure.
+var life_story_engine: Variant = null
+var life_story_service_signature: String = ""
+
+func service_life_stories() -> Dictionary:
+	if gs == null or gs.player == null or not gs.player.alive or gs.player.age < 8:
+		return {}
+	if gs.scenario_popup_contract_engine == null or bool(gs.scenario_state.get("year_in_progress", false)):
+		return {}
+	if not gs.resident_runtime_bootstrap_complete or bool(gs.scenario_state.get("background_hydration_active", false)) or bool(gs.scenario_state.get("age_up_tail_runtime_pending", false)):
+		return {}
+	var loading: Dictionary = gs.scenario_state.get("loading_runtime", {})
+	if bool(loading.get("active", false)):
+		return {}
+	var signature := "%d:%d:%d" % [int(gs.player.id), int(gs.year), int(gs.player.age)]
+	if signature == life_story_service_signature:
+		return {}
+	var report: Dictionary = _ensure_life_story_engine().service_year()
+	if bool(report.get("success", false)):
+		life_story_service_signature = signature
+	return report
+
+func _ensure_life_story_engine():
+	if life_story_engine == null:
+		life_story_engine = load("res://systems/narrative/LifeStoryEngine.gd").new(gs)
+	return life_story_engine
+
 
 func _init(_gs = null):
 	gs = _gs
@@ -93,6 +121,7 @@ func export_state() -> Dictionary:
 
 
 func import_state(data: Dictionary) -> Dictionary:
+	life_story_service_signature = ""
 	if typeof(data) != TYPE_DICTIONARY:
 		return {
 			"success": false,
@@ -457,7 +486,13 @@ func resolve_popup_contract(contract_id: String, option_id: String, payload: Dic
 		clean_option = "acknowledge"
 
 	var option: Dictionary = _option_for_contract(contract, clean_option)
-	var resolution_report: Dictionary = _apply_contract_resolution(contract, option, payload)
+	var resolution_report: Dictionary
+	if str(contract.get("request", "")) == "life_story":
+		resolution_report = _ensure_life_story_engine().resolve_choice(contract, clean_option, payload)
+		if not bool(resolution_report.get("success", false)):
+			return resolution_report # Keep an unaffordable or stale choice pending.
+	else:
+		resolution_report = _apply_contract_resolution(contract, option, payload)
 
 	contract ["state"] = "resolved"
 	contract ["selected_response"] = clean_option
@@ -478,6 +513,7 @@ func resolve_popup_contract(contract_id: String, option_id: String, payload: Dic
 	return {
 		"success": true,
 		"mode": "popup_contract_resolved",
+		"diary_already_committed": bool(resolution_report.get("diary_already_committed", false)),
 		"contract_id": clean_id,
 		"option_id": clean_option,
 		"text": str(resolution_report.get("text", "")),
@@ -800,6 +836,9 @@ func _tick_contract(
 	delta: float
 ) -> Dictionary:
 	var out: Dictionary = contract.duplicate(true)
+	if str(out.get("request", "")) == "life_story":
+		# These deadlines use saved game years, not real-time urgency/escalation.
+		return out
 	var urgency: float = clampf(
 		float(
 			out.get(

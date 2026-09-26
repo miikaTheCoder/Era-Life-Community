@@ -558,7 +558,7 @@ func run_npc_decision_pass(_context: Dictionary = {}) -> Dictionary:
 			runtime.active_popup_contracts.get(raw_contract_id, {})
 		)
 
-		if contract.is_empty():
+		if contract.is_empty() or str(contract.get("request", "")) == "life_story":
 			continue
 
 		var decision_actor_ids: Array = _safe_array(
@@ -915,6 +915,11 @@ func runtime_tick(
 				}
 			)
 		)
+
+	# Story admission and deadlines run in simulation servicing, never a viewer
+	# getter. The runtime services each controlled actor/year only once.
+	if gs != null and gs.scenario_runtime_contract_engine != null:
+		gs.scenario_runtime_contract_engine.service_life_stories()
 
 	var runtime_report: Dictionary = {}
 
@@ -2056,7 +2061,7 @@ func resolve_pending_contract(contract_id: String, option_id: String, payload: D
 	var selected_option: Dictionary = _pending_selected_option_from_source_contract(source_contract, clean_option)
 
 	var view_report: Dictionary = {}
-	if gs.contract_view_layer_contract_engine != null and not source_contract.is_empty():
+	if gs.contract_view_layer_contract_engine != null and not source_contract.is_empty() and str(source_contract.get("request", "")) != "life_story":
 		view_report = gs.contract_view_layer_contract_engine.resolve_view_choice(source_contract, actor_id, clean_option, payload)
 
 	var source_resolves: bool = true

@@ -150,6 +150,9 @@ func ensure_bank_account_for_actor(actor, context: Dictionary = {}) -> Dictionar
 	var currency: String = _resolve_currency(context)
 	return ensure_account(owner_id, world_id, ACCOUNT_KIND_BANK, currency, {
 		"actor_id": int(actor.id) if actor.get("id") != null else -1,
+		# Import a resident NPC's legacy balance only when creating its first
+		# account. Existing accounts, including empty ones, remain authoritative.
+		"starting_balance": max(0.0, float(actor.bank_balance)) if bool(context.get("import_legacy_balance", false)) else 0.0,
 		"transfer_scope": TRANSFER_SCOPE_LOCAL
 	})
 

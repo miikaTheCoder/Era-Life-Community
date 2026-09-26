@@ -511,6 +511,13 @@ func _interactive_checkpoint_actor_ids(
 	var household_index: Dictionary = gs.scenario_state.get("custom_household_member_index", {})
 	for raw_id in household_index.values():
 		queue.append(int(raw_id))
+	# A recurring friend or colleague may sit outside the family graph. Preserve
+	# the original cast so a delayed chapter cannot silently recast on Continue.
+	var story_actors: Dictionary = gs.scenario_state.get("life_stories", {}).get("actors", {})
+	for raw_actor_id in story_actors:
+		queue.append(int(raw_actor_id))
+		for story in story_actors[raw_actor_id].get("stories", {}).values():
+			queue.append(int(story.get("cast_id", -1)))
 
 	while (
 		not queue.is_empty()
@@ -592,6 +599,7 @@ func _interactive_checkpoint_scenario_capsule(
 		"custom_household_existing_life_start",
 		"custom_household_birth_intro_suppressed",
 		"choose_adventure",
+		"life_stories",
 		"choose_adventure_birth_trigger",
 		"narrative_birth_bias",
 		"choose_adventure_lineage_birth",
