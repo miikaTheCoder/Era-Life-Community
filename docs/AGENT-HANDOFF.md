@@ -6,6 +6,11 @@ active branches so a new task can continue without the original conversation.
 Branch names, worktree paths, build files, and test results below are a dated
 snapshot: inspect Git and the current task before acting.
 
+For **what to work on next**, read [ROADMAP.md](../ROADMAP.md). It contains stable
+item IDs, priorities, completion criteria, and a work log. Claim a scoped item when
+starting it and record the result before handing it off; follow the current user
+request when it differs from the queue.
+
 ## Choose the correct version first
 
 Both versions belong to `miikaTheCoder/Era-Life-Community`. They are separate Git
