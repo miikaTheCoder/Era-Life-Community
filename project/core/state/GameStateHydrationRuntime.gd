@@ -1029,9 +1029,11 @@ func _hydrate_pending_spatial_npc_chunk(
 	)
 	var imported_this_slice: int = 0
 
+	var initial_cursor: int = cursor
 	while cursor < rows.size():
 		if (
-			int(Time.get_ticks_msec())
+			cursor > initial_cursor
+			and int(Time.get_ticks_msec())
 			- started_at_ms
 			>= budget_ms
 		):
@@ -1118,18 +1120,11 @@ func _hydrate_pending_spatial_npc_chunk(
 
 	return cursor >= rows.size()
 func _hydrate_checkpoint_non_npc_entity_state(
-	budget_ms: int,
-	started_at_ms: int
+	_budget_ms: int,
+	_started_at_ms: int
 ) -> bool:
 	if gs == null:
 		return true
-
-	if (
-		int(Time.get_ticks_msec())
-		- started_at_ms
-		>= budget_ms
-	):
-		return false
 
 	var data_raw: Variant = (
 		active_hydration_session.get(
@@ -1700,13 +1695,15 @@ func _run_background_hydration_main_thread_quantum(
 	)
 	var serviced_items: int = 0
 
+	# The actor invariant check can itself exceed the interactive budget. Once
+	# admitted, service at least one bounded unit so repeated short slices cannot
+	# starve forever. The guard and its cost remain part of the reported duration.
 	while (
 		background_hydration_queue.size() > 0
 		and (
-			int(
-				Time.get_ticks_msec()
-			) - started_at
-		) < budget_ms
+			serviced_items == 0
+			or int(Time.get_ticks_msec()) - started_at < budget_ms
+		)
 	):
 		if (
 			strict_one_item_per_slice
@@ -2041,13 +2038,6 @@ func _run_background_hydration_item(
 					"checkpoint_spatial_hydration_tier"
 				] = spatial_tier
 
-			if (
-				int(Time.get_ticks_msec())
-				- started_at_ms
-				>= budget_ms
-			):
-				return false
-
 			return _hydrate_background_phase(
 				phase_id
 			)
@@ -2116,9 +2106,11 @@ func _hydrate_pending_npc_chunk(
 			hard_chunk_cap
 		)
 
+	var initial_cursor: int = cursor
 	while cursor < pending.size():
 		if (
-			int(Time.get_ticks_msec())
+			cursor > initial_cursor
+			and int(Time.get_ticks_msec())
 			- started_at_ms
 			>= budget_ms
 		):
@@ -2228,9 +2220,11 @@ func _hydrate_pending_partner_chunk(
 		hard_chunk_cap
 	)
 
+	var initial_cursor: int = cursor
 	while cursor < sources.size():
 		if (
-			int(Time.get_ticks_msec())
+			cursor > initial_cursor
+			and int(Time.get_ticks_msec())
 			- started_at_ms
 			>= budget_ms
 		):
@@ -2344,9 +2338,11 @@ func _hydrate_pending_consciousness_chunk(
 		hard_chunk_cap
 	)
 
+	var initial_cursor: int = cursor
 	while cursor < gs.npcs.size():
 		if (
-			int(Time.get_ticks_msec())
+			cursor > initial_cursor
+			and int(Time.get_ticks_msec())
 			- started_at_ms
 			>= budget_ms
 		):
@@ -5366,17 +5362,19 @@ func _resolve_save_slice_contracts() -> Array:
 
 	if out.is_empty():
 		out = _fallback_legacy_save_slice_contracts()
-	# Checkpoints also carry the bounded diary authority, which must resume
-	# before another age-up event is appended to the restored life.
-	if not out.any(func(row): return row is Dictionary and row.get("save_key", row.get("id", "")) == "life_diary_contract_engine_state"):
-		out.append({
-			"id": "life_diary_contract_engine_state",
-			"save_key": "life_diary_contract_engine_state",
-			"engine_id": "life_diary_contract_engine",
-			"import_method": "import_state",
-			"hydration_phase": PHASE_SYSTEM_STATE,
-			"required": false,
-		})
+	# Compact checkpoints carry bank accounts and diary history independently of
+	# the live registry. A partial registry must not silently skip either owner.
+	for owner in ["bank_engine", "life_diary_contract_engine"]:
+		var save_key: String = owner + "_state"
+		if not out.any(func(row): return row is Dictionary and row.get("save_key", row.get("id", "")) == save_key):
+			out.append({
+				"id": save_key,
+				"save_key": save_key,
+				"engine_id": owner,
+				"import_method": "import_state",
+				"hydration_phase": PHASE_SYSTEM_STATE,
+				"required": false,
+			})
 
 	return out
 

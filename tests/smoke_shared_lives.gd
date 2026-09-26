@@ -10,6 +10,9 @@ func _capture(label: String) -> void:
 	await super._capture(label)
 
 func _age_and_save() -> void:
+	if mode == "restore":
+		await super._age_and_save()
+		return
 	var state: GameState = current_scene.get("gs")
 	current_scene.call("_ensure_pending_situation_engines")
 	if not _check(await _wait_for(func(): return state.player.realm_id >= 0), "Household realm did not finish loading"):

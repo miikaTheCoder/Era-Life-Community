@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-378 scripts; 924,038 source lines.
+378 scripts; 924,041 source lines.
 
 ## Largest files
 

@@ -1,5 +1,12 @@
 extends SceneTree
 
+class CheckpointThreadProbe extends RealityProjectionContractEngine:
+	var call_threads: Array = []
+
+	func _run_projection_step(_step_id: String, _runtime, work: Dictionary) -> Dictionary:
+		call_threads.append(OS.get_thread_caller_id())
+		return {"success": true, "complete": false, "work": work}
+
 class StalledProjectionEngine extends RealityProjectionContractEngine:
 	var step_count: int = 0
 
@@ -125,6 +132,19 @@ func _run() -> void:
 	runtime.player_id = actor.id
 	runtime.npcs = [actor]
 	runtime._rebuild_npc_index()
+	# Cold resume constructs and hydrates the same live engines that UI
+	# projections access. Each projection quantum must use the main thread.
+	runtime.scenario_state["checkpoint_resume_not_birth"] = true
+	var thread_probe := CheckpointThreadProbe.new(runtime)
+	thread_probe.begin_resident_projection(runtime, {"signature": "checkpoint-thread", "interactive_surfaces_only": true})
+	thread_probe.step_resident_projection("checkpoint-thread", 1, 1)
+	var worker_started := not thread_probe.projection_step_threads.is_empty()
+	for worker in thread_probe.projection_step_threads.values():
+		worker.wait_to_finish()
+	thread_probe.projection_step_threads.clear()
+	_check(not worker_started, "Checkpoint projection launched a worker against live loading state")
+	_check(thread_probe.call_threads == [OS.get_main_thread_id()], "Checkpoint projection did not execute one main-thread quantum")
+	runtime.scenario_state.erase("checkpoint_resume_not_birth")
 
 	# Relationship cards are the projection authority. Pointer-core and full
 	# switch-deck enrichment remain visible in diagnostics but cannot hold it.

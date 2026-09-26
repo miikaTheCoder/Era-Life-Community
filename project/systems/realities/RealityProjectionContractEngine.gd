@@ -1427,6 +1427,7 @@ func begin_resident_projection(
 			"actor_id": actor_id,
 			"actor_override": actor != runtime.player,
 			"interactive_surfaces_only": interactive_surfaces_only,
+			"checkpoint_main_thread_projection": checkpoint_resume_runtime,
 			"cursor": 0,
 			"steps": [],
 			"interactive_surface_order": (
@@ -1471,6 +1472,7 @@ func begin_resident_projection(
 		"actor_id": actor_id,
 		"actor_override": actor != runtime.player,
 		"interactive_surfaces_only": interactive_surfaces_only,
+		"checkpoint_main_thread_projection": checkpoint_resume_runtime,
 		"cursor": 0,
 		"steps": projection_steps,
 		"interactive_surface_order": (
@@ -2104,7 +2106,10 @@ func step_resident_projection(
 
 
 
-		var detached_step_required: bool = true
+		# A resumed runtime is built and hydrated on the main thread. Its
+		# projections call the same live engines, so they must share that thread.
+		# step_resident_projection still limits work by steps and frame budget.
+		var detached_step_required: bool = not bool(work.get("checkpoint_main_thread_projection", false))
 
 		var active_thread_raw: Variant = (
 			projection_step_threads.get(

@@ -2,6 +2,14 @@ extends SceneTree
 
 var failed := false
 
+class BudgetExhaustingHydration extends GameStateHydrationRuntime:
+	func _capture_controlled_actor_hydration_snapshot() -> Dictionary:
+		var snapshot := super._capture_controlled_actor_hydration_snapshot()
+		# A generated actor's invariant check can exceed the live 1 ms budget.
+		# Make that cost deterministic even on fast machines with tiny fixtures.
+		OS.delay_usec(2000)
+		return snapshot
+
 func _check(ok: bool, message: String) -> void:
 	if not ok:
 		failed = true
@@ -60,7 +68,7 @@ func _run() -> void:
 	_check(resumed_state.player.affection.get(41) == 76, "Immediately resumed actor lost its relationship score")
 	var resumed_player_ref: Person = resumed_state.player
 	var resumed_player_instance_id: int = resumed_player_ref.get_instance_id()
-	var tail_hydration := GameStateHydrationRuntime.new(resumed_state)
+	var tail_hydration := BudgetExhaustingHydration.new(resumed_state)
 	resumed_state.game_state_hydration_runtime = tail_hydration
 	var tail_begin: Dictionary = tail_hydration.begin_resident_checkpoint_spatial_hydration(
 		payload,
@@ -88,7 +96,7 @@ func _run() -> void:
 	) % 101
 	var relationship_projection := RelationshipsHubContractEngine.new(resumed_state)
 	var tail_steps := 0
-	while tail_hydration.is_background_hydration_active() and tail_steps < 20000:
+	while tail_hydration.is_background_hydration_active() and tail_steps < 1000:
 		if tail_steps == 1:
 			# A gameplay/UI action between cooperative quanta becomes the next
 			# baseline. Hydration must preserve it rather than restoring save-start.
@@ -105,8 +113,9 @@ func _run() -> void:
 			)
 			_check(projected_bond == 76, "Relationship projection observed checkpoint actor drift")
 
-		var tail_slice: Dictionary = tail_hydration.run_background_hydration_slice(50)
+		var tail_slice: Dictionary = tail_hydration.run_background_hydration_slice(1)
 		_check(tail_slice.get("success", false), "Checkpoint hydration tail slice failed")
+		_check(int(tail_slice.get("serviced_items", 0)) <= 1, "Checkpoint hydration exceeded its one-item slice limit")
 		_check(not tail_slice.get("worker_thread_used", true), "Checkpoint hydration mutated live state on a worker")
 		_check(resumed_state.player == resumed_player_ref, "Checkpoint hydration replaced the controlled actor reference")
 		_check(resumed_state.player.get_instance_id() == resumed_player_instance_id, "Checkpoint hydration changed the controlled actor instance")
@@ -116,7 +125,7 @@ func _run() -> void:
 			_check(resumed_state.player.affection.get(43) == legitimate_relationship_score, "Checkpoint hydration erased a legitimate between-quantum relationship change")
 		tail_steps += 1
 
-	_check(tail_steps < 20000, "Checkpoint hydration tail did not complete")
+	_check(not tail_hydration.is_background_hydration_active(), "Checkpoint hydration starved when the actor guard exhausted its budget")
 	_check(legitimate_change_applied, "Checkpoint hydration completed before the interleaved change could be tested")
 	_check(int(tail_hydration.last_hydration_report.get("controlled_actor_last_fingerprint", 0)) != initial_fingerprint, "Controlled actor fingerprint did not advance with a legitimate main-thread change")
 	_check(tail_hydration.last_hydration_report.get("controlled_actor_invariant_preserved", false), "Controlled actor invariant was not preserved through tail hydration")
