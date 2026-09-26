@@ -1,5 +1,11 @@
 # Working in ERA-LIFE
 
+## Writing rule: no em dashes
+
+Never use em dashes (Unicode U+2014) in replies, documentation, comments, commit
+messages, or other text you write. Use commas, periods, colons, parentheses, or
+ordinary hyphens instead. Check your output and edited text before finishing.
+
 ## Choose desktop or Portrait first
 
 Read [the agent handoff](docs/AGENT-HANDOFF.md) before platform work. It identifies
