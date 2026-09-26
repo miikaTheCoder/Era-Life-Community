@@ -22,6 +22,11 @@ passes between generations. See [Shared Lives](docs/SHARED-LIVES.md).
 
 ## Working on the code
 
+Agents: start with [AGENTS.md](AGENTS.md) and the
+[desktop / Portrait handoff](docs/AGENT-HANDOFF.md) for current branches,
+checkouts, commands, and known limitations. The dated status notes below describe
+earlier milestones.
+
 Start with [architecture and ownership](docs/ARCHITECTURE.md), then use the
 [code map](docs/CODE-MAP.md) to find a script. Gameplay lives under
 `project/systems/<feature>/`, shared runtime code under `project/core/`, and
