@@ -1,5 +1,14 @@
 # Working in ERA-LIFE
 
+## Choose desktop or Portrait first
+
+Read [the agent handoff](docs/AGENT-HANDOFF.md) before platform work. It identifies
+both active branches/worktrees, shared gameplay owners, porting steps, build/test
+commands, and unresolved issues. Check `git status --short --branch` and
+`git worktree list` against that dated snapshot; do not assume `main` or an older
+mobile branch contains the current work. Preserve another task's checkout and
+uncommitted changes. Keep shared gameplay changes and platform presentation clear.
+
 ## Find the owner first
 
 - Read `docs/ARCHITECTURE.md` for responsibilities and common change paths.
