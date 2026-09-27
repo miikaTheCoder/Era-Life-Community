@@ -7,6 +7,9 @@ Packaged desktop builds belong under [this fork's Releases](https://github.com/m
 Desktop Narrative and Household entry flows are now connected to the simulation.
 See [desktop gameplay and validation](docs/DESKTOP-GAMEPLAY.md) for how to play,
 the entry/save repairs, repeatable checks, and remaining limitations.
+The desktop [Age Up input repair](docs/AGE-UP-INPUT.md) preserves held mouse and
+keyboard actions during navigation refreshes; live diary/balance refresh remains
+a separate follow-up.
 
 The `era-life-new-ui` branch introduces the dark life-journal interface. See
 [UI design and validation](docs/NEW-UI.md) for layout, implementation, and checks.

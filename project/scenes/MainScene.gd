@@ -19259,7 +19259,7 @@ func _reveal_spawn_ready_runtime_hud_buttons_if_existing(
 		button.visible = true
 		button.disabled = false
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
-		button.focus_mode = Control.FOCUS_NONE
+		button.focus_mode = Control.FOCUS_ALL
 
 	_apply_ui_nav_button_visuals()
 	_set_birth_shell_interactive_controls_visible(true)
@@ -117766,7 +117766,7 @@ func _seal_upgraded_playable_life_shell_surface(
 			if nav_button.visible
 			else Control.MOUSE_FILTER_IGNORE
 		)
-		nav_button.focus_mode = Control.FOCUS_NONE
+		nav_button.focus_mode = Control.FOCUS_ALL if nav_button.visible else Control.FOCUS_NONE
 		nav_button.z_as_relative = false
 		nav_button.z_index = 20
 
@@ -120130,7 +120130,8 @@ func _apply_ui_nav_button_visuals() -> void:
 			continue
 
 		button.disabled = false
-		button.focus_mode = Control.FOCUS_NONE
+		# Removing focus during a held press cancels the click before release.
+		button.focus_mode = Control.FOCUS_ALL
 		button.process_mode = (
 			Node.PROCESS_MODE_INHERIT
 		)
@@ -120752,7 +120753,7 @@ func _register_ui_nav_button(button: Button) -> void:
 	button.visible = true
 	button.disabled = false
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.focus_mode = Control.FOCUS_NONE
+	button.focus_mode = Control.FOCUS_ALL
 	button.process_mode = Node.PROCESS_MODE_INHERIT
 	button.z_as_relative = false
 	button.z_index = 20
@@ -120986,7 +120987,7 @@ func _bind_ui_nav_buttons() -> void:
 			if button.visible
 			else Control.MOUSE_FILTER_IGNORE
 		)
-		button.focus_mode = Control.FOCUS_NONE
+		button.focus_mode = Control.FOCUS_ALL if button.visible else Control.FOCUS_NONE
 		button.process_mode = (
 			Node.PROCESS_MODE_INHERIT
 			if button.visible
@@ -121111,7 +121112,7 @@ func _bind_ui_nav_buttons() -> void:
 			if button.visible
 			else Control.MOUSE_FILTER_IGNORE
 		)
-		button.focus_mode = Control.FOCUS_NONE
+		button.focus_mode = Control.FOCUS_ALL if button.visible else Control.FOCUS_NONE
 		button.process_mode = (
 			Node.PROCESS_MODE_INHERIT
 			if button.visible
@@ -121163,7 +121164,7 @@ func _arm_main_tab_input_contract_for_playable_shell(reason: String = "main_tab_
 		button.visible = true
 		button.disabled = false
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
-		button.focus_mode = Control.FOCUS_NONE
+		button.focus_mode = Control.FOCUS_ALL
 		button.process_mode = Node.PROCESS_MODE_INHERIT
 		button.z_as_relative = false
 		button.z_index = 20
@@ -175121,7 +175122,7 @@ func _unmask_main_tab_input_contract_after_cover_drop(reason: String = "ready_co
 		button.visible = true
 		button.disabled = false
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
-		button.focus_mode = Control.FOCUS_NONE
+		button.focus_mode = Control.FOCUS_ALL
 		button.process_mode = Node.PROCESS_MODE_INHERIT
 		button.z_as_relative = false
 		button.z_index = 20
@@ -219052,7 +219053,7 @@ func _apply_main_tab_press_frame_nav_state(
 			if button_disabled
 			else Control.MOUSE_FILTER_STOP
 		)
-		button.focus_mode = Control.FOCUS_NONE
+		button.focus_mode = Control.FOCUS_NONE if button_disabled else Control.FOCUS_ALL
 		button.process_mode = (
 			Node.PROCESS_MODE_INHERIT
 			if button_visible
