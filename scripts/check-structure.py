@@ -20,7 +20,7 @@ def main():
     uids = defaultdict(list)
     for script in scripts:
         path = ROOT / script.path
-        if script.class_name != "—":
+        if any(kind == "class_name" for _, kind, _ in script.symbols):
             classes[script.class_name].append(script.path.as_posix())
         if path.name.endswith(".gd.gd"):
             errors.append(f"{script.path}: duplicated .gd extension")

@@ -144,6 +144,22 @@ func _click_at(point: Vector2) -> void:
 		await create_timer(0.12).timeout
 	await create_timer(0.25).timeout
 
+func _age_input_snapshot(button: Button, stage: String) -> Dictionary:
+	var focus := root.gui_get_focus_owner()
+	var hover := root.gui_get_hovered_control()
+	return {
+		"stage": stage, "at_ms": Time.get_ticks_msec(),
+		"frame": Engine.get_process_frames(),
+		"focus": str(focus.get_path()) if focus != null else "none",
+		"hover": str(hover.get_path()) if hover != null else "none",
+		"left_held": Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT),
+		"button_pressed": button.button_pressed,
+		"visible": button.is_visible_in_tree(), "disabled": button.disabled,
+		"focus_mode": button.focus_mode, "rect": str(button.get_global_rect()),
+		"pointer": str(root.get_mouse_position()),
+		"transform": str(root.get_final_transform())
+	}
+
 func _click(control: Control) -> bool:
 	if not _check(is_instance_valid(control) and control.is_visible_in_tree(), "Missing or hidden control"):
 		return false
@@ -156,7 +172,24 @@ func _click(control: Control) -> bool:
 		parent = parent.get_parent()
 	await create_timer(0.2).timeout
 	print("DESKTOP CLICK: ", control.name, " rect=", control.get_global_rect())
+	# Retain the input boundary, not just the later simulation timeout. Do not
+	# retry or dispatch an action directly when a real button click is lost.
+	var trace: Array = []
+	var callbacks: Dictionary = {}
+	if control is Button and control.text.strip_edges().to_upper() == "AGE UP":
+		trace.append(_age_input_snapshot(control, "before"))
+		for signal_name in ["button_down", "button_up", "pressed", "focus_exited", "mouse_exited"]:
+			var observe := func(): trace.append(_age_input_snapshot(control, signal_name))
+			callbacks[signal_name] = observe
+			control.connect(signal_name, observe)
 	await _click_at(control.get_global_rect().get_center())
+	if not callbacks.is_empty():
+		if is_instance_valid(control):
+			trace.append(_age_input_snapshot(control, "after"))
+			for signal_name in callbacks:
+				control.disconnect(signal_name, callbacks[signal_name])
+		print("DESKTOP AGE INPUT: ", JSON.stringify(trace))
+		return _check(trace.filter(func(row): return row.stage == "pressed").size() == 1, "Age Up click did not emit exactly one pressed signal; inspect DESKTOP AGE INPUT")
 	return true
 
 func _entry_button(role: String) -> Button:

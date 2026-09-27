@@ -25,6 +25,15 @@ class NavigationScene extends "res://scenes/MainScene.gd":
 		return {}
 	func _on_button_pressed() -> void:
 		commands += 1
+	func _ensure_profile_nav_button() -> void:
+		pass
+	func _ensure_mod_nav_button() -> void:
+		pass
+	func _on_ui_nav_button_pressed(key: String) -> void:
+		if key == "activities":
+			commands += 1
+		else:
+			super._on_ui_nav_button_pressed(key)
 
 var failed := false
 
@@ -100,6 +109,45 @@ func _run() -> void:
 	Input.parse_input_event(accept)
 	await process_frame
 	_check(host.commands == 3, "Keyboard activation did not produce exactly one command")
+	# Continue can bind the navigation again while its first click is held.
+	# A temporary focus reset inside binding still cancels the release even
+	# when the final focus_mode is restored before this method returns.
+	button.release_focus()
+	var center := button.get_global_rect().get_center()
+	await _mouse(center, true)
+	host._bind_ui_nav_buttons()
+	_check(root.gui_get_focus_owner() == button and button.button_pressed, "Navigation rebinding cancelled the first held click")
+	await _mouse(center, false)
+	_check(host.commands == 4, "First click across navigation rebinding did not produce exactly one command")
+	button.grab_focus()
+	accept = InputEventAction.new()
+	accept.action = "ui_accept"
+	accept.pressed = true
+	Input.parse_input_event(accept)
+	await process_frame
+	host._bind_ui_nav_buttons()
+	_check(root.gui_get_focus_owner() == button and button.button_pressed, "Navigation rebinding cancelled keyboard input")
+	accept = InputEventAction.new()
+	accept.action = "ui_accept"
+	Input.parse_input_event(accept)
+	await process_frame
+	_check(host.commands == 5, "Keyboard activation across navigation rebinding did not produce exactly one command")
+	# Continue publishes these destinations incrementally after its first frame.
+	var destination := Button.new()
+	destination.text = "Activities"
+	destination.position = Vector2(100, 220)
+	destination.size = Vector2(200, 64)
+	host.add_child(destination)
+	host._register_ui_nav_button(destination)
+	await process_frame
+	for ready in [false, true]:
+		adapter._style_button(destination)
+		center = destination.get_global_rect().get_center()
+		await _mouse(center, true)
+		host._set_checkpoint_resume_nav_destination_ready("activities", ready)
+		_check(root.gui_get_focus_owner() == destination and destination.button_pressed, "Checkpoint destination publication cancelled a held click")
+		await _mouse(center, false)
+	_check(host.commands == 7, "Checkpoint destination clicks did not produce exactly one command each")
 	host.navigation_shown = false
 	host._apply_ui_nav_button_visuals()
 	_check(not button.visible and button.disabled and button.focus_mode == Control.FOCUS_NONE, "Hidden navigation remained interactive")

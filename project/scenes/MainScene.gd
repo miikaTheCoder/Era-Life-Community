@@ -116851,7 +116851,7 @@ func _set_checkpoint_resume_nav_destination_ready(
 		Control.MOUSE_FILTER_STOP
 	)
 	button.focus_mode = (
-		Control.FOCUS_NONE
+		Control.FOCUS_ALL
 	)
 	button.process_mode = (
 		Node.PROCESS_MODE_INHERIT
@@ -121086,7 +121086,7 @@ func _bind_ui_nav_buttons() -> void:
 				else Control.MOUSE_FILTER_IGNORE
 			)
 			ordered_button.focus_mode = (
-				Control.FOCUS_NONE
+				Control.FOCUS_ALL
 			)
 			ordered_button.process_mode = (
 				Node.PROCESS_MODE_INHERIT
