@@ -44,7 +44,7 @@ def index_project():
             line += source.count("\n", cursor, match.start())
             cursor = match.start()
             symbols.append((line, match["kind"], match["name"]))
-        class_name = next((name for _, kind, name in symbols if kind == "class_name"), "—")
+        class_name = next((name for _, kind, name in symbols if kind == "class_name"), "-")
         scripts.append(Script(path.relative_to(ROOT), class_name, len(source.splitlines()), symbols))
     return scripts
 

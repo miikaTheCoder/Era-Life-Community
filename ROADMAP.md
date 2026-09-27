@@ -55,7 +55,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Desktop verified and packaged; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
 | R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
 | R06 | Port Living Households and test it on a phone | Portrait | Queued | R05 and Portrait R04 |
-| R07 | Measured startup and lifetime performance | Desktop + Portrait | Age Up input fixed; profiling and live display open | Use stable routes from R01–R03 |
+| R07 | Measured startup and lifetime performance | Desktop + Portrait | In progress: desktop live diary/balance refresh; input fixed | Use stable routes from R01–R03 |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
 
 Record shared items' verification separately for desktop and Portrait. A
@@ -192,7 +192,7 @@ pass. A household completed three consecutive years, cold Continue, three more
 years and another cold Continue. Narrative newborn entry completed two consecutive
 years. See [input evidence](docs/AGE-UP-INPUT.md). Portrait has not received this fix.
 
-**Next:** the continued household's live diary and balance labels lagged behind
+**In progress:** live-display repair on `codex/shared-lives-desktop`. The continued household's live diary and balance labels lagged behind
 its authoritative saved state. Verify those projections update after each year
 and care payment without requiring a restart. Retain the original failed-input
 fixture and the successful cold-restore evidence when fixing presentation.

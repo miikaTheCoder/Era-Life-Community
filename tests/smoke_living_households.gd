@@ -125,6 +125,7 @@ func _visible_choice(state: GameState, contract: Dictionary, choice: String) -> 
 	if viewer.is_visible_in_tree():
 		viewer.call("_on_close_pressed")
 	await create_timer(0.5).timeout
+	await _check_live_life_display()
 
 func _verify_shared_checkpoint(payload: Dictionary, state: GameState) -> void:
 	super._verify_shared_checkpoint(payload, state)

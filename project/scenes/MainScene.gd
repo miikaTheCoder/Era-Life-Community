@@ -34190,11 +34190,18 @@ func _render_checkpoint_resume_life_diary_packet_only() -> bool:
 		)
 
 
-	var lines: Array = (
-		CheckpointSceneSupport._checkpoint_resume_saved_diary_lines_from_contract(
-			resume_contract
-		)
+	# The checkpoint paints Continue before hydration. Once its diary owner is
+	# available, subscribe to new entries and render that owner's current history.
+	var live_diary_available: bool = (
+		gs.life_diary_contract_engine != null
+		and gs.life_diary_contract_engine.has_diary_for_actor(int(gs.player.id))
 	)
+	var lines: Array = []
+	if live_diary_available:
+		_life_diary_sync_runtime_cache_from_contract(int(gs.player.id), "checkpoint_resume_live_diary")
+		lines = ValueSceneSupport._safe_array(get_meta("life_diary_render_cached_lines", []))
+	else:
+		lines = CheckpointSceneSupport._checkpoint_resume_saved_diary_lines_from_contract(resume_contract)
 
 
 
@@ -34279,7 +34286,7 @@ func _render_checkpoint_resume_life_diary_packet_only() -> bool:
 	)
 	set_meta(
 		"checkpoint_resume_diary_restored_from_immutable_contract",
-		true
+		not live_diary_available
 	)
 
 	output_label.visible = true
@@ -63642,6 +63649,18 @@ func _animate_player_stats_overlay(delta: float) -> void:
 		approval_bar.value = 0.0
 
 	if player_stats_bank_label != null:
+		# Renderer-only frames still observe committed money. The bank owns the
+		# actor mirror; a cached shell packet must not freeze its animation target.
+		if (
+			gs != null and gs.player != null
+			and not bool(gs.scenario_state.get("background_hydration_active", false))
+			and int(player_stats_overlay.get_meta("player_stats_bank_actor_id", -1)) == int(gs.player.id)
+		):
+			var live_bank_target: float = max(0.0, float(int(gs.player.bank_balance)))
+			if live_bank_target < player_stats_bank_target and not bool(player_stats_overlay.get_meta("player_stats_bank_force_animate_delta", false)):
+				player_stats_bank_display_value = live_bank_target
+			player_stats_bank_target = live_bank_target
+
 		if player_stats_bank_display_value < 0.0:
 			player_stats_bank_display_value = player_stats_bank_target
 
@@ -134296,6 +134315,8 @@ func _process(delta):
 		_drive_global_runtime_prelife_domain_frame(delta, now_ms)
 		return
 
+	_observe_resident_life_diary_engine()
+
 	if _global_runtime_kill_visible_shell_frame_lock_active(now_ms):
 		if now_ms >= int(
 			get_meta(
@@ -139805,23 +139826,23 @@ func _service_zero_frame_age_up_visible_observation() -> void:
 				"\n"
 			)
 
-		_append_formatted_life_diary_line(
-			output_label,
-			year_line
-		)
+			_append_formatted_life_diary_line(
+				output_label,
+				year_line
+			)
 
-		_append_formatted_life_diary_line(
-			output_label,
-			age_line
-		)
-
-
+			_append_formatted_life_diary_line(
+				output_label,
+				age_line
+			)
 
 
-		latest_visible_focus_line = maxi(
-			0,
-			output_label.get_paragraph_count() - 2
-		)
+
+
+			latest_visible_focus_line = maxi(
+				0,
+				output_label.get_paragraph_count() - 2
+			)
 
 		for raw_body in appended_body:
 			_append_formatted_life_diary_line(
@@ -185214,6 +185235,23 @@ func _append_world_feed_compact_entry_block(_entry: Dictionary, text: String, ac
 	var remaining: int = max(0, lines.size() - 1 - detail_count)
 	if remaining > 0:
 		_append_world_feed_colored_line("… +%d more details" % remaining, detail_color.lerp(Color(1.0, 1.0, 1.0, 1.0), 0.08), false, 13)
+func _observe_resident_life_diary_engine() -> void:
+	# Continue can attach the scene before the resident engine exists. Bind when
+	# it arrives, including during renderer-only frames, without bootstrapping it.
+	if gs == null or gs.player == null or gs.life_diary_contract_engine == null:
+		return
+	if life_diary_contract_engine == gs.life_diary_contract_engine:
+		return
+	var callback := Callable(self, "_on_life_diary_entry_committed")
+	if life_diary_contract_engine != null and life_diary_contract_engine.diary_entry_committed.is_connected(callback):
+		life_diary_contract_engine.diary_entry_committed.disconnect(callback)
+	_ensure_life_diary_contract_engine()
+	set_meta("life_diary_loaded_owner_id", -1)
+	if life_diary_contract_engine.has_diary_for_actor(int(gs.player.id)):
+		_life_diary_sync_runtime_cache_from_contract(int(gs.player.id), "resident_diary_attached")
+		if output_label != null and output_label.is_visible_in_tree() and current_panel in ["", "life"]:
+			_render_life_diary_panel()
+
 func _ensure_life_diary_contract_engine() -> LifeDiaryContractEngine:
 	if gs == null:
 		return null
@@ -185319,6 +185357,12 @@ func _on_life_diary_entry_committed(
 				"life_diary_render_signature",
 				""
 			)
+
+		# Hydration can import the saved stream after this scene subscribed.
+		# Its first live delta must seed the whole history before incremental paint.
+		_life_diary_sync_runtime_cache_from_contract(actor_id, "first_resident_diary_entry")
+		if output_label != null and output_label.is_visible_in_tree() and current_panel in ["", "life"]:
+			_render_life_diary_panel()
 
 		return
 

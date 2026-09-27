@@ -451,8 +451,38 @@ func _advance_one_year() -> bool:
 	_check(state.player.age == old_age + 1 and state.year == old_year + 1, "Age Up advanced more than one year")
 	var entries: Array = state.life_diary_contract_engine.diary_entries_for_actor(state.player_id)
 	_check(entries.any(func(row): return row is Array and row.has("Age: %d" % state.player.age)), "Completed year is missing from the authoritative diary")
+	await _check_live_life_display()
 	years_completed += 1
 	return not failed
+
+func _check_live_life_display() -> void:
+	var state: GameState = current_scene.get("gs")
+	var output: RichTextLabel = current_scene.get("output_label")
+	var bank: Label = current_scene.get("player_stats_bank_label")
+	var expected_bank: String = current_scene.call("_format_player_stats_bank_amount", int(state.player.bank_balance))
+	var expected_age := "Age: %d" % state.player.age
+	var entries: Array = state.life_diary_contract_engine.diary_entries_for_actor(state.player_id)
+	var last_lines: Array = entries.back() if not entries.is_empty() else []
+	var plain := RichTextLabel.new()
+	plain.bbcode_enabled = true
+	var expected_lines: Array[String] = []
+	for raw_line in last_lines.slice(2):
+		plain.text = str(raw_line)
+		var line := plain.get_parsed_text().strip_edges()
+		if not line.is_empty():
+			expected_lines.append(line)
+	plain.free()
+	var current := await _wait_for(func():
+		var text := output.get_parsed_text()
+		return output.is_visible_in_tree() and text.contains(expected_age) and expected_lines.all(func(line): return text.contains(line)) and bank != null and bank.text == expected_bank
+	, 5)
+	_check(current, "Live diary/balance lagged: year=%d age=%d expected_bank=%s visible_bank=%s" % [state.year, state.player.age, expected_bank, bank.text if bank != null else "missing"])
+	if not current:
+		print("DESKTOP DISPLAY EXPECTED: ", expected_lines)
+		print("DESKTOP DISPLAY STALE: ", output.get_parsed_text().strip_edges().right(2500))
+		await _capture("display-stale")
+	else:
+		print("DESKTOP DISPLAY: year=", state.year, "; age=", state.player.age, "; bank=", bank.text, "; current diary PASS")
 
 func _answer_blocking_prompt() -> bool:
 	var scenario: ScenarioPanel = current_scene.get("scenario_panel")
@@ -580,6 +610,7 @@ func _restore() -> void:
 	print("DESKTOP RESTORED: ", expected.mode, " age=", state.player.age, " year=", state.year, " diary=", entries.size(), " feed=", state.world_feed.size())
 	var output: RichTextLabel = current_scene.get("output_label")
 	_check(await _wait_for(func(): return output.get_parsed_text().contains("Age: %d" % state.player.age), 10), "Reload shows an old age in the visible diary")
+	await _check_live_life_display()
 	await _capture("life")
 	if not failed and years_per_run > 0:
 		await _age_and_save()

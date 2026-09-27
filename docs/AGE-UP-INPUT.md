@@ -80,7 +80,8 @@ but the live diary still showed the 2003 checkpoint text and the sidebar showed
 $10,000. The authoritative bank held $9,700 and the saved diary contained all seven
 years; final cold Continue restored that exact state successfully. Investigate the
 live diary and balance projections after continued gameplay. This input repair
-does not claim to resolve that separate display issue or certify an entire life.
+did not resolve that separate issue. The subsequent [live display repair](LIVE-DISPLAY.md)
+contains its cause, fix and verification. Neither check certifies an entire life.
 
 
 ## Packaged repair

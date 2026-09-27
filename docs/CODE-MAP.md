@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-374 scripts; 922,709 source lines.
+374 scripts; 922,753 source lines.
 
 ## Largest files
 
@@ -20,7 +20,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Lines | Functions |
 | --- | ---: | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | 226,732 | 3102 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | 226,776 | 3103 |
 | [GameState.gd](../project/core/state/GameState.gd) | 23,283 | 337 |
 | [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,484 | 146 |
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
@@ -120,7 +120,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [EraDataLoader.gd](../project/data/EraDataLoader.gd) | EraDataLoader | 24 |
 | [NPCFactory.gd](../project/data/NPCFactory.gd) | NPCFactory | 64 |
 | [NamesDB.gd](../project/data/NamesDB.gd) | NamesDB | 10 |
-| [TestTraits.gd](../project/data/TestTraits.gd) | — | 1 |
+| [TestTraits.gd](../project/data/TestTraits.gd) | - | 1 |
 
 ## project/integrations/ai
 
@@ -153,7 +153,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | --- | --- | ---: |
 | [AutoPatchEngine.gd](../project/integrations/updates/AutoPatchEngine.gd) | AutoPatchEngine | 2 |
 | [PatchSuggestionEngine.gd](../project/integrations/updates/PatchSuggestionEngine.gd) | PatchSuggestionEngine | 3 |
-| [ReleaseUpdateRuntimeLayer.gd](../project/integrations/updates/ReleaseUpdateRuntimeLayer.gd) | — | 20 |
+| [ReleaseUpdateRuntimeLayer.gd](../project/integrations/updates/ReleaseUpdateRuntimeLayer.gd) | - | 20 |
 
 ## project/mods
 
@@ -171,15 +171,15 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [MobileScrollGestures.gd](../project/platform/mobile/MobileScrollGestures.gd) | — | 14 |
+| [MobileScrollGestures.gd](../project/platform/mobile/MobileScrollGestures.gd) | - | 14 |
 | [MobileSupport.gd](../project/platform/mobile/MobileSupport.gd) | MobileSupport | 9 |
 
 ## project/scenes
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | — | 3102 |
-| [MobileBoot.gd](../project/scenes/MobileBoot.gd) | — | 2 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | - | 3103 |
+| [MobileBoot.gd](../project/scenes/MobileBoot.gd) | - | 2 |
 
 ## project/systems/activities
 
@@ -516,10 +516,10 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [EraBranchMark.gd](../project/ui/EraBranchMark.gd) | — | 2 |
-| [EraInterface.gd](../project/ui/EraInterface.gd) | — | 11 |
-| [EraShell.gd](../project/ui/EraShell.gd) | — | 12 |
-| [EraTheme.gd](../project/ui/EraTheme.gd) | — | 3 |
+| [EraBranchMark.gd](../project/ui/EraBranchMark.gd) | - | 2 |
+| [EraInterface.gd](../project/ui/EraInterface.gd) | - | 11 |
+| [EraShell.gd](../project/ui/EraShell.gd) | - | 12 |
+| [EraTheme.gd](../project/ui/EraTheme.gd) | - | 3 |
 
 ## project/ui/common
 
