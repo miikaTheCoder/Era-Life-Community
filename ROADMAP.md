@@ -40,8 +40,9 @@ R01 is **verified** on desktop and in Portrait preview, with evidence below.
 R04 desktop functional readiness is **verified and packaged** for local Linux
 playtesting. R05 is **verified** on desktop, with full routes and cold-Continue
 evidence in [Living Households](docs/LIVING-HOUSEHOLDS.md).
-R07's **desktop input and live-display repairs are verified**; wider profiling
-and a recorded missed-click follow-up remain open. Other items remain **unclaimed**. When starting one, replace its status with
+R07's **desktop input and live-display repairs are verified**, including two
+additional focus resets found during the first-click investigation. The original
+isolated miss remains unconfirmed; wider profiling remains open. Other items remain **unclaimed**. When starting one, replace its status with
 `In progress`, record the task/branch in the work log, and keep the change small
 enough to review.
 `Queued` means prioritized; `Proposed` means the product direction needs refinement
@@ -55,7 +56,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Desktop verified and packaged; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
 | R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
 | R06 | Port Living Households and test it on a phone | Portrait | Queued | R05 and Portrait R04 |
-| R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop display verified; profiling and click follow-up open | Use stable routes from R01–R03 |
+| R07 | Measured startup and lifetime performance | Desktop + Portrait | Focus gaps repaired; isolated first-click miss unconfirmed; profiling open | Use stable routes from R01–R03 |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
 
 Record shared items' verification separately for desktop and Portrait. A
@@ -201,10 +202,16 @@ three years, cold Continue, three more years with a $300 payment, save and anoth
 cold Continue. Current diary text and the $9,700 balance passed visible-label
 checks. See [display evidence](docs/LIVE-DISPLAY.md).
 
-**Next:** retain the first fresh-Continue attempt's missed Age Up click as a
-separate input follow-up. No simulation command started; the instrumented repeat
-passed. The prior input reproduction, intermediate display failure and successful
-cold restores remain available. Portrait still needs both desktop repairs ported.
+**First-click investigation, 2026-09-27:** desktop `c10ac54`. Two remaining focus
+resets in navigation rebinding and Continue destination publication were reproduced in focused tests
+and repaired. All 23 desktop regressions pass. The graphical harness now records
+button activation, focus and geometry and fails immediately on a lost activation.
+The original 2003 checkpoint accepted its first click before the fix as well as
+after it, so the historical isolated miss remains **unconfirmed**, not closed.
+See [follow-up evidence](docs/AGE-UP-INPUT.md#first-click-investigation-and-remaining-focus-resets).
+
+**Next:** retain the original failure and capture the new input trace if it recurs.
+Portrait still needs the desktop input and display repairs ported.
 Profile cold startup, entry into a life, repeated age-ups, and a longer session
 before choosing the next bottleneck. Preserve the earlier under-10-second creation
 menu goal as a target, not an achieved result; older phone measurements do not
@@ -250,6 +257,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-27 | R07 | Push and continue task, desktop `28a4030` | Verified the bounded desktop input repair after pushing both development branches. UI focus removal cancelled held mouse/keyboard input; visible navigation retains focus. All 22 regressions pass; Household 3 years + cold Continue + 3 years + cold Continue and Narrative 2 years pass. Clean Linux package and packaged input regression verified. Next: live diary/balance refresh during continued play, then broader profiling. See [R07 evidence](docs/AGE-UP-INPUT.md). |
 
 | 2026-09-27 | R07 | Live display task, desktop `6d0deea` | Verified diary subscription after late engine attachment, current history after returning to Life, and live bank display. All 23 regressions pass; existing-save and fresh 3 + cold Continue + 3 + cold Continue checks preserve current visible diary, $9,700 and three care decisions. Clean Linux package and packaged display regression passed. One missed initial Age Up click passed on repeat and remains documented. See [display evidence](docs/LIVE-DISPLAY.md). Next: Portrait readiness, with wider R07 profiling and the click follow-up open. |
+
+| 2026-09-27 | R07 | First-click investigation, desktop `c10ac54` | Reproduced and repaired focus loss during navigation rebinding and Continue destination publication; focused tests failed before the fix and all 23 regressions pass afterward. Added graphical click traces and exact-one-activation checks. Cold Continue from the original 2003 save passed three years and care choices, another cold Continue/year/save, and final exact restore at 2007 with eight diary years and $9,700. The original isolated miss also passed before the fix, so its cause remains unconfirmed. Next: retain that record for a matching trace if it recurs; wider profiling and Portrait ports remain open. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

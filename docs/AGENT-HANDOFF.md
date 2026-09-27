@@ -18,12 +18,14 @@ branches/worktrees, not two modes that can be selected by copying one config fil
 
 | Target | Shared Lives branch | Latest gameplay commit in this snapshot | Local checkout on this host |
 | --- | --- | --- | --- |
-| Desktop | `codex/shared-lives-desktop` | `6d0deea` (live diary/balance; includes input repair, R05 and desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| Desktop | `codex/shared-lives-desktop` | `c10ac54` (Continue focus follow-up; includes live display, R05 and desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
 | EraLife Portrait | `codex/shared-lives-portrait` | `74e8b07` (shared R01 port: `e538708`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
 Shared Lives, R01, desktop R04 and desktop R05 are pushed to the corresponding
-GitHub development branches. Both desktop R07 repairs are also pushed; the live-display repair is `6d0deea`. R04, R05 and the R07 repairs have local Linux packages; Portrait R01
-has not been repackaged. Neither state means a branch is
+GitHub development branches. Desktop R07 input and display repairs are also pushed;
+the latest focus follow-up is `c10ac54`. R04, R05 and the earlier R07 repairs have
+local Linux packages. The latest package is `6d0deea` and excludes the new focus
+follow-up; Portrait R01 has not been repackaged. Neither state means a branch is
 merged into `main` or published as a release. Older starting points include `era-life-new-ui`
 (desktop, `a3799d2`) and `codex/mobile-startup-performance` (Portrait, `7673961`).
 `mobile` and `codex/mobile-portrait` are older mobile work. Do not choose `main`
@@ -224,8 +226,12 @@ Open issues to retain in future handoffs:
   regressions pass, as do visible-label checks after years, care choices and cold
   Continue. See [display evidence](LIVE-DISPLAY.md). Portrait has not received it.
 - One fresh-Continue test missed its first Age Up click without starting a command.
-  The instrumented repeat passed three years and all care responses. Keep this
-  isolated failure for input follow-up; it is not a passing run.
+  The original 2003 checkpoint passed a traced repeat even before the follow-up
+  fix. Two other focus resets in navigation rebinding and Continue destination
+  publication were reproduced and repaired; all 23 desktop regressions pass.
+  The smoke harness now retains click signals, focus and geometry. Keep the
+  original miss unconfirmed until a matching live trace identifies its cause.
+  See [first-click investigation](AGE-UP-INPUT.md#first-click-investigation-and-remaining-focus-resets).
 - `snapshot_not_found` diagnostics and shutdown resource warnings remain.
 - Native Windows/macOS checks and complete birth-to-death playthroughs are not
   established by the Linux/Portrait checks above.
@@ -247,6 +253,10 @@ consecutive-year graphical checks and the packaged input regression. See
 `6d0deea`, with all 23 regressions and the fresh Household 3 + Continue + 3 +
 Continue route passing. The visible diary and $9,700 balance match the saved
 state. See [live display](LIVE-DISPLAY.md) for evidence and the separate missed click.
+The subsequent focus follow-up `c10ac54` passes all 23 regressions and repeated
+cold Continue with four more Household years, care choices and exact final restore.
+It preserves focus during rebinding and destination publication. The original
+one-off miss did not recur before or after the fix and remains unconfirmed.
 The next platform step is R06 after Portrait readiness; no R05 gameplay was
 copied to the Portrait checkout in this task.
 

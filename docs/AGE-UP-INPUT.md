@@ -95,3 +95,65 @@ local desktop playtesting; it does not publish a release or update Portrait.
 
 The newer [live-display package](LIVE-DISPLAY.md) at `6d0deea` includes this
 input repair and supersedes this archive for current desktop playtesting.
+
+## First-click investigation and remaining focus resets
+
+Desktop source: `c10ac54`, 2026-09-27.
+
+The live-display check retained one missed first Age Up click after cold Continue
+at age 38/year 2003. No simulation command started. Its original log lacks button
+signals, so it cannot identify the input failure's cause.
+
+This follow-up found two additional, reproducible focus defects:
+
+- `_bind_ui_nav_buttons()` temporarily set ordered buttons to `FOCUS_NONE` before
+  restoring `FOCUS_ALL`. The temporary change already cancelled a held press.
+- `_set_checkpoint_resume_nav_destination_ready()` removed focus while Continue
+  incrementally published Activities and the other destination tabs.
+
+Both paths now retain focus for visible, enabled navigation. The extended
+`test_navigation_input.gd` holds the first mouse click and a keyboard activation
+across real navigation rebinding, and holds destination clicks across publication
+with and without a ready projection. It also retains the prior repeated-click
+and hidden-navigation checks. These checks failed before the change in
+`build/tests/headless-7xmbelu9` and passed after it in
+`build/tests/headless-mb7x3z6s`.
+The full suite passed all 23 regressions in `build/tests/headless-gh184pc6`.
+Structure, regenerated code-map and whitespace checks also passed.
+
+The desktop smoke harness now records `DESKTOP AGE INPUT`: press/release signals,
+focus loss, hover exit, held state, control geometry and viewport transform. It
+requires exactly one button activation and reports a lost click at the input
+boundary, without retrying or directly invoking the gameplay action.
+
+The original 2003 checkpoint was copied into an isolated fixture, with its later
+2006 checkpoint moved outside the fixture's save directory. The unmodified game
+accepted its first click at the original logical button rectangle, advancing to
+2004 and preserving the paid care choice. That baseline trace is retained in
+`build/r07-first-click/baseline-original/restore.log`. This means the historical
+miss remains **unconfirmed**, even though the two focused defects are repaired.
+Do not describe the historical miss as a confirmed reproduction of either defect.
+
+After the fix, `build/r07-first-click/verified-cycle/restore-three.log` passed cold
+Continue from 2003, three consecutive years, three care responses and saving at
+age 41/year 2006. Every click emitted one activation; the visible diary and $9,700
+bank balance matched the authoritative state. The resulting screenshot was
+inspected. A second cold process (`restore-next.log`) accepted its first click,
+advanced to 2007 and saved eight diary years with the same three care decisions.
+A final cold process (`restore-final.log`) restored that exact state, including
+the $9,700 balance, history, cast and current visible diary.
+The ordinary Narrative newborn route passed two consecutive years and saving at
+age two/year 1917 in `build/r07-first-click/narrative-two-years`; each click emitted
+one activation and the visible diary/balance checks passed.
+Fixture-preparation failures and an early diagnostic with a missing
+screenshot directory are retained separately and are not certification runs.
+
+The structure checker also now identifies declared classes from parsed symbols,
+instead of mistaking the code map's unnamed-script placeholder for a duplicate
+class. This corrects the validation mismatch introduced by the prior placeholder
+format change. No gameplay or save format changes are involved.
+
+These repairs are desktop-only. The latest packaged Linux build remains
+`6d0deea` and does not include this follow-up. A future occurrence of the original
+miss needs the new input trace before assigning a cause or closing that record.
+R07's broader profiling and lifetime checks remain open.
