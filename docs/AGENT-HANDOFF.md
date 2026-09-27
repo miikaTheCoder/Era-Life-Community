@@ -18,11 +18,12 @@ branches/worktrees, not two modes that can be selected by copying one config fil
 
 | Target | Shared Lives branch | Latest gameplay commit in this snapshot | Local checkout on this host |
 | --- | --- | --- | --- |
-| Desktop | `codex/shared-lives-desktop` | `c02f528` (R05; includes desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| Desktop | `codex/shared-lives-desktop` | `28a4030` (Age Up input; includes R05 and desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
 | EraLife Portrait | `codex/shared-lives-portrait` | `74e8b07` (shared R01 port: `e538708`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
 Shared Lives, R01, desktop R04 and desktop R05 are pushed to the corresponding
-GitHub development branches. Desktop R04 and R05 have verified local Linux packages; Portrait R01 has not been repackaged. Neither state means a branch is
+GitHub development branches. The desktop R07 input repair is also committed and
+pushed; R04, R05 and the input repair have verified local Linux packages; Portrait R01 has not been repackaged. Neither state means a branch is
 merged into `main` or published as a release. Older starting points include `era-life-new-ui`
 (desktop, `a3799d2`) and `codex/mobile-startup-performance` (Portrait, `7673961`).
 `mobile` and `codex/mobile-portrait` are older mobile work. Do not choose `main`
@@ -237,6 +238,9 @@ Desktop R04 readiness is verified and packaged at `8ccfd37`; see
 a later-life memory, five graphical years with saves between processes and a
 final cold Continue. The clean Linux export and packaged content hashes passed.
 See [Living Households](LIVING-HOUSEHOLDS.md) for retained fixtures and limits.
+The subsequent desktop input repair at `28a4030` passes all 22 regressions,
+consecutive-year graphical checks and the packaged input regression. See
+[Age Up input](AGE-UP-INPUT.md), including the remaining live-display issue.
 The next platform step is R06 after Portrait readiness; no R05 gameplay was
 copied to the Portrait checkout in this task.
 

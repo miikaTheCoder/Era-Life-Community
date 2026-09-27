@@ -81,3 +81,13 @@ $10,000. The authoritative bank held $9,700 and the saved diary contained all se
 years; final cold Continue restored that exact state successfully. Investigate the
 live diary and balance projections after continued gameplay. This input repair
 does not claim to resolve that separate display issue or certify an entire life.
+
+
+## Packaged repair
+
+The local Linux archive `build/r07/EraLife-linux-x86_64.tar.gz` was exported with
+Godot 4.4.1 from clean commit `28a4030`. The archive checksum passed, and the
+extracted executable passed `test_navigation_input.gd` against its packaged
+MainScene. The source stamp and result are retained in `build/r07/package/BUILD_INFO.txt`
+and `build/r07/package-navigation.log`. This replaces the older R05 archive for
+local desktop playtesting; it does not publish a release or update Portrait.
