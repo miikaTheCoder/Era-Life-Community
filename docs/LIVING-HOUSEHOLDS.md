@@ -92,7 +92,10 @@ not a measurement of story frequency in arbitrary generated families.
 The initial two-year graphical session stalled at its second Age Up. Its log and
 screenshot are retained with the evidence; this is not a passed multi-year session.
 The cold-cycle harness saves and restarts between individual years. Longer
-uninterrupted sessions remain a separate investigation under R07.
+uninterrupted sessions remain a separate investigation under R07. The specific
+second-click input failure was subsequently reproduced and repaired in the
+[Age Up input follow-up](AGE-UP-INPUT.md); the original R05 evidence below is
+unchanged.
 
 Verified 2026-09-27: all 21 regressions passed in
 `build/tests/headless-c2aa11j9`. This includes all 30 authored responses and the
