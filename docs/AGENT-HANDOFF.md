@@ -18,12 +18,12 @@ branches/worktrees, not two modes that can be selected by copying one config fil
 
 | Target | Shared Lives branch | Latest gameplay commit in this snapshot | Local checkout on this host |
 | --- | --- | --- | --- |
-| Desktop | `codex/shared-lives-desktop` | `28a4030` (Age Up input; includes R05 and desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| Desktop | `codex/shared-lives-desktop` | `6d0deea` (live diary/balance; includes input repair, R05 and desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
 | EraLife Portrait | `codex/shared-lives-portrait` | `74e8b07` (shared R01 port: `e538708`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
 Shared Lives, R01, desktop R04 and desktop R05 are pushed to the corresponding
-GitHub development branches. The desktop R07 input repair is also committed and
-pushed; R04, R05 and the input repair have verified local Linux packages; Portrait R01 has not been repackaged. Neither state means a branch is
+GitHub development branches. Both desktop R07 repairs are also pushed; the live-display repair is `6d0deea`. R04, R05 and the R07 repairs have local Linux packages; Portrait R01
+has not been repackaged. Neither state means a branch is
 merged into `main` or published as a release. Older starting points include `era-life-new-ui`
 (desktop, `a3799d2`) and `codex/mobile-startup-performance` (Portrait, `7673961`).
 `mobile` and `codex/mobile-portrait` are older mobile work. Do not choose `main`
@@ -220,9 +220,12 @@ Open issues to retain in future handoffs:
   longer cancel held input. R07 passed three consecutive years before and after
   cold Continue, plus a two-year Narrative route. See [input evidence](AGE-UP-INPUT.md).
   Portrait has not received this input repair. Broader lifetime checks remain open.
-- Continued gameplay can leave the live diary and balance labels showing older
-  checkpoint values. Saved data and cold Continue were correct. Investigate the
-  live projections using the R07 fixture; do not treat this as verified rendering.
+- The desktop live diary/balance repair is verified at `6d0deea`: all 23
+  regressions pass, as do visible-label checks after years, care choices and cold
+  Continue. See [display evidence](LIVE-DISPLAY.md). Portrait has not received it.
+- One fresh-Continue test missed its first Age Up click without starting a command.
+  The instrumented repeat passed three years and all care responses. Keep this
+  isolated failure for input follow-up; it is not a passing run.
 - `snapshot_not_found` diagnostics and shutdown resource warnings remain.
 - Native Windows/macOS checks and complete birth-to-death playthroughs are not
   established by the Linux/Portrait checks above.
@@ -240,7 +243,10 @@ final cold Continue. The clean Linux export and packaged content hashes passed.
 See [Living Households](LIVING-HOUSEHOLDS.md) for retained fixtures and limits.
 The subsequent desktop input repair at `28a4030` passes all 22 regressions,
 consecutive-year graphical checks and the packaged input regression. See
-[Age Up input](AGE-UP-INPUT.md), including the remaining live-display issue.
+[Age Up input](AGE-UP-INPUT.md). Its display follow-up is now verified at
+`6d0deea`, with all 23 regressions and the fresh Household 3 + Continue + 3 +
+Continue route passing. The visible diary and $9,700 balance match the saved
+state. See [live display](LIVE-DISPLAY.md) for evidence and the separate missed click.
 The next platform step is R06 after Portrait readiness; no R05 gameplay was
 copied to the Portrait checkout in this task.
 
