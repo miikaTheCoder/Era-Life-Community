@@ -23,7 +23,8 @@ support them. Proposed content below can change with playtesting and user input.
 | --- | --- |
 | Life Stories & Legacies | Six implemented stories with recurring cast, delayed consequences, and saved history |
 | Shared Lives | Two more stories, 16 chapters, 46 responses, real business reserves, ownership, and succession; implemented on desktop and ported to Portrait |
-| Desktop validation | 19 headless regressions and the focused funding → Assets → age → save flow passed; Linux build exported |
+| Living Households | Desktop first slice verified: recurring care/work arc plus inherited memory, 11 chapters and 30 responses; Portrait port open |
+| Desktop validation | 21 regressions passed; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 Linux package verified |
 | Portrait validation | 23 headless regressions plus final focused checks passed; content flow inspected at 420×900; signed APK built, not retested on the Honor phone |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
 | Release status | Current work is on the Shared Lives branches. A push or an APK export does not mean it is merged, published, or fully device-verified |
@@ -37,7 +38,8 @@ smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 
 R01 is **verified** on desktop and in Portrait preview, with evidence below.
 R04 desktop functional readiness is **verified and packaged** for local Linux
-playtesting. R05 is **in progress** in this task on `codex/shared-lives-desktop`.
+playtesting. R05 is **verified** on desktop, with full routes and cold-Continue
+evidence in [Living Households](docs/LIVING-HOUSEHOLDS.md).
 Other items remain **unclaimed**. When starting one, replace its status with
 `In progress`, record the task/branch in the work log, and keep the change small
 enough to review.
@@ -50,8 +52,8 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R02 | Character / Back / Explore navigation | Portrait | Queued | None; can be an independent fix |
 | R03 | God Mode → Begin Life phone crash | Portrait | Queued; device access needed for final verification | None; keep separate from R02 |
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Desktop verified and packaged; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
-| R05 | Living Households: one complete family arc | Desktop | In progress: care, work and family arc | Desktop R04 release-ready checks |
-| R06 | Port Living Households and test it on a phone | Portrait | Proposed | R05 and Portrait R04 |
+| R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
+| R06 | Port Living Households and test it on a phone | Portrait | Queued | R05 and Portrait R04 |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Proposed | Use stable routes from R01–R03 |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
 
@@ -138,11 +140,11 @@ only when their applicable checks pass; mark `Released` only after actual
 publication. Follow [RELEASING.md](docs/RELEASING.md) and the current publication
 request. A roadmap entry by itself does not publish a build or merge a branch.
 
-## Next: Living Households (proposed)
+## Living Households: desktop verified, Portrait next
 
 ### R05: Make the people at home affect the life you are building
 
-**Proposed first slice:** one recurring family arc about dividing time between
+**Implemented first slice:** one recurring family arc about dividing time between
 work, a relationship, and caring for a relative. Existing household members should
 initiate requests or disagree according to their relationships and earlier choices.
 The company can provide context when present; players without a business must
@@ -156,6 +158,15 @@ or deceased participants have explicit behavior, and a later life can encounter
 the family legacy. Verify complete routes and cold restore before calling the
 slice complete. Extend the current narrative/simulation owners and data format;
 keep household processing bounded rather than scanning the world for each choice.
+
+**Verified 2026-09-27:** *The Time We Owe* and *A Place at the Table*,
+11 chapters and 30 responses. All 21 desktop regressions passed, including three
+complete routes, later-life memory, payments, free alternatives, cast loss and
+binary hydration. A full-catalog graphical run discovered the arc in 2004,
+continued it in 2005 and passed repeated cold Continue with exact saved state.
+See [R05 evidence and limitations](docs/LIVING-HOUSEHOLDS.md). The initial second
+consecutive Age Up stalled; uninterrupted multi-year sessions remain R07 work.
+Portrait is not included in this verification.
 
 Deeper content is the aim, not a fixed chapter quota. Use playtesting to decide
 whether the next addition should be caregiving, sibling conflict, a partnership,
@@ -172,6 +183,7 @@ and the exact APK on a phone. Record desktop-preview and device results separate
 
 ### R07: Improve performance against reproducible measurements
 
+Retain the R05 second-Age-Up stall as an additional reproduction fixture.
 Profile cold startup, entry into a life, repeated age-ups, and a longer session
 before choosing the next bottleneck. Preserve the earlier under-10-second creation
 menu goal as a target, not an achieved result; older phone measurements do not
@@ -212,7 +224,7 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 
 | 2026-09-27 | R04 | Desktop readiness and Living Households task, `codex/shared-lives-desktop` | Desktop functional readiness complete at `8ccfd37`: 20 regressions, full-catalog founder/heir routes, declined/failed payments, graphical discovery and repeated cold Continue, clean Linux package and content hashes. See [readiness evidence](docs/SHARED-LIVES-READINESS.md). Portrait and public publication remain open. |
 
-| 2026-09-27 | R05 | Living Households task, `codex/shared-lives-desktop` | Claimed after desktop R04: one recurring care/work arc with an older parent and partner or sibling, relationship-driven disagreement, personal transfers, free alternatives, and a later family legacy. |
+| 2026-09-27 | R05 | Living Households task, `codex/shared-lives-desktop` | Verified desktop first slice: 11 chapters, 30 responses, three complete routes and a later life; all 21 regressions pass. Full-catalog graphical discovery, paid choice, next-year follow-up and repeated cold Continue preserve cast, money and history. See [R05 evidence](docs/LIVING-HOUSEHOLDS.md). Next: R06 after Portrait readiness; investigate uninterrupted second Age Up under R07. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

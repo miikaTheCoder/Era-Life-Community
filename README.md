@@ -20,6 +20,11 @@ They appear in Pending Situations during ordinary lives. See
 46 responses, a recurring ensemble, real company reserves, and ownership that
 passes between generations. See [Shared Lives](docs/SHARED-LIVES.md).
 
+**Living Households** adds a recurring family care story and an inherited memory
+on the desktop branch: 11 chapters and 30 responses about work, practical help,
+relationships and boundaries. See [Living Households](docs/LIVING-HOUSEHOLDS.md).
+The Portrait port remains separate work under R06.
+
 The Shared Lives branches also include repairs for cold Continue, business bank
 restoration, and Portrait's saved-life button. See [cold-restore validation](docs/COLD-RESTORE.md)
 for tested source commits, preserved fixtures, and device limitations.

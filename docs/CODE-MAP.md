@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-374 scripts; 922,673 source lines.
+374 scripts; 922,708 source lines.
 
 ## Largest files
 
@@ -340,7 +340,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [EmergentNPCStoryEngine.gd](../project/systems/narrative/EmergentNPCStoryEngine.gd) | EmergentNPCStoryEngine | 5 |
 | [GoalPlanningEngine.gd](../project/systems/narrative/GoalPlanningEngine.gd) | GoalPlanningEngine | 7 |
 | [LifeDiaryContractEngine.gd](../project/systems/narrative/LifeDiaryContractEngine.gd) | LifeDiaryContractEngine | 72 |
-| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 27 |
+| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 28 |
 | [NarrativeEngine.gd](../project/systems/narrative/NarrativeEngine.gd) | NarrativeEngine | 35 |
 | [NarrativeGovernor.gd](../project/systems/narrative/NarrativeGovernor.gd) | NarrativeGovernor | 4 |
 | [OpportunityEngine.gd](../project/systems/narrative/OpportunityEngine.gd) | OpportunityEngine | 4 |

@@ -1,0 +1,782 @@
+{
+  "schema": "eralife.life_stories",
+  "version": 1,
+  "stories": [
+    {
+      "id": "household_balance",
+      "series": "Living Households",
+      "title": "The Time We Owe",
+      "category": "family",
+      "cast": "household_care",
+      "eligibility": {
+        "min_age": 25,
+        "max_age": 75
+      },
+      "start": "request",
+      "death_node": "loss",
+      "era_context": {
+        "Ancient Era": "Harvests, household labor and the journeys between homes leave little spare time.",
+        "Medieval Era": "Seasonal work and family duties share the same uncertain calendar.",
+        "Industrial Era": "Shifts and travel make a promise of time difficult to keep.",
+        "Modern Era": "Work schedules and everyday care compete for the same hours.",
+        "Future Era": "New tools make some tasks easier, but attention still has to come from someone."
+      },
+      "nodes": {
+        "request": {
+          "title": "The spare key",
+          "text": "{supporter} asks you to sit down before making another promise. {relative} wants to keep living on their own terms, but errands and everyday tasks are becoming harder. Someone has to make room. {supporter} can help, but will not quietly become the person who does everything.",
+          "deadline": 2,
+          "default": "limited",
+          "choices": [
+            {
+              "id": "share",
+              "label": "Agree on a rota, including my own time",
+              "result": "I made a rota with {supporter} and asked {relative} which help was welcome. Making room at home cost me some attention at work.",
+              "stats": {
+                "job_performance": -3,
+                "mental_health": -2
+              },
+              "legacy": "care_shared",
+              "next": "review",
+              "delay": 1,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 5
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 6
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 3
+                }
+              ]
+            },
+            {
+              "id": "fund",
+              "label": "Send money so {supporter} can arrange regular help",
+              "result": "I sent {supporter} money for the help we agreed with {relative}. Paying made some room, but it did not answer every question about who would show up.",
+              "transfer": -300,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 3
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 4
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 2
+              },
+              "legacy": "care_funded",
+              "next": "review",
+              "delay": 1
+            },
+            {
+              "id": "limited",
+              "label": "Name the small part I can reliably do",
+              "result": "I told {supporter} what I could reliably offer {relative}. It was less than they hoped for, but I did not promise time I did not have.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 1
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -3
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "care_with_boundaries",
+              "next": "review",
+              "delay": 1
+            }
+          ]
+        },
+        "review": {
+          "title": "The work nobody counted",
+          "text": "A year later, {supporter} brings the plan back to you. Calls, errands and last-minute changes have filled the gaps between the named tasks. They want the invisible work counted too. The trust between you will shape whether they agree to another shared plan.",
+          "deadline": 2,
+          "default": "listen",
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Listen first, then divide the unseen tasks",
+              "result": "I listened while {supporter} named the work I had missed. We rewrote the plan around what each of us could actually do.",
+              "next_untrusted": "refusal",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 6
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 2
+              },
+              "next": "balance",
+              "delay": 1
+            },
+            {
+              "id": "promise",
+              "label": "Promise more while keeping my work commitments",
+              "result": "I promised {supporter} I would somehow manage both. My work kept moving, but another promise did little to make the hours appear.",
+              "next_untrusted": "refusal",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -10
+                }
+              ],
+              "stats": {
+                "mental_health": -5,
+                "job_performance": 4
+              },
+              "legacy": "care_overpromised",
+              "next": "balance",
+              "delay": 1
+            },
+            {
+              "id": "cover",
+              "label": "Pay {supporter} to arrange a reliable break",
+              "result": "I paid {supporter} to arrange a break from the tasks that kept landing on them. I knew money would not erase earlier disagreements.",
+              "next_untrusted": "refusal",
+              "transfer": -400,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 4
+                }
+              ],
+              "stats": {
+                "job_performance": 2
+              },
+              "next": "balance",
+              "delay": 1
+            }
+          ]
+        },
+        "balance": {
+          "title": "Two places at once",
+          "text": "{supporter} is willing to keep sharing the work. Now a demanding stretch outside the home coincides with more support for {relative}. The old timetable cannot simply absorb it. {supporter} asks you to choose what can change, rather than assume they will fill the gap.",
+          "deadline": 2,
+          "default": "step_back",
+          "choices": [
+            {
+              "id": "together",
+              "label": "Protect time at home and accept slower work progress",
+              "result": "I protected time for {relative} and shared it with {supporter}. Work progressed more slowly, but the arrangement felt less like an emergency.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 4
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 5
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 3
+                }
+              ],
+              "stats": {
+                "job_performance": -4,
+                "mental_health": 4
+              },
+              "next": "voice",
+              "delay": 2
+            },
+            {
+              "id": "respite",
+              "label": "Fund a break that both of us can use",
+              "result": "I sent {supporter} money for agreed cover. We both took a break instead of treating rest as something the other person had to earn.",
+              "transfer": -450,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 5
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 5
+              },
+              "next": "voice",
+              "delay": 2
+            },
+            {
+              "id": "step_back",
+              "label": "Agree to a smaller role and a clear handover",
+              "result": "I reduced my role openly. {supporter} and {relative} were disappointed, but we could plan around a clear limit instead of a sudden absence.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -4
+                }
+              ],
+              "stats": {
+                "mental_health": 5
+              },
+              "next": "boundaries",
+              "delay": 2
+            }
+          ]
+        },
+        "refusal": {
+          "title": "An answer I did not choose",
+          "text": "{supporter} refuses the rota you proposed. The recent promises and the strain between you have left too little trust. They name the hours they can offer and say the remaining gap cannot automatically become their responsibility.",
+          "deadline": 2,
+          "default": "accept_limits",
+          "choices": [
+            {
+              "id": "repair",
+              "label": "Acknowledge the broken promises and change my own schedule",
+              "result": "I acknowledged why {supporter} had refused. I changed my own schedule before asking them to trust another promise.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 3
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 12
+                }
+              ],
+              "stats": {
+                "mental_health": -2,
+                "job_performance": -4
+              },
+              "legacy": "care_repaired",
+              "next": "voice",
+              "delay": 2
+            },
+            {
+              "id": "arrange",
+              "label": "Pay for agreed support without demanding forgiveness",
+              "result": "I paid {supporter} to arrange practical cover for {relative}. We kept the payment separate from the slower work of rebuilding trust.",
+              "transfer": -600,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 3
+                }
+              ],
+              "stats": {
+                "mental_health": 1
+              },
+              "legacy": "care_funded",
+              "next": "voice",
+              "delay": 2
+            },
+            {
+              "id": "accept_limits",
+              "label": "Respect their limit and be honest about mine",
+              "result": "I accepted the limit {supporter} had set and named my own. We stopped making a private disagreement into an endless promise to {relative}.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "care_with_boundaries",
+              "next": "boundaries",
+              "delay": 2
+            }
+          ]
+        },
+        "voice": {
+          "title": "A say in their own life",
+          "text": "{relative} asks to be part of the decisions, not just the reason for them. Some help is useful; some feels like losing the right to choose an ordinary day. {supporter} brings that request to the table even though another change will make planning harder.",
+          "deadline": 2,
+          "default": "ask",
+          "choices": [
+            {
+              "id": "ask",
+              "label": "Let {relative} choose what help to accept",
+              "result": "I asked {relative} which parts of our plan they wanted. {supporter} and I rebuilt the routine around the answer instead of around our convenience.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 10
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 2
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 4
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "next": "settled",
+              "delay": 2
+            },
+            {
+              "id": "adapt_home",
+              "label": "Fund practical changes chosen by {relative}",
+              "result": "I sent {supporter} money for practical changes {relative} had chosen. It was their home and their day, even when our help made both easier.",
+              "transfer": -500,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 6
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 3
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 3
+                }
+              ],
+              "next": "settled",
+              "delay": 2
+            },
+            {
+              "id": "take_over",
+              "label": "Insist on the simpler timetable I already arranged",
+              "result": "I insisted that {relative} follow the simpler timetable. It protected my other commitments, but {supporter} saw how little room I had left for their wishes.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -10
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -4
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": -2
+                }
+              ],
+              "stats": {
+                "mental_health": -3,
+                "job_performance": 3
+              },
+              "legacy": "care_without_a_voice",
+              "next": "repair_voice",
+              "delay": 2
+            }
+          ]
+        },
+        "boundaries": {
+          "title": "What a smaller promise can hold",
+          "text": "The smaller arrangement has lasted long enough to show its shape. Some gaps remain. {relative} and {supporter} need to know whether your limited role is a dependable part of the plan or a polite way of disappearing.",
+          "deadline": 2,
+          "default": "clear",
+          "choices": [
+            {
+              "id": "clear",
+              "label": "Keep a regular check-in and make the limit explicit",
+              "result": "I kept a small, regular place in the lives of {relative} and {supporter}. It was not everything they once wanted, but it was something they could rely on.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 4
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 4
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 5
+              },
+              "legacy": "care_with_boundaries",
+              "outcome": "A smaller promise kept"
+            },
+            {
+              "id": "drift",
+              "label": "Let separate routines grow without another conversation",
+              "result": "I stopped revisiting the arrangement with {supporter}. The distance from {relative} grew through ordinary missed moments, rather than one final argument.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -8
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -6
+                }
+              ],
+              "stats": {
+                "mental_health": -2
+              },
+              "legacy": "care_left_unspoken",
+              "outcome": "Separate routines"
+            }
+          ]
+        },
+        "repair_voice": {
+          "title": "The plan they refused",
+          "text": "{relative} has stopped following parts of the timetable. {supporter} will not enforce it for you. They both ask whether your help can leave room for a life that is still {relative}'s own.",
+          "deadline": 2,
+          "default": "return_voice",
+          "choices": [
+            {
+              "id": "return_voice",
+              "label": "Return the decisions and rebuild the plan together",
+              "result": "I returned decisions to {relative}. {supporter} helped us rebuild a plan around consent, including the possibility that some help would be refused.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 12
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 5
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 3
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "care_repaired",
+              "outcome": "Trust rebuilt"
+            },
+            {
+              "id": "withdraw",
+              "label": "Step back instead of trying to control the arrangement",
+              "result": "I stepped back from running the plan. {relative} kept more say, but the distance between us and the extra strain on {supporter} did not disappear.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -6
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -4
+                }
+              ],
+              "stats": {
+                "mental_health": 4
+              },
+              "legacy": "care_at_a_distance",
+              "outcome": "Help from a distance"
+            }
+          ]
+        },
+        "settled": {
+          "title": "Room for more than duty",
+          "text": "Years of revisions have left you, {relative} and {supporter} with something more durable than the first rota. It still takes effort. The next decision is whether to keep every commitment, lighten the routine, or record what helped so someone else will not have to begin from nothing.",
+          "deadline": 2,
+          "default": "lighter",
+          "choices": [
+            {
+              "id": "renew",
+              "label": "Renew the shared routine and protect its time",
+              "result": "I renewed the routine with {supporter} and {relative}. I kept some time away from work available for the people at home.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 4
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 4
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 3
+                }
+              ],
+              "stats": {
+                "mental_health": 5,
+                "job_performance": -2
+              },
+              "legacy": "care_shared",
+              "outcome": "A shared routine"
+            },
+            {
+              "id": "lighter",
+              "label": "Choose a lighter routine with clear limits",
+              "result": "We chose a lighter routine together. {relative}, {supporter} and I made room for ordinary life as well as duty.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 3
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 3
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 6
+              },
+              "legacy": "care_with_boundaries",
+              "outcome": "Room for each other"
+            },
+            {
+              "id": "record",
+              "label": "Help {supporter} record what worked for our family",
+              "result": "I helped {supporter} collect our practical lessons and the decisions {relative} wanted remembered. The record included our mistakes, not just the promises we kept.",
+              "transfer": -100,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 3
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 2
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "care_recorded",
+              "outcome": "What we learned"
+            }
+          ]
+        },
+        "loss": {
+          "title": "The space they leave",
+          "text": "{lost_person} has died. The arrangement cannot continue as though nothing changed. The tasks, disagreements and small acts of care remain part of the family story, even where there was no neat resolution.",
+          "deadline": 2,
+          "default": "remember",
+          "choices": [
+            {
+              "id": "remember",
+              "label": "Remember the person as well as the work",
+              "result": "After {lost_person} died, I remembered the everyday moments alongside the work of caring. I kept the unfinished parts of our story too.",
+              "stats": {
+                "mental_health": -3
+              },
+              "legacy": "care_remembered",
+              "outcome": "An unfinished routine remembered"
+            },
+            {
+              "id": "private",
+              "label": "Keep this part of our life private",
+              "result": "I kept my memories of {lost_person} private. I did not turn our difficult years into a lesson other people had to carry.",
+              "stats": {
+                "mental_health": -2
+              },
+              "legacy": "private",
+              "outcome": "Private memories"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "household_care_legacy",
+      "series": "Living Households",
+      "title": "A Place at the Table",
+      "category": "family",
+      "cast": "legacy",
+      "origin_story": "household_balance",
+      "allow_deceased_cast": true,
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 150
+      },
+      "start": "memory",
+      "nodes": {
+        "memory": {
+          "title": "The arrangement before us",
+          "text": "Family memories of {person} describe a time when work, care and ordinary life competed for the same hours. The record preserves what the previous generation chose. You can learn from it without having to repeat it.",
+          "deadline": 2,
+          "default": "read",
+          "choices": [
+            {
+              "id": "read",
+              "label": "Read the whole account, including the disagreements",
+              "result": "I read the family account involving {person}, including the disagreements people had been tempted to leave out.",
+              "stats": {
+                "smarts": 3,
+                "mental_health": 1
+              },
+              "legacy": "care_history_read",
+              "next": "own_terms",
+              "delay": 1
+            },
+            {
+              "id": "ask_what_changed",
+              "label": "Compare their responsibilities with my own",
+              "result": "I compared the responsibilities remembered around {person} with the life I was building. The differences mattered as much as the familiar pressures.",
+              "stats": {
+                "smarts": 2,
+                "mental_health": 2
+              },
+              "legacy": "care_history_questioned",
+              "next": "own_terms",
+              "delay": 1
+            },
+            {
+              "id": "leave_private",
+              "label": "Leave that family history private",
+              "result": "I chose not to make the remembered life of {person} into a rule for my own.",
+              "stats": {
+                "mental_health": 1
+              },
+              "legacy": "private",
+              "outcome": "A history left private"
+            }
+          ]
+        },
+        "own_terms": {
+          "title": "A lesson, not an obligation",
+          "text": "The old family arrangement is still in your thoughts. Its consequences belong to the people who lived it. What you carry forward can be a practical habit, an act of remembrance, or permission to choose differently.",
+          "deadline": 2,
+          "default": "remember",
+          "choices": [
+            {
+              "id": "adapt",
+              "label": "Carry forward the habit of asking before promising",
+              "result": "I carried forward one habit from the story around {person}: ask what people need before promising what I cannot sustain.",
+              "stats": {
+                "mental_health": 5,
+                "smarts": 2
+              },
+              "legacy": "care_carried_forward",
+              "outcome": "A lesson adapted"
+            },
+            {
+              "id": "remember",
+              "label": "Honor their effort without adopting their arrangement",
+              "result": "I honored the effort remembered around {person} without treating their arrangement as an obligation for my generation.",
+              "stats": {
+                "mental_health": 4
+              },
+              "legacy": "care_honored",
+              "outcome": "Memory without obligation"
+            },
+            {
+              "id": "different",
+              "label": "Choose a different balance and say why",
+              "result": "I chose a different balance from the one remembered around {person}. I kept the reasons alongside the family account instead of pretending its costs had never existed.",
+              "stats": {
+                "mental_health": 3,
+                "smarts": 3
+              },
+              "legacy": "care_reconsidered",
+              "outcome": "A different balance"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

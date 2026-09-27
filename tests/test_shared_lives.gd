@@ -51,7 +51,7 @@ func _business(state: GameState, record: Dictionary) -> Dictionary:
 func _run() -> void:
 	var engine := LifeStoryEngine.new()
 	_check(engine.content_errors.is_empty(), "Shared Lives content failed validation: " + str(engine.content_errors))
-	_check(engine.catalog.size() == 8, "Launch stories or Shared Lives chapters were lost")
+	_check(engine.catalog.size() == 10, "Launch stories or Shared Lives chapters were lost")
 	_test_each_response(engine)
 	_test_complete_saga()
 	_test_business_money()

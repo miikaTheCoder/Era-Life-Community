@@ -17,7 +17,7 @@ var family_business_engine: Variant = null
 
 func _init(state = null) -> void:
 	gs = state
-	for path in [CONTENT_PATH, "res://data/shared_lives.json"]:
+	for path in [CONTENT_PATH, "res://data/shared_lives.json", "res://data/living_households.json"]:
 		var file := FileAccess.open(path, FileAccess.READ)
 		if file == null:
 			content_errors.append("Story content could not be opened: " + path)
@@ -45,7 +45,7 @@ static func validate_catalog(data: Variant) -> Array:
 			errors.append("Invalid story definition.")
 			continue
 		var id: String = str(story.id)
-		if str(story.get("cast", "")) not in ["friend", "relative", "mentor", "parent", "accomplice", "legacy", "business_partners", "business_heir"]:
+		if str(story.get("cast", "")) not in ["friend", "relative", "mentor", "parent", "accomplice", "legacy", "business_partners", "business_heir", "household_care"]:
 			errors.append(id + ": unknown cast role.")
 		if ids.has(id):
 			errors.append("Duplicate story: " + id)
@@ -83,8 +83,9 @@ static func validate_catalog(data: Variant) -> Array:
 						errors.append(id + ": unknown business action.")
 					if str(business.get("action", "policy")) in ["found", "invest", "draw", "expense"] and int(business.get("amount", 0)) <= 0:
 						errors.append(id + ": money actions require a positive amount.")
+				var roles: Array = ["player", "relative", "supporter"] if str(story.cast) == "household_care" else ["player", "cofounder", "mentor"]
 				for relation in choice.get("relationships", []):
-					if str(relation.get("from", "player")) not in ["player", "cofounder", "mentor"] or str(relation.get("to", "")) not in ["player", "cofounder", "mentor"]:
+					if not relation is Dictionary or str(relation.get("from", "player")) not in roles or str(relation.get("to", "")) not in roles:
 						errors.append(id + ": unknown relationship role.")
 				if next != "" and int(choice.get("delay", 1)) < 1:
 					errors.append(id + ": follow-ups must occur in a later year.")
@@ -226,7 +227,8 @@ func service_year() -> Dictionary:
 				"started_year": int(gs.year), "history": [], "legacy": "unfinished",
 				"origin": casting.get("origin", ""), "origin_legacy": casting.get("legacy", ""),
 				"scale": float(casting.get("scale", _era_scale())),
-				"ensemble": casting.get("ensemble", {})
+				"ensemble": casting.get("ensemble", {}),
+				"context": casting.get("context", "")
 			}
 			if casting.has("venture_id"):
 				instance.venture_id = casting.venture_id
@@ -255,6 +257,8 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 	var role: String = str(definition.cast)
 	if role in ["business_partners", "business_heir"]:
 		return _business_cast(actor, role)
+	if role == "household_care":
+		return _household_cast(actor)
 	var candidates: Array = []
 	match role:
 		"friend": candidates = actor.friends.duplicate()
@@ -276,10 +280,13 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 			for parent_id in actor.parents:
 				var parent_stories: Dictionary = _state().actors.get(str(int(parent_id)), {}).get("stories", {})
 				for record in parent_stories.values():
+					if str(definition.get("origin_story", "")) != "":
+						if str(record.get("story_id", "")) != str(definition.origin_story) or str(record.get("status", "")) != "finished":
+							continue
 					if str(record.get("legacy", "unfinished")) in ["unfinished", "private"]:
 						continue
 					var person: Person = _person(int(record.cast_id))
-					if person != null and person.alive and person.id != actor.id:
+					if person != null and (person.alive or bool(definition.get("allow_deceased_cast", false))) and person.id != actor.id:
 						return {"person": person, "origin": str(record.story_id), "legacy": str(record.legacy)}
 	candidates.sort_custom(func(a, b): return int(a) < int(b))
 	for candidate in candidates.slice(0, 32):
@@ -297,6 +304,32 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 		if role == "relative" and float(person.bank_balance) < 600.0 * _era_scale():
 			continue
 		return {"person": person}
+	return {}
+
+func _household_cast(actor: Person) -> Dictionary:
+	# Resolve only known family references. A saved ensemble is never recast.
+	var parents: Array = actor.parents.duplicate()
+	parents.sort_custom(func(a, b): return int(a) < int(b))
+	for parent_id in parents.slice(0, 32):
+		var relative := _person(int(parent_id))
+		if relative == null or not relative.alive or relative.age < 55 or relative.id == actor.id:
+			continue
+		var candidates: Array = []
+		if actor.partner != null:
+			candidates.append(actor.partner.id)
+		var siblings: Array = relative.children.duplicate()
+		siblings.sort_custom(func(a, b): return int(a) < int(b))
+		candidates.append_array(siblings.slice(0, 32))
+		for id in candidates:
+			var supporter := _person(int(id))
+			if supporter == null or not supporter.alive or supporter.age < 18 or supporter.id in [actor.id, relative.id]:
+				continue
+			var context := "Work, looking for work, and life outside the household still need time. Care payments go from your personal bank to %s, who arranges the agreed support." % _name(supporter)
+			if gs.scenario_state.has("family_businesses") and not businesses().ventures_for(actor.id).is_empty():
+				context += " Your company has its own reserves; this family plan does not spend them."
+			return {"person": supporter, "context": context, "ensemble": {
+				"relative": {"id": relative.id, "name": _name(relative)},
+				"supporter": {"id": supporter.id, "name": _name(supporter)}}}
 	return {}
 
 func _business_cast(actor: Person, role: String) -> Dictionary:
@@ -353,6 +386,8 @@ func _surface(actor: Person, definition: Dictionary, instance: Dictionary) -> bo
 		choices.append({"id": choice.id, "label": label, "source_resolves": true,
 			"priority": 0 if str(choice.id) == str(node.default) else 50})
 	var details: String = _render(str(node.text), instance)
+	if str(instance.get("context", "")) != "":
+		details += "\n\n" + str(instance.context)
 	var context: String = str(definition.get("era_context", {}).get(str(gs.era.get("name", "Modern Era")), ""))
 	if context != "":
 		details += "\n\n" + context
@@ -369,12 +404,12 @@ func _surface(actor: Person, definition: Dictionary, instance: Dictionary) -> bo
 		details += "\n\nYour family's story: %s (%s)." % [str(instance.origin).replace("_", " ").capitalize(), str(instance.origin_legacy).replace("_", " ")]
 	# A pending contract may remain open across years. Use its absolute deadline
 	# so the saved projection never shows a stale relative countdown.
-	details += "\n\nYou can respond through year %d. If you leave this unanswered: %s." % [int(instance.deadline_year), _choice_label(node, str(node.default))]
+	details += "\n\nYou can respond through year %d. If you leave this unanswered: %s." % [int(instance.deadline_year), _render(_choice_label(node, str(node.default)), instance)]
 	var report: Dictionary = gs.scenario_popup_contract_engine.emit_popup_contract({
 		"id": id, "target_id": actor.id, "issuer_id": instance.cast_id,
 		"participant_ids": _participant_ids(actor, instance), "decision_actor_ids": [actor.id],
 		"audience_ids": [actor.id], "request": "life_story", "category": definition.category,
-		"title": "%s · %s — %s" % [str(definition.get("series", "Life Stories")), str(definition.title), str(node.title)],
+		"title": "%s · %s: %s" % [str(definition.get("series", "Life Stories")), str(definition.title), str(node.title)],
 		"overview": details, "details": details, "response_options": choices,
 		"urgency": 65, "expires_age": -1, "source": "life_stories",
 		"source_result": {"story_id": instance.story_id, "node_id": instance.node}

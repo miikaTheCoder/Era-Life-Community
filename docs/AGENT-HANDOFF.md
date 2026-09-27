@@ -21,8 +21,8 @@ branches/worktrees, not two modes that can be selected by copying one config fil
 | Desktop | `codex/shared-lives-desktop` | `e2424ff` | `/home/nextg/opencode-sandbox/Era-Life-Community` |
 | EraLife Portrait | `codex/shared-lives-portrait` | `74e8b07` (shared R01 port: `e538708`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
-The earlier Shared Lives work is pushed to GitHub. The R01 commits above are
-local and have not been pushed or packaged. Neither state means a branch is
+The earlier Shared Lives work is pushed to GitHub. The later R01, R04 and R05 work is local and has not been pushed. Desktop
+R04 has a verified Linux package; Portrait R01 has not been repackaged. Neither state means a branch is
 merged into `main` or published as a release. Older starting points include `era-life-new-ui`
 (desktop, `a3799d2`) and `codex/mobile-startup-performance` (Portrait, `7673961`).
 `mobile` and `codex/mobile-portrait` are older mobile work. Do not choose `main`
@@ -52,7 +52,7 @@ Keep gameplay and content in the existing owners and adapt their UI contracts.
 
 | Work | Owner / entry point |
 | --- | --- |
-| Authored stories and recurring cast | `project/data/life_stories.json`, `project/data/shared_lives.json`, `project/systems/narrative/LifeStoryEngine.gd` |
+| Authored stories and recurring cast | `project/data/life_stories.json`, `project/data/shared_lives.json`, desktop `project/data/living_households.json`, `project/systems/narrative/LifeStoryEngine.gd` |
 | Story admission and resolution | `ScenarioRuntimeContractEngine.gd`, `PendingSituationsEngine.gd` under `project/systems/narrative/` |
 | Company stakes, management, succession, yearly surplus | `project/systems/economy/FamilyBusinessEngine.gd` |
 | Personal and company money, account restrictions | `project/systems/economy/BankEngine.gd` |
@@ -69,6 +69,11 @@ Shared Lives adds **two stories, 16 chapters, and 46 responses** to the original
 six Life Stories. The founder saga is *The Business We Built*; the inherited sequel
 is *The Keys They Left*. Eligibility, timing, authored choices, and the compact
 business model are documented in [SHARED-LIVES.md](SHARED-LIVES.md).
+
+Desktop R05 adds **Living Households**, a recurring care/work story and an
+inherited family memory, with 11 chapters and 30 responses. See
+[LIVING-HOUSEHOLDS.md](LIVING-HOUSEHOLDS.md) for eligibility, scope and evidence.
+This pack and its engine additions are not on Portrait yet; port them under R06.
 
 Preserve these contracts when extending the feature:
 
@@ -135,6 +140,8 @@ Desktop graphical checks and Linux export:
 ```sh
 bash scripts/test-shared-lives.sh
 bash scripts/test-shared-lives.sh cycle /tmp/eralife-new-cold-test
+# Desktop R05 only, until the verified Portrait port:
+bash scripts/test-living-households.sh cycle /tmp/eralife-care-cold-test
 bash scripts/test-desktop-modes.sh household
 bash scripts/build.sh linux
 ```
@@ -208,6 +215,9 @@ Open issues to retain in future handoffs:
 - New Portrait Household creation checks did not complete: one missed world
   preparation; another showed blank, narrow member buttons. R04 retains these
   failures separately from the successful cold-Continue route.
+- The R05 graphical harness stalled on its second consecutive Age Up. The
+  required cold-Continue route uses one year per process; this does not certify
+  uninterrupted multi-year play. See the R05 evidence and R07 for follow-up.
 - `snapshot_not_found` diagnostics and shutdown resource warnings remain.
 - Native Windows/macOS checks and complete birth-to-death playthroughs are not
   established by the Linux/Portrait checks above.
