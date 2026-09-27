@@ -54,8 +54,14 @@ Readiness regression: `build/tests/headless-nfpdpa0m`. The graphical full-catalo
 save, cold Continue/age/save and a second cold Continue. Its logs, saves and
 inspected screenshots are retained in `build/r04/desktop-full-catalog`. The
 full desktop suite passed all 20 tests in `build/tests/headless-5y6yvnos`.
-Structure, code-map and whitespace checks passed. Packaging is the remaining
-desktop readiness step.
+Structure, code-map and whitespace checks passed.
+
+The Linux archive was exported from clean commit `8ccfd37` with Godot 4.4.1.
+Its checksum verified. The extracted executable loaded all eight story definitions
+and the persistence runtime; both packaged JSON hashes matched the source. The
+archive, checksum file and extracted package are retained under `build/r04/`.
+This completes desktop functional readiness for local playtesting and permits
+R05's content work. It does not publish a release or certify other platforms.
 
 Known limits: resource cleanup warnings and `snapshot_not_found` diagnostics;
 long lifetime performance, native Windows/macOS playtesting and asset provenance
