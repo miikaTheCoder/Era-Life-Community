@@ -18,11 +18,11 @@ branches/worktrees, not two modes that can be selected by copying one config fil
 
 | Target | Shared Lives branch | Latest gameplay commit in this snapshot | Local checkout on this host |
 | --- | --- | --- | --- |
-| Desktop | `codex/shared-lives-desktop` | `e2424ff` | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| Desktop | `codex/shared-lives-desktop` | `c02f528` (R05; includes desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
 | EraLife Portrait | `codex/shared-lives-portrait` | `74e8b07` (shared R01 port: `e538708`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
 The earlier Shared Lives work is pushed to GitHub. The later R01, R04 and R05 work is local and has not been pushed. Desktop
-R04 has a verified Linux package; Portrait R01 has not been repackaged. Neither state means a branch is
+R04 and R05 have verified Linux packages; Portrait R01 has not been repackaged. Neither state means a branch is
 merged into `main` or published as a release. Older starting points include `era-life-new-ui`
 (desktop, `a3799d2`) and `codex/mobile-startup-performance` (Portrait, `7673961`).
 `mobile` and `codex/mobile-portrait` are older mobile work. Do not choose `main`
@@ -226,6 +226,15 @@ R01 evidence: desktop 19/19 regressions (`headless-c0fg00yq`) and Portrait 23/23
 (`headless-nux39kip`), plus separate-process Continue, age/save, and another cold
 Continue with exact personal/company balances and history checks. See
 [cold-restore validation](COLD-RESTORE.md) for fixtures, repairs, and retained logs.
+
+Desktop R04 readiness is verified and packaged at `8ccfd37`; see
+[Shared Lives readiness](SHARED-LIVES-READINESS.md). Desktop R05 is verified at
+`c02f528`: all 21 regressions (`headless-c2aa11j9`), three complete family routes,
+a later-life memory, five graphical years with saves between processes and a
+final cold Continue. The clean Linux export and packaged content hashes passed.
+See [Living Households](LIVING-HOUSEHOLDS.md) for retained fixtures and limits.
+The next platform step is R06 after Portrait readiness; no R05 gameplay was
+copied to the Portrait checkout in this task.
 
 Start follow-up investigations with [Shared Lives](SHARED-LIVES.md),
 [desktop gameplay](DESKTOP-GAMEPLAY.md), and

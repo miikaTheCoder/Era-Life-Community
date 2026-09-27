@@ -110,3 +110,13 @@ inspected. Logs, profiles and screenshots are retained in
 `build/r05/desktop-cold-cycle`; the initial two-year failure is retained in
 `build/r05/initial-two-year-session`. Structure, code-map and whitespace checks
 passed. Native Windows/macOS and Portrait/device validation remain separate work.
+
+
+## Local Linux package
+
+The archive in `build/r05/EraLife-linux-x86_64.tar.gz` was exported with Godot
+4.4.1 from clean desktop commit `c02f528`. Its checksum passed, and the extracted
+executable loaded all ten definitions with no catalog errors. All three packaged
+story JSON hashes matched source; the persistence runtime also loaded.
+`BUILD_INFO.txt` and `build/r05/package-check.log` retain the exact evidence.
+This is a local playtesting package, not a published release or a Portrait build.

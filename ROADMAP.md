@@ -24,7 +24,7 @@ support them. Proposed content below can change with playtesting and user input.
 | Life Stories & Legacies | Six implemented stories with recurring cast, delayed consequences, and saved history |
 | Shared Lives | Two more stories, 16 chapters, 46 responses, real business reserves, ownership, and succession; implemented on desktop and ported to Portrait |
 | Living Households | Desktop first slice verified: recurring care/work arc plus inherited memory, 11 chapters and 30 responses; Portrait port open |
-| Desktop validation | 21 regressions passed; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 Linux package verified |
+| Desktop validation | 21 regressions passed; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 and R05 Linux packages verified |
 | Portrait validation | 23 headless regressions plus final focused checks passed; content flow inspected at 420×900; signed APK built, not retested on the Honor phone |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
 | Release status | Current work is on the Shared Lives branches. A push or an APK export does not mean it is merged, published, or fully device-verified |
@@ -224,7 +224,7 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 
 | 2026-09-27 | R04 | Desktop readiness and Living Households task, `codex/shared-lives-desktop` | Desktop functional readiness complete at `8ccfd37`: 20 regressions, full-catalog founder/heir routes, declined/failed payments, graphical discovery and repeated cold Continue, clean Linux package and content hashes. See [readiness evidence](docs/SHARED-LIVES-READINESS.md). Portrait and public publication remain open. |
 
-| 2026-09-27 | R05 | Living Households task, `codex/shared-lives-desktop` | Verified desktop first slice: 11 chapters, 30 responses, three complete routes and a later life; all 21 regressions pass. Full-catalog graphical discovery, paid choice, next-year follow-up and repeated cold Continue preserve cast, money and history. See [R05 evidence](docs/LIVING-HOUSEHOLDS.md). Next: R06 after Portrait readiness; investigate uninterrupted second Age Up under R07. |
+| 2026-09-27 | R05 | Living Households task, desktop `c02f528` | Verified desktop first slice: 11 chapters, 30 responses, three complete routes and a later life; all 21 regressions pass. Full-catalog graphical discovery, paid choice, next-year follow-up and repeated cold Continue preserve cast, money and history. Clean Linux package and all three content hashes verified. See [R05 evidence](docs/LIVING-HOUSEHOLDS.md). Next: R06 after Portrait readiness; investigate uninterrupted second Age Up under R07. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,
