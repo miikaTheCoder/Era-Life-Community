@@ -1,6 +1,7 @@
 # Live diary and balance refresh
 
-Desktop R07 follow-up, 2026-09-27, on `codex/shared-lives-desktop`.
+Desktop R07 follow-up, 2026-09-27, commit `6d0deea` on
+`codex/shared-lives-desktop`.
 This repairs the live display issue found after the consecutive Age Up input fix.
 R07's broader performance and lifetime checks remain separate.
 
@@ -59,7 +60,15 @@ and a save with ten diary years and four care decisions. Evidence:
 The fresh Household passed three consecutive years and saved in 2003. Its first
 cold-Continue attempt missed the Age Up click (`restore-three.log`, empty age-up
 result); this is retained separately from display assertions and not counted as
-a passing continuation. Original evidence is retained in
+a passing continuation. The instrumented repeat completed 2004, 2005 and 2006,
+including the $300 payment and two later care responses. Every visible-label
+assertion passed. A separate final Continue preserved all seven diary years,
+three decisions and $9,700, including the rendered labels. Normal Narrative
+newborn entry also passed two consecutive years, current diary/balance checks
+and save (`build/r07-display/narrative-two-years`). Screenshots were
+inspected. Evidence: `build/r07-display/fresh-household-cycle` (`household.log`,
+`restore-repeat.log`, `restore-final.log`, with `restore-three.log` retained as
+the missed-click run). The missed click remains a separate input follow-up. Original evidence is retained in
 `build/r07-display/reproduced-stale-display`; the clean pre-fix regression is
 `build/r07-display/failing-display-regression`.
 
@@ -73,3 +82,13 @@ ERA_YEARS=0 ERA_RUN_LABEL=restore-final bash scripts/test-living-households.sh r
 This is desktop verification. Portrait still needs its own readiness work and
 port. Resource cleanup warnings, native Windows/macOS checks and complete
 birth-to-death playthroughs remain outside this repair.
+
+## Packaged repair
+
+`build/r07-display/EraLife-linux-x86_64.tar.gz` was exported with Godot 4.4.1 from
+clean commit `6d0deea`. Its archive checksum passed. The extracted executable
+passed `test_live_diary_display.gd` using its packaged MainScene and BankEngine.
+The source stamp is in `build/r07-display/package/BUILD_INFO.txt`; the result is
+`build/r07-display/package-live-display.log`. The general
+`build/EraLife-linux-x86_64.tar.gz` contains this same build. These are local
+artifacts, not a published release or a Portrait update.

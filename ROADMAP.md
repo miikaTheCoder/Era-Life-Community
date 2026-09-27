@@ -24,7 +24,7 @@ support them. Proposed content below can change with playtesting and user input.
 | Life Stories & Legacies | Six implemented stories with recurring cast, delayed consequences, and saved history |
 | Shared Lives | Two more stories, 16 chapters, 46 responses, real business reserves, ownership, and succession; implemented on desktop and ported to Portrait |
 | Living Households | Desktop first slice verified: recurring care/work arc plus inherited memory, 11 chapters and 30 responses; Portrait port open |
-| Desktop validation | 22 regressions passed; consecutive Age Up input repaired; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 and R05 Linux packages verified |
+| Desktop validation | 23 regressions passed; consecutive Age Up input and live diary/balance refresh repaired; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 and R05 Linux packages verified |
 | Portrait validation | 23 headless regressions plus final focused checks passed; content flow inspected at 420×900; signed APK built, not retested on the Honor phone |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
 | Release status | Current work is on the Shared Lives branches. A push or an APK export does not mean it is merged, published, or fully device-verified |
@@ -40,8 +40,8 @@ R01 is **verified** on desktop and in Portrait preview, with evidence below.
 R04 desktop functional readiness is **verified and packaged** for local Linux
 playtesting. R05 is **verified** on desktop, with full routes and cold-Continue
 evidence in [Living Households](docs/LIVING-HOUSEHOLDS.md).
-R07's **desktop consecutive-click repair is verified**; its wider profiling and
-live-display follow-ups remain open. Other items remain **unclaimed**. When starting one, replace its status with
+R07's **desktop input and live-display repairs are verified**; wider profiling
+and a recorded missed-click follow-up remain open. Other items remain **unclaimed**. When starting one, replace its status with
 `In progress`, record the task/branch in the work log, and keep the change small
 enough to review.
 `Queued` means prioritized; `Proposed` means the product direction needs refinement
@@ -55,7 +55,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Desktop verified and packaged; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
 | R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
 | R06 | Port Living Households and test it on a phone | Portrait | Queued | R05 and Portrait R04 |
-| R07 | Measured startup and lifetime performance | Desktop + Portrait | In progress: desktop live diary/balance refresh; input fixed | Use stable routes from R01–R03 |
+| R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop display verified; profiling and click follow-up open | Use stable routes from R01–R03 |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
 
 Record shared items' verification separately for desktop and Portrait. A
@@ -167,7 +167,8 @@ binary hydration. A full-catalog graphical run discovered the arc in 2004,
 continued it in 2005 and passed repeated cold Continue with exact saved state.
 See [R05 evidence and limitations](docs/LIVING-HOUSEHOLDS.md). The initial second
 consecutive Age Up failure was repaired in the [R07 input follow-up](docs/AGE-UP-INPUT.md);
-longer lifetime and live-display checks remain open.
+the [live-display follow-up](docs/LIVE-DISPLAY.md) is also verified. Longer lifetime
+checks remain open.
 Portrait is not included in this verification.
 
 Deeper content is the aim, not a fixed chapter quota. Use playtesting to decide
@@ -192,10 +193,18 @@ pass. A household completed three consecutive years, cold Continue, three more
 years and another cold Continue. Narrative newborn entry completed two consecutive
 years. See [input evidence](docs/AGE-UP-INPUT.md). Portrait has not received this fix.
 
-**In progress:** live-display repair on `codex/shared-lives-desktop`. The continued household's live diary and balance labels lagged behind
-its authoritative saved state. Verify those projections update after each year
-and care payment without requiring a restart. Retain the original failed-input
-fixture and the successful cold-restore evidence when fixing presentation.
+**Verified live-display repair, 2026-09-27:** desktop `6d0deea`. Continue now
+observes the resident diary engine when it arrives and draws current history;
+the HUD follows the bank's committed balance. All 23 regressions pass. An existing
+Household continued two years with a care choice; a fresh Household completed
+three years, cold Continue, three more years with a $300 payment, save and another
+cold Continue. Current diary text and the $9,700 balance passed visible-label
+checks. See [display evidence](docs/LIVE-DISPLAY.md).
+
+**Next:** retain the first fresh-Continue attempt's missed Age Up click as a
+separate input follow-up. No simulation command started; the instrumented repeat
+passed. The prior input reproduction, intermediate display failure and successful
+cold restores remain available. Portrait still needs both desktop repairs ported.
 Profile cold startup, entry into a life, repeated age-ups, and a longer session
 before choosing the next bottleneck. Preserve the earlier under-10-second creation
 menu goal as a target, not an achieved result; older phone measurements do not
@@ -239,6 +248,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-27 | R05 | Living Households task, desktop `c02f528` | Verified desktop first slice: 11 chapters, 30 responses, three complete routes and a later life; all 21 regressions pass. Full-catalog graphical discovery, paid choice, next-year follow-up and repeated cold Continue preserve cast, money and history. Clean Linux package and all three content hashes verified. See [R05 evidence](docs/LIVING-HOUSEHOLDS.md). Next: R06 after Portrait readiness; investigate uninterrupted second Age Up under R07. |
 
 | 2026-09-27 | R07 | Push and continue task, desktop `28a4030` | Verified the bounded desktop input repair after pushing both development branches. UI focus removal cancelled held mouse/keyboard input; visible navigation retains focus. All 22 regressions pass; Household 3 years + cold Continue + 3 years + cold Continue and Narrative 2 years pass. Clean Linux package and packaged input regression verified. Next: live diary/balance refresh during continued play, then broader profiling. See [R07 evidence](docs/AGE-UP-INPUT.md). |
+
+| 2026-09-27 | R07 | Live display task, desktop `6d0deea` | Verified diary subscription after late engine attachment, current history after returning to Life, and live bank display. All 23 regressions pass; existing-save and fresh 3 + cold Continue + 3 + cold Continue checks preserve current visible diary, $9,700 and three care decisions. Clean Linux package and packaged display regression passed. One missed initial Age Up click passed on repeat and remains documented. See [display evidence](docs/LIVE-DISPLAY.md). Next: Portrait readiness, with wider R07 profiling and the click follow-up open. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

@@ -92,3 +92,6 @@ extracted executable passed `test_navigation_input.gd` against its packaged
 MainScene. The source stamp and result are retained in `build/r07/package/BUILD_INFO.txt`
 and `build/r07/package-navigation.log`. This replaces the older R05 archive for
 local desktop playtesting; it does not publish a release or update Portrait.
+
+The newer [live-display package](LIVE-DISPLAY.md) at `6d0deea` includes this
+input repair and supersedes this archive for current desktop playtesting.
