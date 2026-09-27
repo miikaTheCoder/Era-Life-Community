@@ -141,3 +141,10 @@ full birth-to-death playthrough or the existing broader cold-restore lifecycle.
 - Existing shutdown resource warnings and the checkpoint `snapshot_not_found`
   diagnostic remain. The broader cold-restore issue documented in Architecture
   is outside this content change.
+
+### Desktop readiness, 2026-09-27
+
+The full-catalog founder/heir and graphical discovery checks are recorded in
+[R04 readiness](SHARED-LIVES-READINESS.md). [R01](COLD-RESTORE.md) records the later
+cold-Continue repairs; the older limitations above describe the original content
+commit. Portrait readiness is tracked separately.

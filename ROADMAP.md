@@ -36,6 +36,8 @@ smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 ## Work queue
 
 R01 is **verified** on desktop and in Portrait preview, with evidence below.
+R04 desktop readiness is **in progress** in this task on
+`codex/shared-lives-desktop`; R05 follows after that evidence is complete.
 Other items remain **unclaimed**. When starting one, replace its status with
 `In progress`, record the task/branch in the work log, and keep the change small
 enough to review.
@@ -47,7 +49,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R01 | Reliable save → cold restart → continue | Desktop, then Portrait | Verified: desktop + Portrait preview | None |
 | R02 | Character / Back / Explore navigation | Portrait | Queued | None; can be an independent fix |
 | R03 | God Mode → Begin Life phone crash | Portrait | Queued; device access needed for final verification | None; keep separate from R02 |
-| R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Queued | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
+| R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | In progress: desktop readiness; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
 | R05 | Living Households: one complete family arc | Desktop | Proposed next content chapter | Desktop R04 release-ready checks |
 | R06 | Port Living Households and test it on a phone | Portrait | Proposed | R05 and Portrait R04 |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Proposed | Use stable routes from R01–R03 |
@@ -207,6 +209,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-26 | Baseline | Desktop `32ad0fb`; Portrait `ebaf71c` | Shared Lives implemented and ported, with the documented validation limits. Next shared implementation item: reproduce R01 on desktop. |
 | 2026-09-26 | Planning | Shared roadmap on both Shared Lives branches | Priorities and completion criteria recorded. R01–R08 remain unclaimed; no new gameplay or crash fix is claimed here. |
 | 2026-09-27 | R01 | Save/continue task; desktop `e2424ff`, Portrait `e538708` + `74e8b07` | Verified: hydration progress, projection scheduling, company banking, and mobile Continue update. 19 desktop and 23 Portrait regressions pass. New and existing saves passed separate-process Continue, age/save, and repeated restore checks. See [cold-restore evidence](docs/COLD-RESTORE.md). Next: desktop R04 readiness and R05 content; Portrait creation gaps, R02, and R03 remain open. |
+
+| 2026-09-27 | R04 | Desktop readiness and Living Households task, `codex/shared-lives-desktop` | Claimed desktop readiness: full-catalog discovery, founder/heir routes, rejected payments, packaging and evidence. R05 begins after the desktop checks pass. Portrait remains separate. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

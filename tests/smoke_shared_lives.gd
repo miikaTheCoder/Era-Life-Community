@@ -31,7 +31,8 @@ func _age_and_save() -> void:
 		state.bank_engine.credit_bank(state.bank_engine.owner_key_from_actor(state.player), 10000)
 	var runtime = state.scenario_runtime_contract_engine
 	var stories: LifeStoryEngine = runtime._ensure_life_story_engine()
-	stories.catalog = stories.catalog.filter(func(row): return str(row.id) == "family_business")
+	_check(stories.catalog.any(func(row): return str(row.id) == "family_care"), "Discovery check must retain the full story catalog")
+	print("SHARED LIVES DISCOVERY: full catalog; stories=", stories.catalog.size())
 	runtime.life_story_service_signature = ""
 	if not _check(await _wait_for(func():
 		runtime.service_life_stories()
