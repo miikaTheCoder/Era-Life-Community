@@ -9,6 +9,9 @@ ownership and repository rules.
 two permanent branches; see [branch workflow](docs/BRANCHES.md). `browser-play`
 belongs to a separate active task and is excluded from the consolidation.
 
+The GitHub repository is now standalone, with its original history and credits
+preserved. See [the conversion record](docs/BRANCHES.md#standalone-repository).
+
 ## Direction
 
 Build lives worth continuing: recurring people with their own decisions, work and
@@ -267,6 +270,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-28 | Upstream integration | `codex/sync-upstream-2026-09-28`, desktop `b399a33` plus upstream `57ee128` | Verified Linux desktop integration: all 23 regressions; creation for three years, cold Continue for three more years and save; Shared Lives choice/save plus repeated cold Continue with exact company balances. Repaired detached relationship-row rendering and avoided duplicate prison ticks. Retain the concurrent cold-load timeout in [integration evidence](docs/UPSTREAM-SYNC-2026-09-28.md). Next: review for desktop promotion; Portrait port remains separate. |
 
 | 2026-09-28 | Branch consolidation | `main` from desktop integration `cffca1d`; `portrait` renamed from `codex/shared-lives-portrait` at `d9628e8` | Established two permanent branches and the normal project folder as desktop `main`. Superseded commits are preserved in the permanent branches or the release-automation archive tag, with a verified local Git bundle for recovery. Updated startup guidance on both branches. Browser work remains owned by its active task and untouched. Gameplay files are unchanged from the verified branch tips; no new gameplay certification or release is claimed. See [branch workflow](docs/BRANCHES.md). |
+
+| 2026-09-28 | Standalone repository | Owner completed GitHub detachment; desktop `a2ceae7`, Portrait `ad6fe96` preserved | Verified standalone status, unchanged URL and branch tips, release tags, both releases and all eight asset digests. History, license and credits retained; local Git and release backups verified. Updated repository guidance on both permanent branches. Browser task and gameplay files untouched. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

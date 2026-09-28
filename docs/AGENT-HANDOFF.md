@@ -4,6 +4,12 @@ Last checked: **2026-09-28**. Read [AGENTS.md](../AGENTS.md), then
 [ROADMAP.md](../ROADMAP.md) for priorities and [Architecture](ARCHITECTURE.md)
 for ownership. This guide is shared by the two permanent branches.
 
+**Repository status:** `miikaTheCoder/Era-Life-Community` became standalone on
+GitHub on 2026-09-28. Its URL, branch tips, release tags, both releases, and all
+eight release assets were verified after detachment. History, credits, and the
+license are retained. See [the conversion record](BRANCHES.md#standalone-repository)
+for backups. The active `browser-play` worktree was left untouched.
+
 ## Start here
 
 **Desktop `main` is the default for new tasks.** Use `portrait` only for phone
@@ -41,8 +47,8 @@ git worktree list
 git log -5 --oneline
 ```
 
-Both permanent branches track `origin`, the user's fork. `upstream` is the
-original community project and is used for deliberate imports. Historical
+Both permanent branches track `origin`, the user's standalone repository.
+`upstream` is the original community project and is used for deliberate imports. Historical
 feature branches named later in this guide or its linked evidence are not
 current starting points. Use a temporary `codex/` branch only when isolation or
 concurrent work needs it; integrate and retire it when the task is complete.
