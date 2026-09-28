@@ -643,7 +643,35 @@ func advance_year_and_handle_era_shift(actor_for_narrative: Person = null) -> vo
 				gs.year = target_year
 
 			if gs.player != null:
-				gs.player.age = target_age
+				if gs.life_engine != null and gs.life_engine.has_method(
+					"_shadow_check_player_age"
+				):
+					gs.life_engine._shadow_check_player_age(
+						"age_up_runtime_engine.walker_complete",
+						target_year,
+						target_age
+					)
+
+				# FIX: this engine commits target_age from
+				# scenario_state["age_up_time_contract"], which can be the PREVIOUS
+				# year's contract. It then wrote that stale target unconditionally,
+				# pushing the player's age BACKWARDS -- observed as 44 -> 45 (correct),
+				# then a stale replay writing 44 again, so the next age-up re-committed
+				# 45 and the player spent two calendar years at the same age. Age is
+				# monotonic during a life; refuse any write that would lower it.
+				if target_age < int(gs.player.age):
+					EraLog.truth(
+						"ERALIFE_AGE_REGRESSION_BLOCKED|writer=age_up_runtime_engine|site=walker_complete|live_age=%d|stale_target=%d|source_age=%d|target_year=%d|live_year=%d"
+						% [
+							int(gs.player.age),
+							target_age,
+							source_age,
+							target_year,
+							int(gs.year)
+						]
+					)
+				else:
+					gs.player.age = target_age
 
 			active_year_context ["year"] = target_year
 			active_year_context ["committed_year"] = target_year
@@ -658,7 +686,29 @@ func advance_year_and_handle_era_shift(actor_for_narrative: Person = null) -> vo
 		gs.year = target_year
 
 	if gs.player != null:
-		gs.player.age = target_age
+		if gs.life_engine != null and gs.life_engine.has_method(
+			"_shadow_check_player_age"
+		):
+			gs.life_engine._shadow_check_player_age(
+				"age_up_runtime_engine.safety_exhausted",
+				target_year,
+				target_age
+			)
+
+		# FIX: same stale-contract regression as the walker-complete path above.
+		if target_age < int(gs.player.age):
+			EraLog.truth(
+				"ERALIFE_AGE_REGRESSION_BLOCKED|writer=age_up_runtime_engine|site=safety_exhausted|live_age=%d|stale_target=%d|source_age=%d|target_year=%d|live_year=%d"
+				% [
+					int(gs.player.age),
+					target_age,
+					source_age,
+					target_year,
+					int(gs.year)
+				]
+			)
+		else:
+			gs.player.age = target_age
 
 	gs.scenario_state ["runtime_guard"] = {
 		"compressed_execution_current_year": true,
@@ -1184,6 +1234,73 @@ func _step_year_and_era_mutation_walker(
 			contract_source_age + 1
 		)
 
+	# existing_walker_state is still required by the transaction-mismatch discard
+	# below. The ERALIFE_WALKER_ENTRY diagnostic that used to sit here has been
+	# removed now that it has served its purpose: it fired several times per year,
+	# and its question -- do walker runs span frames? -- is answered (yes, entries
+	# resume at cursors 1..7 every year), which is why the discard keys on the
+	# contract transaction rather than reading values live.
+	var existing_walker_state: Dictionary = (
+		runtime_phase_walkers.get(
+			"year_and_era_mutation",
+			{}
+		)
+		if typeof(
+			runtime_phase_walkers.get(
+				"year_and_era_mutation",
+				{}
+			)
+		) == TYPE_DICTIONARY
+		else {}
+	)
+
+	# FIX: the walker legitimately spans frames (entries resume at cursors 1..7
+	# every year), so its state must pin the contract values for the duration of a
+	# run -- reading them live in lane 2 would let a newer year's age be committed
+	# mid-run. The defect is that the state carries no record of WHICH transaction
+	# it belongs to. When a new age-up starts before the previous run reaches its
+	# clearing lane, the leftover state is resumed mid-run and lane 2 commits the
+	# PREVIOUS year's contract_target_age -- the one-year-behind regression the
+	# guard has been blocking. Discard state that belongs to a different
+	# transaction so the new year starts from lane 0 with its own values.
+	if not existing_walker_state.is_empty():
+		var state_transaction_year: int = int(
+			existing_walker_state.get(
+				"contract_target_year",
+				contract_target_year
+			)
+		)
+		var state_transaction_age: int = int(
+			existing_walker_state.get(
+				"contract_target_age",
+				contract_target_age
+			)
+		)
+
+		if (
+			state_transaction_year != contract_target_year
+			or state_transaction_age != contract_target_age
+		):
+			EraLog.truth(
+				"ERALIFE_WALKER_STATE_DISCARDED|phase=year_and_era_mutation|abandoned_cursor=%d|stale_target_age=%d|stale_target_year=%d|fresh_target_age=%d|fresh_target_year=%d"
+				% [
+					int(
+						existing_walker_state.get(
+							"micro_lane_cursor",
+							-1
+						)
+					),
+					state_transaction_age,
+					state_transaction_year,
+					contract_target_age,
+					contract_target_year
+				]
+			)
+
+			_clear_phase_walker_state(
+				"year_and_era_mutation"
+			)
+
 	var state: Dictionary = _get_phase_walker_state(
 		"year_and_era_mutation",
 		{
@@ -1416,7 +1533,23 @@ func _step_year_and_era_mutation_walker(
 					turn_subject != null
 					and turn_subject.alive
 				):
-					turn_subject.age = target_age
+					# FIX: same stale-contract regression guard. Only applies to the
+					# player; NPC ages are set from other sources and may legitimately
+					# differ.
+					if (
+						turn_subject == gs.player
+						and target_age < int(turn_subject.age)
+					):
+						EraLog.truth(
+							"ERALIFE_AGE_REGRESSION_BLOCKED|writer=age_up_runtime_engine|site=turn_subject|live_age=%d|stale_target=%d|live_year=%d"
+							% [
+								int(turn_subject.age),
+								target_age,
+								int(gs.year)
+							]
+						)
+					else:
+						turn_subject.age = target_age
 
 				active_year_context [
 					"aged_player_id"
@@ -1455,6 +1588,7 @@ func _step_year_and_era_mutation_walker(
 		3:
 			lane_name = "active_npc_biological_year"
 
+			var npc_pass_t0: int = Time.get_ticks_usec()
 			var biological_report: Dictionary = (
 				_apply_runtime_active_npc_biological_year(
 					int(
@@ -1462,6 +1596,133 @@ func _step_year_and_era_mutation_walker(
 					)
 				)
 			)
+			var npc_pass_us: int = Time.get_ticks_usec() - npc_pass_t0
+
+			# Whole-pass cost, to compare against the sum of the per-NPC call
+			# timings. If the per-call numbers are small but this is large, the
+			# cost is the loop's own overhead (lookup, priority walk, started-ages
+			# bookkeeping) rather than the three engine calls inside it.
+			EraLog.truth(
+				"ERALIFE_NPC_PASS_TIMING|year=%d|pass_us=%d"
+				% [
+					int(
+						gs.year
+					),
+					npc_pass_us
+				]
+			)
+
+			# DIAGNOSTIC: NPCs are not aging -- a mother generated at 25 is still 26
+			# when the player is 44. This lane is the only place NPC biology
+			# advances, and it runs ONCE per year against a bounded budget, then
+			# moves to lane 4 whether or not the work completed. Report what the
+			# world task actually did, plus whether the player's priority
+			# relationship arrays (which the aging loop iterates FIRST) are even
+			# populated -- if parents is empty, the mother is never prioritised and
+			# may never be reached within the budget.
+			# CORRECTION: the real counters are nested at
+			# report["world_task_report"]["result"] -- the top-level
+			# "aged_active_npcs" is the 0 from the report's initial declaration and
+			# is never updated, so reading it said nothing.
+			var npc_task_report_raw: Variant = biological_report.get(
+				"world_task_report",
+				{}
+			)
+			var npc_task_report: Dictionary = (
+				npc_task_report_raw as Dictionary
+				if typeof(npc_task_report_raw) == TYPE_DICTIONARY
+				else {}
+			)
+			var npc_task_result_raw: Variant = npc_task_report.get(
+				"result",
+				{}
+			)
+			var npc_task_result: Dictionary = (
+				npc_task_result_raw as Dictionary
+				if typeof(npc_task_result_raw) == TYPE_DICTIONARY
+				else {}
+			)
+
+			# Gated: fires on every lane-3 entry, which is once per frame while the
+			# aging drain is running.
+			if (
+				gs != null
+				and typeof(gs.scenario_state) == TYPE_DICTIONARY
+				and bool(
+					gs.scenario_state.get(
+						"eralife_perf_trace",
+						false
+					)
+				)
+			):
+				EraLog.truth(
+					"ERALIFE_NPC_AGING|year=%d|aged=%d|prioritized=%d|corrected=%d|recovered=%d|cursor=%d|processed=%d|complete=%s|task_ran=%s|task_reason=%s|parents=%d"
+					% [
+						int(
+							gs.year
+						),
+						int(
+							npc_task_result.get(
+								"aged_npcs",
+								-1
+							)
+						),
+						int(
+							npc_task_result.get(
+								"prioritized_npcs",
+								-1
+							)
+						),
+						int(
+							npc_task_result.get(
+								"corrected_overadvanced_npcs",
+								-1
+							)
+						),
+						int(
+							npc_task_result.get(
+								"recovered_same_year_npcs",
+								-1
+							)
+						),
+						int(
+							npc_task_result.get(
+								"cursor",
+								-1
+							)
+						),
+						int(
+							biological_report.get(
+								"processed_this_quantum",
+								-1
+							)
+						),
+						str(
+							npc_task_result.get(
+								"is_complete",
+								npc_task_report.get(
+									"is_complete",
+									"-"
+								)
+							)
+						),
+						str(
+							npc_task_report.get(
+								"ran",
+								"-"
+							)
+						),
+						str(
+							npc_task_report.get(
+								"reason",
+								"-"
+							)
+						),
+						int(
+							gs.player.parents.size()
+						) if gs.player != null else -1
+					]
+				)
 
 			state [
 				"active_npc_biological_tick"
@@ -1472,6 +1733,80 @@ func _step_year_and_era_mutation_walker(
 			] = biological_report.duplicate(
 				true
 			)
+
+			# FIX: this lane called the bounded aging task ONCE and advanced to
+			# lane 4 regardless of the result. The task is time-budgeted to 1-2ms
+			# and reports processed=1..3 with is_complete=false every year, so the
+			# population was never drained -- NPCs effectively stopped aging (a
+			# mother generated at 25 was still 26 with the player at 44). The
+			# walker already spans frames, so hold this lane until the task
+			# reports complete, with a bounded retry count so a task that can
+			# never complete cannot stall the age-up forever.
+			var npc_aging_complete: bool = bool(
+				biological_report.get(
+					"world_age_task_complete",
+					false
+				)
+			)
+			var npc_aging_attempts: int = int(
+				state.get(
+					"npc_aging_attempts",
+					0
+				)
+			) + 1
+
+			state [
+				"npc_aging_attempts"
+			] = npc_aging_attempts
+
+			if (
+				not npc_aging_complete
+				and npc_aging_attempts < 240
+			):
+				_set_phase_walker_state(
+					"year_and_era_mutation",
+					state
+				)
+
+				return _build_phase_step_result(
+					"year_and_era_mutation",
+					lane_name,
+					false,
+					3.0 / total_lanes
+				)
+
+			if not npc_aging_complete:
+				EraLog.truth(
+					"ERALIFE_NPC_AGING_INCOMPLETE|year=%d|attempts=%d|advancing_anyway=true"
+					% [
+						int(
+							gs.year
+						),
+						npc_aging_attempts
+					]
+				)
+
+			state [
+				"npc_aging_attempts"
+			] = 0
+
+			# FIX: the player ages via LifeEngine, not the NPC aging loop, so their
+			# own entity_registry snapshot was never refreshed either -- the player's
+			# card in household/family lanes showed the age they had when the
+			# relationship was formed. Re-snapshot once per year alongside the NPCs.
+			if (
+				gs.player != null
+				and gs.relationship_graph_contract_engine != null
+				and gs.relationship_graph_contract_engine.has_method(
+					"ensure_person_entity"
+				)
+			):
+				gs.relationship_graph_contract_engine.ensure_person_entity(
+					gs.player,
+					{
+						"source": "age_up_runtime_engine.year_and_era_mutation"
+					}
+				)
 
 			_queue_mailbox(
 				"mutation",
@@ -2809,6 +3144,51 @@ func _set_phase_walker_state(phase_name: String, state: Dictionary) -> void:
 	runtime_phase_walkers [phase_name] = state
 
 func _clear_phase_walker_state(phase_name: String) -> void:
+	# BOUNDARY 2 of 3: a walker run has released its state. For
+	# "year_and_era_mutation" this is the only signal that the year's lanes are
+	# done. Logged at EVERY clear site (there are several, including the
+	# transaction-mismatch discard), with the reason distinguishable by the caller
+	# via the phase name and the cursor the run was abandoned at -- a discard is a
+	# clear that happened WITHOUT the run completing, which is exactly the case
+	# that decides whether an age-up lock can wait on the walker.
+	if phase_name == "year_and_era_mutation":
+		var clearing_state_raw: Variant = runtime_phase_walkers.get(
+			phase_name,
+			{}
+		)
+		var clearing_state: Dictionary = (
+			clearing_state_raw as Dictionary
+			if typeof(clearing_state_raw) == TYPE_DICTIONARY
+			else {}
+		)
+
+		EraLog.truth(
+			"ERALIFE_AGE_UP_BOUNDARY|stage=walker_cleared|year=%d|age=%d|cursor=%d|total_lanes=%d|completed=%s"
+			% [
+				int(
+					gs.year
+				) if gs != null else -1,
+				int(
+					gs.player.age
+				) if (gs != null and gs.player != null) else -1,
+				int(
+					clearing_state.get(
+						"micro_lane_cursor",
+						-1
+					)
+				),
+				8,
+				str(
+					int(
+						clearing_state.get(
+							"micro_lane_cursor",
+							-1
+						)
+					) >= 7
+				)
+			]
+		)
+
 	if phase_name == "":
 		return
 	runtime_phase_walkers.erase(phase_name)
@@ -4230,6 +4610,25 @@ or visible_runtime_hot
 
 		1:
 			lane_name = "bias_commit"
+
+			# DIAGNOSTIC: ERALIFE_PRISON_TICK never fires, so
+			# PrisonEngine.yearly_tick_actor() is never reached -- which means this
+			# lane is not running. reduce_prison_time() is its only caller, and this
+			# is that call. Note this is the player_phase_contract walker, NOT the
+			# year_and_era_mutation walker; a separate lane machine with its own
+			# cursor and its own opportunities to be abandoned mid-run.
+			EraLog.truth(
+				"ERALIFE_PLAYER_PHASE_LANE|lane=bias_commit|year=%d|crime_engine=%s"
+				% [
+					int(
+						gs.year
+					),
+					str(
+						gs.crime_engine != null
+					)
+				]
+			)
+
 			if gs.scenario_engine != null:
 				gs.scenario_engine.apply_committed_biases_for_year()
 			if gs.crime_engine != null:
@@ -4608,13 +5007,37 @@ func _run_narrative_and_presentation() -> void:
 		"typed_world_feed_done": false,
 		"typed_popups_done": false,
 		"typed_chronicle_done": false,
-		"year_commit_complete_queued": false
+		"year_commit_complete_queued": false,
+		"hud_visibility_refreshed": false
 	}
 	_initialize_narrative_drain_snapshot(narrative_progress)
 	var direct_packets: Array = _phase_state_array(
 		narrative_progress,
 		"direct_packets_snapshot"
 	)
+
+	# FIX: runtime_hud_visibility_snapshot was only ever rebuilt at birth and at
+	# checkpoint/save resume, never on an ordinary yearly age-up -- so hub icons
+	# that unlock with age (career, school, crime, etc.) never appeared until
+	# something unrelated (opening and closing any hub) incidentally forced a
+	# resync. Rebuild it here once per year, same as every other narrative/
+	# presentation step in this phase, so newly-eligible icons show up the year
+	# they actually become available instead of waiting on an unrelated trigger.
+	if not bool(narrative_progress.get("hud_visibility_refreshed", false)):
+		if gs.has_method("_checkpoint_resume_hud_visibility_snapshot_for_current_actor"):
+			var hud_base_raw: Variant = gs.scenario_state.get("runtime_hud_visibility_snapshot", {})
+			var hud_base: Dictionary = hud_base_raw as Dictionary if typeof(hud_base_raw) == TYPE_DICTIONARY else {}
+			var hud_snapshot: Dictionary = gs._checkpoint_resume_hud_visibility_snapshot_for_current_actor(hud_base)
+
+			hud_snapshot ["reason"] = "age_up_yearly_refresh"
+			hud_snapshot ["updated_at_ms"] = int(Time.get_ticks_msec())
+
+			gs.scenario_state ["runtime_hud_visibility_snapshot"] = hud_snapshot
+			gs.scenario_state ["runtime_hud_visibility_snapshot_reason"] = "age_up_yearly_refresh"
+			gs.scenario_state ["runtime_hud_visibility_snapshot_at_ms"] = hud_snapshot ["updated_at_ms"]
+			gs.scenario_state ["runtime_hud_visibility_snapshot_complete"] = not hud_snapshot.is_empty()
+
+		narrative_progress ["hud_visibility_refreshed"] = true
 
 	var rows_remaining: int = narrative_step_budget
 
@@ -4786,6 +5209,9 @@ func _narrative_and_presentation_complete() -> bool:
 
 	var narrative_progress_raw: Variant = active_year_context.get("narrative_progress", {})
 	var narrative_progress: Dictionary = narrative_progress_raw if typeof(narrative_progress_raw) == TYPE_DICTIONARY else {}
+
+	if not bool(narrative_progress.get("hud_visibility_refreshed", false)):
+		return false
 
 	if not bool(narrative_progress.get("typed_world_feed_done", false)):
 		return false
@@ -6367,7 +6793,28 @@ func _step_temporal_slice_streaming_walker(max_transforms: int = 1, max_budget_m
 			gs.year = target_year
 
 		if gs.player != null:
-			gs.player.age = target_age
+			if gs.life_engine != null and gs.life_engine.has_method(
+				"_shadow_check_player_age"
+			):
+				gs.life_engine._shadow_check_player_age(
+					"age_up_runtime_engine.streaming_complete",
+					target_year,
+					target_age
+				)
+
+			# FIX: same stale-contract regression as the walker paths.
+			if target_age < int(gs.player.age):
+				EraLog.truth(
+					"ERALIFE_AGE_REGRESSION_BLOCKED|writer=age_up_runtime_engine|site=streaming_complete|live_age=%d|stale_target=%d|target_year=%d|live_year=%d"
+					% [
+						int(gs.player.age),
+						target_age,
+						target_year,
+						int(gs.year)
+					]
+				)
+			else:
+				gs.player.age = target_age
 
 		active_year_context ["year_and_era_mutation_complete"] = true
 		active_year_context ["completed_year"] = target_year
@@ -7505,6 +7952,33 @@ func run_year_runtime_slice(max_phase_steps: int = 1, max_commit_stages: int = 1
 	var effective_phase_steps: int = clamp(int(max_phase_steps), 1, 1)
 	var effective_commit_stages: int = clamp(int(max_commit_stages), 1, 3)
 
+	# DIAGNOSTIC: "player_phase_contract" is 6th of 8 in the phase order, and this
+	# slice is clamped to ONE phase step per call. ERALIFE_SLICE_PHASE never fires,
+	# so the cursor never gets that far -- which means reduce_prison_time() and
+	# apply_committed_biases_for_year() have never run on the visible age-up path.
+	#
+	# Report the cursor against the order size on every slice call, to establish
+	# whether the phase list is merely slow to advance or is abandoned partway
+	# every year. Those need different fixes.
+	EraLog.truth(
+		"ERALIFE_SLICE_CURSOR|cursor=%d|order_size=%d|phase=%s|year=%d"
+		% [
+			runtime_slice_phase_cursor,
+			runtime_slice_order.size(),
+			str(
+				runtime_slice_order [
+					runtime_slice_phase_cursor
+				]
+			) if (
+				runtime_slice_phase_cursor >= 0
+				and runtime_slice_phase_cursor < runtime_slice_order.size()
+			) else "-",
+			int(
+				gs.year
+			) if gs != null else -1
+		]
+	)
+
 	var loading_raw: Variant = gs.scenario_state.get("loading_runtime", {}) if gs != null and typeof(gs.scenario_state) == TYPE_DICTIONARY else {}
 	var loading: Dictionary = loading_raw if typeof(loading_raw) == TYPE_DICTIONARY else {}
 	var overlay_context_raw: Variant = loading.get("overlay_context", {})
@@ -7756,6 +8230,23 @@ func run_year_runtime_slice(max_phase_steps: int = 1, max_commit_stages: int = 1
 						"current_phase": phase_name
 					}
 			"player_phase_contract":
+				# DIAGNOSTIC: lane 1 of this walker (bias_commit) never runs -- it
+				# holds reduce_prison_time() AND apply_committed_biases_for_year(),
+				# so the prison sentence never ticks and scenario biases are
+				# skipped. The walker IS reachable from here, so the question is
+				# whether the slice's phase cursor ever gets this far before
+				# yielding. Report each time this phase is stepped.
+				EraLog.truth(
+					"ERALIFE_SLICE_PHASE|phase=player_phase_contract|year=%d|cursor=%d|steps_remaining=%d"
+					% [
+						int(
+							gs.year
+						),
+						runtime_slice_phase_cursor,
+						steps_remaining
+					]
+				)
+
 				var player_step: Dictionary = _step_player_phase_contract_walker()
 				var player_accumulated_ms: int = int(runtime_slice_phase_timings.get("player_phase_contract", 0))
 				player_accumulated_ms += int(Time.get_ticks_msec() - phase_started)

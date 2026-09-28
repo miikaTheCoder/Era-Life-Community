@@ -1,6 +1,6 @@
 # EraLife roadmap
 
-Updated **2026-09-27**. This is the shared plan for desktop EraLife and EraLife
+Updated **2026-09-28**. This is the shared plan for desktop EraLife and EraLife
 Portrait. Use [the agent handoff](docs/AGENT-HANDOFF.md) to find the active
 branches, worktrees, commands, and evidence; use [AGENTS.md](AGENTS.md) for code
 ownership and repository rules.
@@ -259,6 +259,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-27 | R07 | Live display task, desktop `6d0deea` | Verified diary subscription after late engine attachment, current history after returning to Life, and live bank display. All 23 regressions pass; existing-save and fresh 3 + cold Continue + 3 + cold Continue checks preserve current visible diary, $9,700 and three care decisions. Clean Linux package and packaged display regression passed. One missed initial Age Up click passed on repeat and remains documented. See [display evidence](docs/LIVE-DISPLAY.md). Next: Portrait readiness, with wider R07 profiling and the click follow-up open. |
 
 | 2026-09-27 | R07 | First-click investigation, desktop `c10ac54` | Reproduced and repaired focus loss during navigation rebinding and Continue destination publication; focused tests failed before the fix and all 23 regressions pass afterward. Added graphical click traces and exact-one-activation checks. Cold Continue from the original 2003 save passed three years and care choices, another cold Continue/year/save, and final exact restore at 2007 with eight diary years and $9,700. The original isolated miss also passed before the fix, so its cause remains unconfirmed. Next: retain that record for a matching trace if it recurs; wider profiling and Portrait ports remain open. |
+
+| 2026-09-28 | Upstream integration | `codex/sync-upstream-2026-09-28`, desktop `b399a33` plus upstream `57ee128` | Verified Linux desktop integration: all 23 regressions; creation for three years, cold Continue for three more years and save; Shared Lives choice/save plus repeated cold Continue with exact company balances. Repaired detached relationship-row rendering and avoided duplicate prison ticks. Retain the concurrent cold-load timeout in [integration evidence](docs/UPSTREAM-SYNC-2026-09-28.md). Next: review for desktop promotion; Portrait port remains separate. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

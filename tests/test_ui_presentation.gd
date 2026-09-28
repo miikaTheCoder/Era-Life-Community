@@ -6,6 +6,12 @@ const Shell = preload("res://ui/EraShell.gd")
 const TOOL_KEYS := ["boxing", "belongings", "food_lifestyle", "restaurant_lifestyle", "rick_weapon_shop", "bending", "crown", "superpower", "power", "wizard"]
 var failed := false
 
+class RowStreamPanel extends InstitutionHubPanelBase:
+	func _render_row_into(container: VBoxContainer, row: Dictionary) -> void:
+		var label := Label.new()
+		label.text = str(row.get("title", ""))
+		container.add_child(label)
+
 class Host extends Control:
 	var gs = null
 	var current_panel := "life"
@@ -132,7 +138,34 @@ func _test_tool_stability(host: Host, adapter: Node) -> void:
 		button.queue_free()
 	await process_frame
 
+func _test_detached_row_stream() -> void:
+	var panel := RowStreamPanel.new()
+	var container := VBoxContainer.new()
+	var rows: Array = []
+	for index in range(13):
+		rows.append({"title": "Row %d" % index})
+	# Section surfaces are built before being attached to their panel. Large
+	# sections must yield without calling get_tree() on that detached container.
+	panel._render_contract_rows_into(container, {"rows": rows})
+	_check(container.get_child_count() > 0 and container.get_child_count() < rows.size(), "Detached rows did not begin with a bounded visible batch")
+	for frame in range(5):
+		await process_frame
+	_check(container.get_child_count() == rows.size(), "Detached section lost its remaining rows")
+	for index in range(container.get_child_count()):
+		_check(container.get_child(index).text == "Row %d" % index, "Streamed rows changed order")
+	for child in container.get_children():
+		child.free()
+	panel._render_contract_rows_into(container, {"rows": rows})
+	for child in container.get_children():
+		child.free()
+	panel._render_contract_rows_into(container, {"rows": [{"title": "Replacement"}]})
+	await _settle()
+	_check(container.get_child_count() == 1 and container.get_child(0).text == "Replacement", "An obsolete row stream overwrote the replacement section")
+	container.free()
+	panel.free()
+
 func _run() -> void:
+	await _test_detached_row_stream()
 	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
 	var host := Host.new()

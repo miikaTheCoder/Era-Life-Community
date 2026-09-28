@@ -697,5 +697,9 @@ func _hydration_complete() -> bool:
 			var hydration = state.game_state_hydration_runtime
 			diagnostic["queue_front"] = hydration.background_hydration_queue.front() if not hydration.background_hydration_queue.is_empty() else {}
 			diagnostic["last_slice"] = hydration.last_background_hydration_report
+			for key in ["checkpoint_entity_state_stage", "checkpoint_world_feed_cursor", "checkpoint_saved_scenario_cursor"]:
+				diagnostic[key] = hydration.active_hydration_session.get(key, -1)
+			diagnostic["world_feed_size"] = state.world_feed.size()
+			diagnostic["saved_scenario_keys"] = hydration.active_hydration_session.get("checkpoint_saved_scenario_keys", []).size()
 		print("DESKTOP HYDRATION: ", JSON.stringify(diagnostic))
 	return not record.is_empty() and not record.get("checkpoint_payload_apply_pending", true) and record.get("resident_chassis_tail_complete", false) and record.get("checkpoint_payload_tail_complete", false) and not record.get("checkpoint_payload_tail_failed", false)

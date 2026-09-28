@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-374 scripts; 922,753 source lines.
+374 scripts; 927,231 source lines.
 
 ## Largest files
 
@@ -20,18 +20,18 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Lines | Functions |
 | --- | ---: | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | 226,776 | 3103 |
-| [GameState.gd](../project/core/state/GameState.gd) | 23,283 | 337 |
-| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,484 | 146 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | 227,998 | 3107 |
+| [GameState.gd](../project/core/state/GameState.gd) | 23,381 | 337 |
+| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,662 | 147 |
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
 | [StickFighterMiniGameProvider.gd](../project/systems/minigames/StickFighterMiniGameProvider.gd) | 13,025 | 107 |
 | [SchoolEngine.gd](../project/systems/education/SchoolEngine.gd) | 12,940 | 205 |
 | [GameStateContractEngine.gd](../project/core/state/GameStateContractEngine.gd) | 12,450 | 183 |
+| [RealityResidencyManager.gd](../project/systems/realities/RealityResidencyManager.gd) | 11,622 | 56 |
 | [CrownHubContractEngine.gd](../project/systems/politics/CrownHubContractEngine.gd) | 11,594 | 87 |
-| [RealityResidencyManager.gd](../project/systems/realities/RealityResidencyManager.gd) | 11,547 | 56 |
 | [LuxuryShopEngine.gd](../project/systems/economy/LuxuryShopEngine.gd) | 9,845 | 64 |
 | [RealmEngine.gd](../project/systems/world/RealmEngine.gd) | 9,021 | 108 |
-| [UniversalSwitchContractEngine.gd](../project/systems/realities/UniversalSwitchContractEngine.gd) | 8,730 | 50 |
+| [CrimeHubContractEngine.gd](../project/systems/crime/CrimeHubContractEngine.gd) | 8,730 | 76 |
 
 ## project/audio
 
@@ -178,7 +178,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | - | 3103 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | - | 3107 |
 | [MobileBoot.gd](../project/scenes/MobileBoot.gd) | - | 2 |
 
 ## project/systems/activities
@@ -250,7 +250,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [HeightContractEngine.gd](../project/systems/characters/HeightContractEngine.gd) | HeightContractEngine | 13 |
 | [HumanContractEngine.gd](../project/systems/characters/HumanContractEngine.gd) | HumanContractEngine | 17 |
 | [IdentityContractEngine.gd](../project/systems/characters/IdentityContractEngine.gd) | IdentityContractEngine | 48 |
-| [LifeEngine.gd](../project/systems/characters/LifeEngine.gd) | LifeEngine | 73 |
+| [LifeEngine.gd](../project/systems/characters/LifeEngine.gd) | LifeEngine | 75 |
 | [LivePersonEditorEngine.gd](../project/systems/characters/LivePersonEditorEngine.gd) | LivePersonEditorEngine | 22 |
 | [Person.gd](../project/systems/characters/Person.gd) | Person | 28 |
 | [PersonalityEngine.gd](../project/systems/characters/PersonalityEngine.gd) | PersonalityEngine | 5 |
@@ -264,9 +264,9 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | Script | Global class | Functions |
 | --- | --- | ---: |
 | [CaseOrchestrator.gd](../project/systems/crime/CaseOrchestrator.gd) | CaseOrchestrator | 33 |
-| [CrimeContractEngine.gd](../project/systems/crime/CrimeContractEngine.gd) | CrimeContractEngine | 60 |
-| [CrimeEngine.gd](../project/systems/crime/CrimeEngine.gd) | CrimeEngine | 64 |
-| [CrimeHubContractEngine.gd](../project/systems/crime/CrimeHubContractEngine.gd) | CrimeHubContractEngine | 74 |
+| [CrimeContractEngine.gd](../project/systems/crime/CrimeContractEngine.gd) | CrimeContractEngine | 61 |
+| [CrimeEngine.gd](../project/systems/crime/CrimeEngine.gd) | CrimeEngine | 66 |
+| [CrimeHubContractEngine.gd](../project/systems/crime/CrimeHubContractEngine.gd) | CrimeHubContractEngine | 76 |
 | [CrimeWorldEngine.gd](../project/systems/crime/CrimeWorldEngine.gd) | CrimeWorldEngine | 66 |
 | [InfamyEngine.gd](../project/systems/crime/InfamyEngine.gd) | InfamyEngine | 21 |
 | [InvestigationLayer.gd](../project/systems/crime/InvestigationLayer.gd) | InvestigationLayer | 5 |
@@ -356,10 +356,10 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [AnimalContractEngine.gd](../project/systems/pets/AnimalContractEngine.gd) | AnimalContractEngine | 26 |
+| [AnimalContractEngine.gd](../project/systems/pets/AnimalContractEngine.gd) | AnimalContractEngine | 27 |
 | [MythicalPetsContractEngine.gd](../project/systems/pets/MythicalPetsContractEngine.gd) | MythicalPetsContractEngine | 7 |
 | [PetShopContractEngine.gd](../project/systems/pets/PetShopContractEngine.gd) | PetShopContractEngine | 25 |
-| [PetsContractEngine.gd](../project/systems/pets/PetsContractEngine.gd) | PetsContractEngine | 65 |
+| [PetsContractEngine.gd](../project/systems/pets/PetsContractEngine.gd) | PetsContractEngine | 66 |
 
 ## project/systems/politics
 
@@ -435,8 +435,8 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [NPCMemoryWebEngine.gd](../project/systems/relationships/NPCMemoryWebEngine.gd) | NPCMemoryWebEngine | 10 |
 | [RelationshipActivitiesEngine.gd](../project/systems/relationships/RelationshipActivitiesEngine.gd) | RelationshipActivitiesEngine | 141 |
 | [RelationshipEngine.gd](../project/systems/relationships/RelationshipEngine.gd) | RelationshipEngine | 21 |
-| [RelationshipGraphContractEngine.gd](../project/systems/relationships/RelationshipGraphContractEngine.gd) | RelationshipGraphContractEngine | 42 |
-| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | RelationshipsHubContractEngine | 146 |
+| [RelationshipGraphContractEngine.gd](../project/systems/relationships/RelationshipGraphContractEngine.gd) | RelationshipGraphContractEngine | 43 |
+| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | RelationshipsHubContractEngine | 147 |
 | [RomanceContractEngine.gd](../project/systems/relationships/RomanceContractEngine.gd) | RomanceContractEngine | 67 |
 | [SocialGraphEngine.gd](../project/systems/relationships/SocialGraphEngine.gd) | SocialGraphEngine | 12 |
 
@@ -527,7 +527,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | --- | --- | ---: |
 | [CardContractEngine.gd](../project/ui/common/CardContractEngine.gd) | CardContractEngine | 9 |
 | [EmbeddedUIContractEngine.gd](../project/ui/common/EmbeddedUIContractEngine.gd) | EmbeddedUIContractEngine | 25 |
-| [InstitutionHubPanelBase.gd](../project/ui/common/InstitutionHubPanelBase.gd) | InstitutionHubPanelBase | 83 |
+| [InstitutionHubPanelBase.gd](../project/ui/common/InstitutionHubPanelBase.gd) | InstitutionHubPanelBase | 86 |
 | [UIContractEngine.gd](../project/ui/common/UIContractEngine.gd) | UIContractEngine | 111 |
 
 ## project/ui/main/support

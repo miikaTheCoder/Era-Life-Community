@@ -805,6 +805,14 @@ func emit_hub_contract(
 				"truth_state": "hot",
 				"projection_complete": true,
 				"authoritative_projection": true,
+				# NOTE: groups.size() is 1 for the "pets" section whether that single
+				# group holds 0 cards or 20, and _affection_signature() hashes
+				# actor.affection (humans only). This revision is therefore blind to
+				# pet content. Left AS-IS deliberately: the live post-load path is
+				# the resident/cooperative projection in _step_resident_hub_projection(),
+				# whose revision uses _resident_relationship_section_stream_signature().
+				# Fixing that one function covers the bug; changing this producer too
+				# was reverted while a crash is being bisected.
 				"surface_revision": (
 					"%d:%d:%s:%d:%s"
 					% [
@@ -977,7 +985,12 @@ func _resident_relationship_group_quantum_count(
 		"descendants":
 			return 3
 		"dead":
-			return 6
+			# 7 not 6: adds the "Dead Pets" lane. This count is the streaming
+			# contract -- the projection emits one group per quantum and marks the
+			# section complete at this number, so it MUST match the number of
+			# groups the two builders below actually produce. Change all three
+			# together or the section stalls or truncates.
+			return 7
 		"social":
 			return 3
 		"exes":
@@ -1428,6 +1441,11 @@ func _resident_relationship_group_quantum(
 						},
 						context
 					)
+				6:
+					return _dead_pet_group_contract(
+						actor,
+						context
+					)
 
 		"social":
 			match group_cursor:
@@ -1528,6 +1546,15 @@ func _resident_relationship_section_stream_signature(
 				raw_card
 			)
 
+			# FIX: pet and other entity cards carry no int "target_id" -- they are
+			# keyed by the String "target_entity_id" ("pet:3"). The old `target_id
+			# <= 0: continue` guard therefore skipped EVERY pet card, so this
+			# signature was byte-identical for a pets group holding 0 cards and one
+			# holding 2. The panel gates surface rebuilds solely on surface_revision
+			# (InstitutionHubPanelBase._service_next_section_surface_contract), so a
+			# correct contract carrying 2 restored pets was discarded as unchanged
+			# and the empty surface built during the load stayed on screen.
+			var card_key: String = ""
 			var target_id: int = int(
 				card.get(
 					"target_id",
@@ -1535,23 +1562,65 @@ func _resident_relationship_section_stream_signature(
 				)
 			)
 
-			if target_id <= 0:
+			if target_id > 0:
+				card_key = "person:%d" % target_id
+			else:
+				card_key = str(
+					card.get(
+						"target_entity_id",
+						""
+					)
+				).strip_edges()
+
+			if card_key == "":
 				continue
 
 			card_ids.append(
-				target_id
+				card_key
 			)
 
+			var age_raw: Variant = card.get(
+				"target_age",
+				-1
+			)
+			var age_value: int = -1
+
+			if (
+				typeof(
+					age_raw
+				) == TYPE_INT
+				or typeof(
+					age_raw
+				) == TYPE_FLOAT
+			):
+				age_value = int(
+					age_raw
+				)
+
+			var bond_raw: Variant = card.get(
+				"bond",
+				-1
+			)
+			var bond_value: int = -1
+
+			if (
+				typeof(
+					bond_raw
+				) == TYPE_INT
+				or typeof(
+					bond_raw
+				) == TYPE_FLOAT
+			):
+				bond_value = int(
+					bond_raw
+				)
+
 			card_revisions.append(
-				"%d:%d:%s"
+				"%s:%d:%d:%s"
 				% [
-					target_id,
-					int(
-						card.get(
-							"target_age",
-							-1
-						)
-					),
+					card_key,
+					age_value,
+					bond_value,
 					str(
 						card.get(
 							"signature",
@@ -1818,12 +1887,34 @@ func _step_resident_hub_projection(
 			"one_group_per_service_quantum"
 		] = true
 
-		if active_group_cursor < required_group_count:
+		# Empty groups no longer cost a whole quantum each.
+		#
+		# One group per quantum, and the "dead" section alone has 7 groups that are
+		# almost always empty (Dead Siblings, Dead Children, Dead Great-
+		# Grandparents...). Across all sections that was ~25 of the ~41 projection
+		# passes in an age-up, most of them producing "None.".
+		#
+		# The group SET is unchanged -- every group is still built, still appended
+		# at its own cursor, and required_group_count is untouched. Only the
+		# yielding changes: a group that produced no cards does not end the
+		# quantum, so runs of empty groups collapse into one pass instead of one
+		# each. Group count and section revision are therefore identical, which
+		# matters because the panel's gate keys on them (see the Dead Pets lane
+		# notes -- changing a group count invalidates every cached surface).
+		#
+		# Bounded by empty_group_budget so a section of entirely empty groups
+		# cannot monopolise a frame.
+		var empty_groups_this_quantum: int = 0
+		var empty_group_budget: int = 6
+		var group_contract: Dictionary = {}
+		var group_projection_pending: bool = false
+
+		while active_group_cursor < required_group_count:
 			projection_context [
 				"section_group_cursor"
 			] = active_group_cursor
 
-			var group_contract: Dictionary = (
+			group_contract = (
 				_resident_relationship_group_quantum(
 					actor,
 					section_id,
@@ -1831,7 +1922,7 @@ func _step_resident_hub_projection(
 					projection_context
 				)
 			)
-			var group_projection_pending: bool = bool(
+			group_projection_pending = bool(
 				group_contract.get(
 					"projection_pending",
 					false
@@ -1839,9 +1930,6 @@ func _step_resident_hub_projection(
 			)
 
 			if not group_contract.is_empty():
-
-
-
 				while (
 					current_groups.size()
 					< active_group_cursor
@@ -1862,12 +1950,25 @@ func _step_resident_hub_projection(
 						active_group_cursor
 					] = group_contract
 
-
-
-
-
 			if not group_projection_pending:
 				active_group_cursor += 1
+
+			# A group that produced cards ends the quantum, exactly as before. A
+			# group that produced none does not -- move straight on to the next.
+			var group_card_count: int = _array(
+				group_contract.get(
+					"cards",
+					[]
+				)
+			).size()
+
+			if group_projection_pending or group_card_count > 0:
+				break
+
+			empty_groups_this_quantum += 1
+
+			if empty_groups_this_quantum >= empty_group_budget:
+				break
 		var section_complete: bool = (
 			active_group_cursor
 			>= required_group_count
@@ -7745,6 +7846,12 @@ func _hub_group_contracts(
 					{
 						"section_key": "dead"
 					},
+					context
+				)
+			)
+			groups.append(
+				_dead_pet_group_contract(
+					actor,
 					context
 				)
 			)
@@ -13656,6 +13763,17 @@ func _pet_group_contract(
 					raw_card as Dictionary
 				).duplicate(false)
 
+				# Dead pets belong to the "Dead Pets" lane in the dead section
+				# (_dead_pet_group_contract). Without this filter they would render
+				# in both places.
+				if not bool(
+					pet_card.get(
+						"alive",
+						true
+					)
+				):
+					continue
+
 				var target_entity: Dictionary = (
 					_shallow_dictionary(
 						pet_card.get(
@@ -16482,3 +16600,63 @@ func _array(
 		).duplicate(false)
 
 	return []
+
+func _dead_pet_group_contract(
+	actor: Person,
+	context: Dictionary = {}
+) -> Dictionary:
+	# Dead pets cannot go through emit_group_contract() -- that takes person ids
+	# and resolves them via _filter_person_ids_by_alive(). Pets are graph entities,
+	# so this mirrors _pet_group_contract()'s "entity_group" shape instead.
+	#
+	# Aliveness is derived in PetsContractEngine._refresh_owned_animal_lifecycles()
+	# before any card is built, so the "alive" flag on these cards is already
+	# authoritative by the time we filter on it here.
+	var dead_rows: Array = []
+
+	if (
+		gs != null
+		and gs.pets_contract_engine != null
+		and gs.pets_contract_engine.has_method(
+			"get_pet_cards_for_actor"
+		)
+	):
+		var pet_context: Dictionary = context.duplicate(false)
+
+		pet_context["source"] = "relationships_hub_contract_engine.dead_pet_group"
+		pet_context["projection_read_only"] = true
+		pet_context["seed_if_missing"] = false
+		pet_context["ui_is_renderer_only"] = true
+
+		var raw_rows: Variant = (
+			gs.pets_contract_engine.get_pet_cards_for_actor(
+				actor,
+				pet_context
+			)
+		)
+
+		if typeof(raw_rows) == TYPE_ARRAY:
+			for raw_card in (raw_rows as Array):
+				if typeof(raw_card) != TYPE_DICTIONARY:
+					continue
+
+				var pet_card: Dictionary = (
+					raw_card as Dictionary
+				).duplicate(false)
+
+				if bool(pet_card.get("alive", true)):
+					continue
+
+				dead_rows.append(pet_card)
+
+	return {
+		"row_kind": "entity_group",
+		"title": "Dead Pets",
+		"subtitle": "Companions who have passed.",
+		"cards": dead_rows,
+		"columns": 3,
+		"empty_text": "None.",
+		"projection_read_only": true,
+		"seed_if_missing": false,
+		"ui_is_renderer_only": true
+	}

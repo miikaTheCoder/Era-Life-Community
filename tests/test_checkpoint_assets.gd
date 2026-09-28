@@ -17,6 +17,8 @@ func _initialize() -> void:
 	owner.first_name = "Pet"
 	owner.last_name = "Owner"
 	owner.age = 30
+	owner.birth_year = 1971
+	owner.last_biology_year = 2001
 	owner.alive = true
 	source.player = owner
 	source.player_id = owner.id
@@ -49,6 +51,8 @@ func _initialize() -> void:
 		"species_id": "dog",
 		"display_name": "Pixel",
 		"age": 4,
+		"birth_year": 1997,
+		"lifespan_years": 5,
 		"alive": true,
 		"stats": {
 			"health": 87,
@@ -94,6 +98,11 @@ func _initialize() -> void:
 		"next_id": source.next_id,
 	})
 	var payload := BinarySaveEngine.decode(encoded)
+	var decoded_actor: Person = source._deserialize_npc(payload.actor_snapshot)
+	_check(
+		decoded_actor.birth_year == 1971 and decoded_actor.last_biology_year == 2001,
+		"Binary actor hydration lost the durable biological aging anchors"
+	)
 
 	var target := GameState.create_resident_chassis_shell()
 	target.vehicle_engine = VehicleEngine.new(target)
@@ -152,6 +161,10 @@ func _initialize() -> void:
 		"Checkpoint asset fixture did not materialize a playable actor"
 	)
 	_check(
+		resumed.player.birth_year == 1971 and resumed.player.last_biology_year == 2001,
+		"Immediate checkpoint resume lost the biological aging anchors"
+	)
+	_check(
 		resumed.vehicle_engine != null
 		and resumed.vehicle_engine.vehicles.get(7, []).size() == 1,
 		"Checkpoint resume changed the vehicle owner ID type"
@@ -188,6 +201,44 @@ func _initialize() -> void:
 		and str(resumed_pet_cards[0].get("target_name", "")) == "Pixel"
 		and int(resumed_pet_cards[0].get("bond", -1)) == 76,
 		"Checkpoint resume did not restore the saved pet as an interactive card"
+	)
+
+	# Restored pets must update the section revision and move to Dead Pets once,
+	# even when several years pass before the player opens Relationships again.
+	resumed.animal_contract_engine = AnimalContractEngine.new(resumed)
+	var hub := RelationshipsHubContractEngine.new(resumed)
+	var context := {"projection_read_only": true, "seed_if_missing": false}
+	var live_group: Dictionary = hub._pet_group_contract(resumed.player, context)
+	var empty_group: Dictionary = live_group.duplicate(true)
+	empty_group["cards"] = []
+	_check(
+		live_group.get("cards", []).size() == 1
+		and hub._resident_relationship_section_stream_signature([live_group])
+		!= hub._resident_relationship_section_stream_signature([empty_group]),
+		"A restored pet did not invalidate an empty relationship surface"
+	)
+	_check(
+		hub._dead_pet_group_contract(resumed.player, context).get("cards", []).is_empty(),
+		"A living pet appeared in Dead Pets"
+	)
+	resumed.year = 2004
+	_check(
+		hub._pet_group_contract(resumed.player, context).get("cards", []).is_empty(),
+		"A deceased pet remained in the living section"
+	)
+	var dead_group: Dictionary = hub._dead_pet_group_contract(resumed.player, context)
+	var deceased: Dictionary = resumed.entity_registry.get("animal:checkpoint-pet", {})
+	_check(
+		dead_group.get("cards", []).size() == 1
+		and int(deceased.get("death_year", -1)) == 2003
+		and int(deceased.get("death_age", -1)) == 6,
+		"Pet catch-up did not preserve the actual death year and age"
+	)
+	var graph_before: Dictionary = resumed.canonical_relationship_graph.duplicate(true)
+	hub._dead_pet_group_contract(resumed.player, context)
+	_check(
+		resumed.canonical_relationship_graph == graph_before,
+		"An unchanged pet read rewrote the relationship graph"
 	)
 
 	print("CHECKPOINT ASSET TESTS: ", "FAIL" if failed else "PASS")

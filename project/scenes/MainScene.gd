@@ -2235,6 +2235,62 @@ func _mod_menu_contract_is_renderable(
 			"section_rows"
 		)
 	)
+func _bind_resident_relationship_section_signal(
+	runtime: GameState
+) -> void:
+	if runtime == null:
+		return
+
+	var projection_engine = (
+		runtime.reality_projection_contract_engine
+	)
+
+	if projection_engine == null:
+		return
+
+	if not projection_engine.has_signal(
+		"resident_relationship_section_contract_ready"
+	):
+		return
+
+	var relationship_section_callback: Callable = Callable(
+		self,
+		"_on_resident_relationship_section_contract_ready"
+	)
+
+	if projection_engine.is_connected(
+		"resident_relationship_section_contract_ready",
+		relationship_section_callback
+	):
+		EraLog.truth(
+			"ERALIFE_SECTION_SIGNAL_BIND|tag=%s|result=already_connected"
+			% str(
+				runtime.runtime_origin_tag
+			)
+		)
+		return
+
+	projection_engine.connect(
+		"resident_relationship_section_contract_ready",
+		relationship_section_callback
+	)
+
+	EraLog.truth(
+		"ERALIFE_SECTION_SIGNAL_BIND|tag=%s|result=connected|signature=%s"
+		% [
+			str(
+				runtime.runtime_origin_tag
+			),
+			str(
+				runtime.scenario_state.get(
+					"reality_residency_signature",
+					""
+				)
+			) if typeof(runtime.scenario_state) == TYPE_DICTIONARY else ""
+		]
+	)
+
+
 func _capture_reality_residency_host() -> void:
 	if reality_residency_host_game_state == null:
 		reality_residency_host_game_state = gs
@@ -3281,6 +3337,27 @@ func _on_resident_relationship_section_contract_ready(
 		) != actor_id
 		or section_contract.is_empty()
 	):
+		# DIAGNOSTIC: the refresh drain reports pets contracts with cards=2 that
+		# never reach the panel. This handler is the only path between the two and
+		# it has three silent returns. Report each one.
+		EraLog.truth(
+			"ERALIFE_SECTION_READY_DROP|reason=entry_guard|section=%s|actor_id=%d|player_id=%d|gs_null=%s|contract_empty=%s"
+			% [
+				str(
+					section_id
+				),
+				actor_id,
+				int(
+					gs.player.id
+				) if (gs != null and gs.player != null) else -1,
+				str(
+					gs == null
+				),
+				str(
+					section_contract.is_empty()
+				)
+			]
+		)
 		return
 
 	var clean_signature: String = str(
@@ -3294,6 +3371,13 @@ func _on_resident_relationship_section_contract_ready(
 		clean_signature == ""
 		or clean_section_id == ""
 	):
+		EraLog.truth(
+			"ERALIFE_SECTION_READY_DROP|reason=blank_signature_or_section|section=%s|incoming=%s"
+			% [
+				clean_section_id,
+				clean_signature
+			]
+		)
 		return
 
 	var tracked_signature: String = str(
@@ -3310,13 +3394,47 @@ func _on_resident_relationship_section_contract_ready(
 		tracked_signature == ""
 		and attached_signature == ""
 	):
+		EraLog.truth(
+			"ERALIFE_SECTION_READY_DROP|reason=no_signature_known|section=%s|incoming=%s"
+			% [
+				clean_section_id,
+				clean_signature
+			]
+		)
 		return
 
 	if (
 		clean_signature != tracked_signature
 		and clean_signature != attached_signature
 	):
+		# DIAGNOSTIC: the emitting runtime's signature must match either the
+		# god-mode prewarm signature or the residency attached signature. After a
+		# checkpoint resume the attached signature is a "checkpoint:..." form, so a
+		# mismatch here silently discards a fully correct section contract.
+		EraLog.truth(
+			"ERALIFE_SECTION_READY_DROP|reason=signature_mismatch|section=%s|incoming=%s|tracked=%s|attached=%s"
+			% [
+				clean_section_id,
+				clean_signature,
+				tracked_signature,
+				attached_signature
+			]
+		)
 		return
+
+	EraLog.truth(
+		"ERALIFE_SECTION_READY_ACCEPTED|section=%s|incoming=%s|groups=%d"
+		% [
+			clean_section_id,
+			clean_signature,
+			ValueSceneSupport._safe_array(
+				section_contract.get(
+					"groups",
+					[]
+				)
+			).size()
+		]
+	)
 
 	var cached_contracts_raw: Variant = get_meta(
 		"resident_main_tab_surface_contracts",
@@ -3540,6 +3658,22 @@ func _on_resident_relationship_section_contract_ready(
 			int(
 				Time.get_ticks_msec()
 			)
+		)
+		EraLog.truth(
+			"ERALIFE_SECTION_READY_DROP|reason=rollback_rejected|section=%s|temporal=%s|stream=%s|incoming_year=%d|installed_year=%d|incoming_rev=%s|installed_rev=%s"
+			% [
+				clean_section_id,
+				str(
+					reject_temporal_rollback
+				),
+				str(
+					reject_stream_rollback
+				),
+				incoming_world_year,
+				installed_world_year,
+				incoming_revision,
+				installed_revision
+			]
 		)
 		return
 
@@ -8224,6 +8358,19 @@ func _adopt_attached_resident_game_state(
 	gs.scenario_state [
 		"runtime_never_unloads_for_lens_disconnect"
 	] = true
+
+	# REVERTED (build 66): reality_residency_signature was written here so that
+	# _runtime_signature() would return the checkpoint signature and the resident
+	# runtime's section contracts would pass the handler's signature check. It
+	# worked -- year-1071 pets reached the panel. But the rest of the hub is still
+	# year 79 (the god-mode prewarm world), and has_renderable_contract() requires
+	# observed_world_year == required_world_year, so the mixed-year panel gets
+	# blanked by prepare_observable_actor_shell(). Letting the correct pets data in
+	# is only safe once the whole hub projects from the resumed runtime.
+
+	_bind_resident_relationship_section_signal(
+		gs
+	)
 
 
 
@@ -17274,6 +17421,7 @@ func _build_current_save_slot_path() -> String:
 func _bootstrap_gs_for_save_load_if_needed() -> void:
 	if gs == null:
 		gs = GameState.new()
+		gs.runtime_origin_tag = "bootstrap_for_save_load"
 		gs.custom_mode = true
 		gs.custom_settings = (
 			_build_default_custom_settings()
@@ -23530,6 +23678,48 @@ func _present_attached_checkpoint_lens_now(
 			]
 		)
 
+	# CENSUS: enumerate every runtime reachable at this moment with its origin tag,
+	# graph size and vehicle store. Pets survive in some runtimes and not the one the
+	# relationships hub reads; this makes that set explicit rather than inferred.
+	if gs != null:
+		var census: Array = []
+
+		census.append(
+			"MAIN[%d|%s|edges=%d|vehicles=%d]"
+			% [
+				int(gs.get_instance_id()),
+				str(gs.runtime_origin_tag),
+				ValueSceneSupport._safe_dictionary(gs.canonical_relationship_graph.get("edges", {})).size(),
+				gs.vehicle_engine.vehicles.size() if gs.vehicle_engine != null else -1
+			]
+		)
+
+		if gs.reality_residency_manager != null:
+			for raw_signature in gs.reality_residency_manager.resident_records.keys():
+				var row: Dictionary = ValueSceneSupport._safe_dictionary(
+					gs.reality_residency_manager.resident_records.get(raw_signature, {})
+				)
+				var row_runtime = row.get("runtime_ref", null)
+
+				if not (row_runtime is GameState):
+					census.append("REC[%s|no_runtime]" % str(raw_signature))
+					continue
+
+				census.append(
+					"REC[%s|%d|%s|edges=%d|vehicles=%d]"
+					% [
+						str(raw_signature),
+						int(row_runtime.get_instance_id()),
+						str(row_runtime.runtime_origin_tag),
+						ValueSceneSupport._safe_dictionary(row_runtime.canonical_relationship_graph.get("edges", {})).size(),
+						row_runtime.vehicle_engine.vehicles.size() if row_runtime.vehicle_engine != null else -1
+					]
+				)
+
+		EraLog.truth(
+			"ERALIFE_RUNTIME_CENSUS|%s" % " ".join(census)
+		)
+
 	EraLog.truth(
 		"ERALIFE_LOAD_GRAPH_ADOPTED|applied=%s|live_edges=%d|source_gs=%d|source_edges=%d|manager=%s|attached=%s"
 		% [
@@ -23542,11 +23732,33 @@ func _present_attached_checkpoint_lens_now(
 		]
 	)
 
+	# REVERTED: invalidate_cached_section_surfaces() was called here to drop the
+	# panel's per-section surface cache after a load. It emptied the ENTIRE
+	# relationships hub -- no tabs, no sections -- because clearing the deck removes
+	# the built surfaces without anything republishing them. The cache is genuinely
+	# the reason stale pets show, but dropping it needs a rebuild to follow, and the
+	# panel does not republish on its own.
+
+	# REMOVED: request_attached_actor_projection_rebind() was called here to force a
+	# surface rebuild. Evidence says it makes things worse: with only the section
+	# refresh below, PET_CARDS_READ fired (reporting edges=0, before the graph was
+	# propagated). With the rebind added it stopped firing entirely -- the rebind
+	# erases the projection work and the queued section refresh goes with it. The
+	# graph now lives on the correct runtime (census: edges=4), so the section refresh
+	# alone should be able to produce a card.
+
 	# FIX: after a load the pets section never queries at all -- PET_CARDS_READ does
 	# not appear, where it does in a normal session. The relationship hub is serving
 	# surfaces built before the resume. This uses the narrow, purpose-built section
 	# refresh rather than the new-world reset that was tried here before and wiped
 	# stats and money: it touches only the relationship sections.
+	# REVERTED (build 67): begin_resident_projection(force_rebuild=true) was called
+	# here to re-project the whole relationships hub on the resumed runtime. It
+	# returned success=true but emitted NO relationships surface packet at the
+	# checkpoint signature -- only school. The hub stayed on year 79 while pets went
+	# to 1071, and the mixed-year state blanked the panel again. Do not repeat
+	# without first explaining why the relationships step never emits.
+
 	if (
 		gs != null
 		and gs.reality_projection_contract_engine != null
@@ -23575,6 +23787,25 @@ func _present_attached_checkpoint_lens_now(
 				str(pets_refresh.get("reason", "-"))
 			]
 		)
+
+		# Queue it again over the next few seconds. A single request during reattach
+		# can land before the hub is able to service it, and the queue drains on its
+		# own process_frame connection independent of the residency pump.
+		for retry_delay in [0.5, 1.5, 3.0]:
+			var retry_timer: SceneTreeTimer = get_tree().create_timer(retry_delay)
+			retry_timer.timeout.connect(
+				func () -> void:
+					if (
+						gs != null
+						and gs.player != null
+						and gs.reality_projection_contract_engine != null
+					):
+						gs.reality_projection_contract_engine.queue_resident_relationship_section_refresh(
+							int(gs.player.id),
+							["pets"],
+							{"source": "checkpoint_reattach_retry"}
+						)
+			)
 
 	# REVERTED: _reset_world_specific_ui_lens_state_for_new_world_seed() was called
 	# here to clear stale relationship-hub surfaces after a load. It is meant for
@@ -31398,6 +31629,45 @@ func _emit_pending_popup_contract_from_action_result(result: Dictionary, context
 		gs.pending_situations_engine = PendingSituationsEngine.new(gs)
 
 	var report: Dictionary = gs.scenario_popup_contract_engine.emit_from_action_result(result, context)
+
+	# DIAGNOSTIC: the freeze reproduces when a target DIES while several pending
+	# situations are already queued and unresolved. Killing a victim with an empty
+	# queue worked fine earlier. Report each emit with the queue depth and whether
+	# this result was a death, so the correlation is measured rather than assumed.
+	EraLog.truth(
+		"ERALIFE_PENDING_EMIT|success=%s|target_died=%s|source=%s|queue_before=%d"
+		% [
+			str(
+				report.get(
+					"success",
+					false
+				)
+			),
+			str(
+				result.get(
+					"target_died",
+					false
+				)
+			),
+			str(
+				context.get(
+					"source",
+					"-"
+				)
+			),
+			(
+				gs.pending_situations_engine.get_pending_count()
+				if (
+					gs.pending_situations_engine != null
+					and gs.pending_situations_engine.has_method(
+						"get_pending_count"
+					)
+				)
+				else -1
+			)
+		]
+	)
+
 	if bool(report.get("success", false)):
 		set_meta("pending_situations_dirty", true)
 		set_meta("pending_situations_last_emit_ms", int(Time.get_ticks_msec()))
@@ -65994,6 +66264,19 @@ func _sync_runtime_floating_hud_layering() -> void:
 		)
 	)
 
+	# DIAGNOSTIC: pinning why food/restaurant HUD icons stay hidden past their unlock age.
+	EraLog.truth(
+		"ERALIFE_FOOD_HUD_LAYERING|food=%s|restaurant=%s|actor_matches_snapshot=%s|snapshot_actor_id=%d|current_actor_id=%d|surface_allows=%s"
+		% [
+			str(visibility_snapshot.get("food", false)),
+			str(visibility_snapshot.get("restaurant", false)),
+			str(visibility_snapshot.get("actor_matches_snapshot", false)),
+			int(visibility_snapshot.get("snapshot_actor_id", -1)),
+			int(visibility_snapshot.get("current_actor_id", -1)),
+			str(surface_allows_runtime_buttons)
+		]
+	)
+
 	if not surface_allows_runtime_buttons:
 		if _spawn_ready_runtime_hud_shell_layering_active():
 			_sync_runtime_floating_hud_layering_for_spawn_shell(
@@ -70490,6 +70773,22 @@ func _update_food_lifestyle_hud() -> void:
 	var show_food: bool = base_visible and _food_lifestyle_food_hub_available()
 	var show_restaurant: bool = base_visible and _food_lifestyle_restaurant_hub_available()
 
+	# DIAGNOSTIC: pinning why food/restaurant HUD icons stay hidden past their unlock age.
+	EraLog.truth(
+		"ERALIFE_FOOD_HUD_UPDATE|age=%d|era=%s|base_visible=%s|blocked_by_age_up=%s|allow_embedded=%s|surface_allows=%s|has_modal_blocker=%s|show_food=%s|show_restaurant=%s"
+		% [
+			int(gs.player.age) if (gs != null and gs.player != null) else -1,
+			_food_lifestyle_current_era_name_for_mainscene(),
+			str(base_visible),
+			str(blocked_by_age_up_loading),
+			str(allow_embedded_life_view),
+			str(surface_allows_runtime_buttons),
+			str(has_modal_blocker),
+			str(show_food),
+			str(show_restaurant)
+		]
+	)
+
 	food_lifestyle_hud_button.visible = show_food
 	food_lifestyle_hud_button.disabled = not show_food
 	food_lifestyle_hud_button.mouse_filter = Control.MOUSE_FILTER_STOP if show_food else Control.MOUSE_FILTER_IGNORE
@@ -71109,6 +71408,33 @@ func _toggle_bending_hud() -> void:
 	_begin_runtime_interaction_quiet_window("toggle_bending_hud", 80 if opening else 60)
 
 	if opening:
+		# DIAGNOSTIC: correlate hub opens against a still-running age-up projection
+		# pump. The age-up lock only gates the age-up button itself, not navigation
+		# into other hubs, so this reports whether the pump was still mid-flight
+		# whenever Bending Hub opened.
+		EraLog.truth(
+			"ERALIFE_BENDING_HUB_OPEN|age_up_lock_active=%s|age_up_lock_frame=%d|current_frame=%d"
+			% [
+				str(
+					bool(
+						get_meta(
+							"age_up_transition_lock",
+							false
+						)
+					)
+				),
+				int(
+					get_meta(
+						"age_up_transition_lock_frame",
+						-1
+					)
+				),
+				int(
+					Engine.get_process_frames()
+				)
+			]
+		)
+
 		_set_runtime_floating_hud_forced_open("bending", true)
 		_ensure_bending_hud()
 
@@ -77365,6 +77691,7 @@ func _try_load_reality_capsule_from_browser_url() -> bool:
 
 	if gs == null:
 		gs = GameState.new()
+		gs.runtime_origin_tag = "reality_capsule_from_url"
 		gs.custom_mode = true
 		gs.custom_settings = _build_default_custom_settings()
 
@@ -116263,6 +116590,29 @@ func _continue_checkpoint_reality_surface_publication_tail(
 			)
 		)
 	)
+
+	# FIX: attach_report["checkpoint_resume_contract"] -- which is what reaches this
+	# tail -- does not carry main_tab_surface_contracts. RESUME_TRUTH reports
+	# tab_packets=5 because RealityResidencyManager measures its OWN surface_deck
+	# and writes it into resident_gs.scenario_state, not into the contract handed
+	# back through the attach report. So this stage saw deck_keys=[] on every
+	# surface and skipped all five installs, leaving the hub on the previous
+	# world's year-79 surfaces. _checkpoint_resume_published_main_tab_contracts_for_actor()
+	# reads exactly where the manager wrote it; it already exists for this purpose
+	# and had one caller, in the watchdog that runs only after publication has
+	# already failed to complete.
+	if (
+		surface_deck.is_empty()
+		and gs != null
+		and gs.player != null
+	):
+		surface_deck = (
+			_checkpoint_resume_published_main_tab_contracts_for_actor(
+				int(
+					gs.player.id
+				)
+			)
+		)
 	var stage_label: String = ""
 
 	match stage_index:
@@ -116318,6 +116668,36 @@ func _continue_checkpoint_reality_surface_publication_tail(
 			stage_label = (
 				"main_tab.%s"
 				% surface_id
+			)
+
+			# DIAGNOSTIC: RESUME_TRUTH reports relationship_cards_packet=true, but
+			# no RESUME_INSTALL line appears -- so the contract THIS code reads is
+			# not the one RealityResidencyManager measured. They are separate reads:
+			# the manager measures its own surface_deck, this reads
+			# resume_contract["main_tab_surface_contracts"]. Log unconditionally,
+			# ABOVE the is_empty() guard, so absence cannot be ambiguous.
+			EraLog.truth(
+				"ERALIFE_RESUME_PUBLISH_STAGE|signature=%s|stage_index=%d|surface=%s|deck_keys=%s|this_surface_empty=%s|resume_contract_keys=%d|deck_from_scenario_fallback=%s"
+				% [
+					clean_signature,
+					stage_index,
+					surface_id,
+					str(
+						surface_deck.keys()
+					),
+					str(
+						surface_contract.is_empty()
+					),
+					resume_contract.size(),
+					str(
+						ValueSceneSupport._safe_dictionary(
+							resume_contract.get(
+								"main_tab_surface_contracts",
+								{}
+							)
+						).is_empty()
+					)
+				]
 			)
 
 			if not surface_contract.is_empty():
@@ -122845,6 +123225,10 @@ func _render_crime_hub_route_result(
 		result
 	)
 
+	# Present crime outcomes before rebuilding the hub or navigating sections.
+	if routed.has("popup_text") or routed.has("text"):
+		_maybe_show_action_result_popup(routed)
+
 	var section_contract: Dictionary = ValueSceneSupport._safe_dictionary(
 		routed.get(
 			"section_contract",
@@ -122985,6 +123369,28 @@ func _on_crime_panel_close_requested() -> void:
 		"life",
 		"crime_hub_close_return_to_life"
 	)
+
+	# FIX: same defect as the relationships and school close handlers.
+	# _apply_main_tab_press_frame_nav_state() only manages nav flags -- it does not
+	# show or render anything -- and the hubs hide output_label when they take the
+	# surface. So the Life tab looked selected while the panel stayed blank, and
+	# age-ups committed correctly but were not displayed until Life was clicked
+	# manually.
+	#
+	# Visibility must be restored BEFORE the render: the render path skips work
+	# when the label is hidden.
+	#
+	# These are the only three hubs that close back to Life this way (grep
+	# _apply_main_tab_press_frame_nav_state for "_close"); all three are now fixed.
+	if output_label != null and is_instance_valid(output_label):
+		output_label.visible = true
+		output_label.scroll_active = true
+		output_label.bbcode_enabled = true
+
+	_invalidate_life_diary_contract_render_cache(
+		"crime_hub_panel_close"
+	)
+	_render_life_diary_panel()
 
 func _on_crime_panel_section_requested(
 	section_id: String
@@ -136140,6 +136546,10 @@ func _begin_visible_age_up_runtime_from_button() -> void:
 	if gs.life_engine != null:
 		zero_frame_result = gs.life_engine.age_up()
 
+		# NOTE: the age-up re-projection lives in _deferred_run_age_up_from_button(),
+		# which is the live path. This function has ZERO callers -- verified by grep
+		# -- so anything placed here never runs.
+
 	if not zero_frame_result.is_empty():
 		loading_context ["zero_frame_age_up"] = bool(zero_frame_result.get("zero_frame_age_up", false))
 		loading_context ["target_year"] = int(zero_frame_result.get("target_year", zero_frame_result.get("year", visible_target_year)))
@@ -139523,6 +139933,17 @@ func _complete_age_up_tail_runtime_result(result: Dictionary, reason: String = "
 	_show_age_up_output(result, false, "tail_runtime_complete")
 	call_deferred("_scroll_life_diary_to_bottom")
 
+	# FIX: runtime_hud_visibility_snapshot now gets rebuilt every year (see
+	# AgeUpRuntimeEngine._run_narrative_and_presentation), but nothing here ever
+	# told the actual HUD buttons to redraw from it -- so a newly-eligible hub
+	# icon sat correctly computed in scenario_state but never appeared on
+	# screen until something unrelated (opening and closing any hub) happened
+	# to force a resync. Same calls _close_rick_weapon_shop_popup already makes
+	# after its own state changes.
+	call_deferred("_restore_runtime_hud_button_shells_after_surface_change", "age_up_complete_restore_actor_huds")
+	call_deferred("_reveal_spawn_ready_runtime_hud_buttons_if_existing", "age_up_complete_existing_hud_reveal")
+	call_deferred("_sync_runtime_floating_hud_layering")
+
 func _arm_zero_frame_age_up_visible_observation_service() -> void:
 	var tree:= Engine.get_main_loop() as SceneTree
 
@@ -140136,15 +140557,22 @@ func _on_age_up_loading_exit_finished() -> void:
 				age_up_loading_overlay.visible = true
 				age_up_loading_overlay.modulate = Color(1.0, 1.0, 1.0, 1.0)
 
+			# DIAGNOSTIC: pinning why the HUD-refresh fix block never seems to run.
+			EraLog.truth("ERALIFE_AGE_UP_EXIT_BRANCH|branch=still_busy_bail_no_deferred_tail")
 			return
 
 	if not age_up_loading_runtime_active and not bool(get_meta("age_up_transition_busy", false)):
 		_age_up_truth_probe_finish("exit_finished_return_not_active")
+		# DIAGNOSTIC: pinning why the HUD-refresh fix block never seems to run.
+		EraLog.truth("ERALIFE_AGE_UP_EXIT_BRANCH|branch=return_not_active_nothing_to_do")
 		call_deferred("_run_post_loading_idle_refresh")
 		call_deferred("_update_player_stats_overlay")
 		return
 
 	var should_finalize_post_loading: bool = bool(get_meta("age_up_post_loading_finalize_pending", false))
+
+	# DIAGNOSTIC: pinning why the HUD-refresh fix block never seems to run.
+	EraLog.truth("ERALIFE_AGE_UP_EXIT_BRANCH|branch=reached_real_completion_fix_block_should_fire")
 
 	_hide_age_up_loading_overlay()
 
@@ -140163,6 +140591,25 @@ func _on_age_up_loading_exit_finished() -> void:
 	call_deferred("_force_age_up_life_diary_surface_after_handoff", "age_up_loading_exit_finished")
 	call_deferred("_update_player_stats_overlay")
 	call_deferred("_try_surface_controlled_death_after_age_up", "age_up_loading_exit_finished")
+
+	# FIX: runtime_hud_visibility_snapshot gets rebuilt every year (see
+	# AgeUpRuntimeEngine._run_narrative_and_presentation), but nothing told the
+	# actual HUD buttons to redraw from it. The original attempt at this fix was
+	# placed in _complete_age_up_tail_runtime_result(), which has zero callers
+	# anywhere in the project (dead code) -- this is the real, live completion
+	# path, confirmed by call sites into _on_age_up_loading_exit_finished.
+	call_deferred("_restore_runtime_hud_button_shells_after_surface_change", "age_up_complete_restore_actor_huds")
+	call_deferred("_reveal_spawn_ready_runtime_hud_buttons_if_existing", "age_up_complete_existing_hud_reveal")
+	# FIX: _restore_runtime_hud_button_shells_after_surface_change() above computes
+	# the right answer but never actually lands it where _sync_runtime_floating_hud_layering()
+	# reads from -- confirmed via diagnostic logging that its write never sticks in
+	# the persisted runtime_hud_visibility_snapshot the layering pass consults. Every
+	# hub-close path that correctly refreshes icons (e.g. bending hub close) instead
+	# calls _persist_runtime_hud_visibility_snapshot(), the canonical recompute-and-save
+	# function. Calling it here too, right before the layering sync, so age-up matches
+	# the same working pattern.
+	call_deferred("_persist_runtime_hud_visibility_snapshot", "age_up_complete")
+	call_deferred("_sync_runtime_floating_hud_layering")
 
 	var now_ms: int = int(Time.get_ticks_msec())
 	var restore_hold_frames: int = 6 if should_finalize_post_loading else 4
@@ -152492,6 +152939,54 @@ func _install_checkpoint_resume_main_tab_surface_contract(
 
 	match clean_surface_id:
 		"relationships":
+			# DIAGNOSTIC: the resume contract now carries all five surfaces
+			# (tab_packets=5, relationship_cards_packet=true), but no year-1071 gate
+			# line appears after a load. This is the only place the resumed
+			# relationships surface is handed to the panel, so report what is
+			# actually being installed: the actor, the section count, and the pets
+			# section's own revision (which carries the world year).
+			EraLog.truth(
+				"ERALIFE_RESUME_INSTALL_RELATIONSHIPS|signature=%s|actor_id=%d|panel_exists=%s|sections=%d|active_section=%s|pets_rev=%s"
+				% [
+					clean_signature,
+					actor_id,
+					str(
+						relationship_hub_panel != null
+						and is_instance_valid(
+							relationship_hub_panel
+						)
+					),
+					ValueSceneSupport._safe_dictionary(
+						contract.get(
+							"section_contracts",
+							{}
+						)
+					).size(),
+					str(
+						contract.get(
+							"active_section_id",
+							"-"
+						)
+					),
+					str(
+						ValueSceneSupport._safe_dictionary(
+							ValueSceneSupport._safe_dictionary(
+								contract.get(
+									"section_contracts",
+									{}
+								)
+							).get(
+								"pets",
+								{}
+							)
+						).get(
+							"surface_revision",
+							"-"
+						)
+					)
+				]
+			)
+
 			_ensure_relationship_hub_panel()
 
 			if (
@@ -167113,6 +167608,7 @@ func _prewarm_god_mode_life_from_settings(settings: Dictionary, reason: String =
 			gs.custom_settings [raw_key] = candidate_settings.get(raw_key)
 
 	var prewarm_gs:= GameState.new()
+	prewarm_gs.runtime_origin_tag = "god_mode_prewarm"
 	prewarm_gs.custom_mode = true
 	prewarm_gs.awaiting_new_life = false
 	prewarm_gs.afterlife_active = false
@@ -178456,6 +178952,7 @@ func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 	gs = GameState.new()
+	gs.runtime_origin_tag = "main_scene_ready"
 	_ensure_era_audio_engine()
 
 	gs.custom_mode = true
@@ -183828,6 +184325,50 @@ or (age_up_loading_overlay != null and is_instance_valid(age_up_loading_overlay)
 
 
 func _on_button_pressed() -> void:
+	# DIAGNOSTIC: two known callers feed this function (the main nav bar's age-up
+	# icon and the separately-built "Age Up" button in the afterlife overlay).
+	# The lock below already proved this handler can fire twice for one physical
+	# press; its own same-frame guard only catches a double-fire that lands on
+	# the same frame. Report every real entry, unconditionally, before any early
+	# return, so two entries a few frames apart (the case the guard misses, and
+	# the one that would commit two age-ups for one press) shows up directly.
+	var age_up_button_entry_count: int = int(
+		get_meta(
+			"age_up_button_entry_count",
+			0
+		)
+	) + 1
+	set_meta(
+		"age_up_button_entry_count",
+		age_up_button_entry_count
+	)
+
+	EraLog.truth(
+		"ERALIFE_AGE_UP_BUTTON_ENTRY|entry_count=%d|frame=%d|from_nav=%s|lock_active=%s"
+		% [
+			age_up_button_entry_count,
+			int(
+				Engine.get_process_frames()
+			),
+			str(
+				bool(
+					get_meta(
+						"age_up_nav_button_pressed_from_unified_nav_contract",
+						false
+					)
+				)
+			),
+			str(
+				bool(
+					get_meta(
+						"age_up_transition_lock",
+						false
+					)
+				)
+			)
+		]
+	)
+
 	if (
 		gs == null
 		or gs.player == null
@@ -183840,6 +184381,100 @@ func _on_button_pressed() -> void:
 	var age_up_input_frame_id: int = int(
 		Engine.get_process_frames()
 	)
+
+	# AGE-UP TRANSITION LOCK.
+	#
+	# The existing guards cover only the INTENT (the LifeEngine transaction that
+	# commits year and age), which finishes in a frame or two. The projection
+	# rebuild that follows takes ~90 frames, and the button was free the whole
+	# time -- so rapid presses started overlapping rebuilds, and force_rebuild
+	# erases in-flight work, leaving the hub permanently blank. Every attempt to
+	# fix that downstream (builds 93, 101) left a window.
+	#
+	# Established from ERALIFE_AGE_UP_BOUNDARY over 10 unhurried age-ups:
+	#   - intent_committed and pump_finished occur exactly once per year, in order
+	#   - the pump takes 88-95 frames; presses arrive 135-370 frames apart
+	#   - walker_cleared fired only 2 times in 10 years
+	#
+	# so the lock is released by the PUMP, never by the walker (waiting on the
+	# walker would hang 8 years in 10), and at a normal pace it never engages.
+	#
+	# NOT reusing age_up_transition_busy: 83 sites clear that flag and exactly one
+	# sets it, so it is false on the normal path and would gate nothing.
+	var age_up_lock_frame: int = int(
+		get_meta(
+			"age_up_transition_lock_frame",
+			-1
+		)
+	)
+	var age_up_locked: bool = (
+		bool(
+			get_meta(
+				"age_up_transition_lock",
+				false
+			)
+		)
+		and age_up_lock_frame >= 0
+	)
+
+	# Escape hatch: a stuck lock means a dead age-up button, which is worse than
+	# the stale panel this replaces. This codebase has a track record of flags
+	# nothing clears (force_rebuild with no caller, reality_residency_signature
+	# never written, age_up_transition_busy with 83 clears and one set), so the
+	# lock self-releases well past the observed 95-frame worst case.
+	if (
+		age_up_locked
+		and age_up_input_frame_id - age_up_lock_frame > 600
+	):
+		EraLog.truth(
+			"ERALIFE_AGE_UP_LOCK|action=force_released|held_frames=%d|reason=exceeded_cap"
+			% [
+				age_up_input_frame_id - age_up_lock_frame
+			]
+		)
+
+		set_meta(
+			"age_up_transition_lock",
+			false
+		)
+		age_up_locked = false
+
+	if age_up_locked:
+		# same_frame_as_last distinguishes a genuine second press from the handler
+		# being invoked twice for ONE press. Every decline in the lock test logged
+		# exactly twice with identical held_frames, so the handler is running twice
+		# per press. Outside a lock the only thing catching that is the same-frame
+		# check below -- if the two invocations ever straddle a frame boundary,
+		# one press would commit TWO age-ups, which looks exactly like the skipped
+		# years reported earlier.
+		EraLog.truth(
+			"ERALIFE_AGE_UP_LOCK|action=press_declined|held_frames=%d|year=%d|age=%d|frame=%d|same_frame_as_last=%s"
+			% [
+				age_up_input_frame_id - age_up_lock_frame,
+				int(
+					gs.year
+				),
+				int(
+					gs.player.age
+				),
+				age_up_input_frame_id,
+				str(
+					int(
+						get_meta(
+							"age_up_last_declined_frame",
+							-1
+						)
+					) == age_up_input_frame_id
+				)
+			]
+		)
+
+		set_meta(
+			"age_up_last_declined_frame",
+			age_up_input_frame_id
+		)
+
+		return
 
 	if (
 		bool(
@@ -184131,6 +184766,373 @@ func _deferred_run_afterlife_age_up_from_button() -> void:
 	set_meta("age_up_transition_busy", false)
 
 
+func _request_age_up_projection_refresh() -> bool:
+	# Returns true only if a pump was actually started. The caller holds the
+	# age-up transition lock at this point, and the lock's sole release is
+	# _finish_age_up_projection_pump() -- so if no pump starts, nothing would ever
+	# release it and the button would stay dead until the 600-frame cap. That is
+	# the year-92 case in the boundary log: an intent_committed with no matching
+	# pump_finished.
+	# Coalescing entry point for the post-age-up surface rebuild.
+	#
+	# begin_resident_projection(force_rebuild) ERASES the existing projection work
+	# and starts a new one. The relationships step needs ~130 frames to finish, so
+	# aging up faster than that would erase an in-flight rebuild and restart it
+	# from scratch -- age up rapidly enough and no rebuild ever completes, leaving
+	# the hub permanently stale (the original bug, reintroduced under load).
+	#
+	# So: at most one rebuild is ever in flight. A request that arrives while one
+	# is running does not erase it; it sets a dirty flag, and exactly one further
+	# rebuild runs when the current one finishes. That collapses any number of
+	# rapid age-ups into a single trailing refresh against the latest state, which
+	# is what the UI actually needs.
+	if (
+		gs == null
+		or gs.player == null
+		or gs.reality_projection_contract_engine == null
+		or not gs.reality_projection_contract_engine.has_method(
+			"begin_resident_projection"
+		)
+	):
+		return false
+
+	# COALESCING REVERTED (builds 93/101). One-rebuild-in-flight was the right
+	# idea but every version of it had a window: a request arriving between the
+	# flag being cleared and the next pump starting began a second rebuild, and
+	# force_rebuild erases in-flight work, so the hub ended up permanently blank.
+	# Reverted to the build-92 behaviour -- each age-up starts a rebuild, a rapid
+	# burst can starve one, and the next unhurried age-up recovers it. Stale beats
+	# blank.
+	#
+	# The correct fix is an age-up transition lock at the BUTTON, not mutual
+	# exclusion down here. Note that `age_up_transition_busy` cannot be reused for
+	# it: 83 sites clear that flag and exactly one sets it (inside the
+	# awaiting_new_life branch), so it is false on the normal path. A real lock
+	# must be introduced and cleared from ONE place. The ERALIFE_AGE_UP_BOUNDARY
+	# lines below exist to establish whether its release condition can depend on
+	# the walker clearing -- see the handoff notes.
+
+	# FIX (reentrancy): the flag used to be set AFTER begin_resident_projection()
+	# returned and after the first pump pass was kicked. An age-up arriving inside
+	# that window -- which happens because _finish_age_up_projection_pump() used to
+	# call this function inline from the pump's own callback chain -- saw
+	# pump_active false and started a SECOND rebuild, erasing the first's in-flight
+	# work. The log showed it as two consecutive deferred=false lines (age 10 then
+	# age 11) and a final rebuild at year 99 with no matching AGE_UP_PUMP line: it
+	# started and was immediately erased. Claim the flag first; release it if the
+	# rebuild does not actually start.
+	var age_up_reprojection: Dictionary = (
+		ValueSceneSupport._safe_dictionary(
+			gs.reality_projection_contract_engine
+			.begin_resident_projection(
+				gs,
+				{
+					"force_rebuild": true,
+					"interactive_surfaces_only": true,
+					"source": "age_up_surface_refresh",
+					"ui_is_renderer_only": true
+				}
+			)
+		)
+	)
+
+	var reprojection_signature: String = str(
+		age_up_reprojection.get(
+			"signature",
+			""
+		)
+	).strip_edges()
+
+	EraLog.truth(
+		"ERALIFE_AGE_UP_REPROJECTION|actor_id=%d|age=%d|year=%d|success=%s|reason=%s|signature=%s|deferred=false"
+		% [
+			int(
+				gs.player.id
+			),
+			int(
+				gs.player.age
+			),
+			int(
+				gs.year
+			),
+			str(
+				age_up_reprojection.get(
+					"success",
+					false
+				)
+			),
+			str(
+				age_up_reprojection.get(
+					"reason",
+					"-"
+				)
+			),
+			reprojection_signature
+		]
+	)
+
+	if (
+		not bool(
+			age_up_reprojection.get(
+				"success",
+				false
+			)
+		)
+		or reprojection_signature == ""
+	):
+		return false
+
+	_drive_age_up_projection_pump(
+		reprojection_signature,
+		0
+	)
+
+	return true
+
+
+func _finish_age_up_projection_pump(
+	signature: String,
+	result: String,
+	passes: int,
+	reason: String = "-"
+) -> void:
+	# BOUNDARY 3 of 3: the projection rebuild is finished. See
+	# ERALIFE_AGE_UP_BOUNDARY at the button commit and at walker clear.
+	# Sole release point for the age-up transition lock.
+	set_meta(
+		"age_up_transition_lock",
+		false
+	)
+
+	# End-to-end wall clock: press to fully-rebuilt. This is the number the player
+	# actually experiences, and the one to optimise against. Frame counts alone
+	# hide whether frames are cheap or 60ms each.
+	var age_up_started_us: int = int(
+		get_meta(
+			"age_up_wall_clock_started_at_us",
+			0
+		)
+	)
+
+	if age_up_started_us > 0:
+		EraLog.truth(
+			"ERALIFE_AGE_UP_WALL_CLOCK|year=%d|age=%d|total_ms=%d|passes=%d|step_ms=%d"
+			% [
+				int(
+					gs.year
+				) if gs != null else -1,
+				int(
+					gs.player.age
+				) if (gs != null and gs.player != null) else -1,
+				(
+					int(
+						Time.get_ticks_usec()
+					) - age_up_started_us
+				) / 1000,
+				passes,
+				int(
+					get_meta(
+						"age_up_step_us_total",
+						0
+					)
+				) / 1000
+			]
+		)
+
+		set_meta(
+			"age_up_wall_clock_started_at_us",
+			0
+		)
+		set_meta(
+			"age_up_step_us_total",
+			0
+		)
+
+	EraLog.truth(
+		# started_year is the year the lock was CLAIMED. Reporting only gs.year here
+		# was ambiguous: if the year advanced mid-pump the line showed the new year,
+		# which looked like the pump finishing work for a year that never started.
+		"ERALIFE_AGE_UP_BOUNDARY|stage=pump_finished|year=%d|started_year=%d|age=%d|result=%s|passes=%d|reason=%s|signature=%s"
+		% [
+			int(
+				gs.year
+			) if gs != null else -1,
+			int(
+				get_meta(
+					"age_up_transition_lock_year",
+					-1
+				)
+			),
+			int(
+				gs.player.age
+			) if (gs != null and gs.player != null) else -1,
+			result,
+			passes,
+			reason,
+			signature
+		]
+	)
+
+
+func _drive_age_up_projection_pump(
+	signature: String,
+	pass_index: int
+) -> void:
+	# Steps the freshly rebuilt projection one quantum per frame until it reports
+	# complete. Bounded: the relationships surface needs ~25 quanta, so 600 passes
+	# is generous while still guaranteeing the pump cannot run forever if the work
+	# can never finish.
+	if (
+		gs == null
+		or gs.reality_projection_contract_engine == null
+		or signature == ""
+		or pass_index >= 600
+	):
+		_finish_age_up_projection_pump(
+			signature,
+			(
+				"abandoned_at_cap"
+				if pass_index >= 600
+				else "runtime_unavailable"
+			),
+			pass_index
+		)
+
+		return
+
+	if not gs.reality_projection_contract_engine.has_method(
+		"step_resident_projection"
+	):
+		_finish_age_up_projection_pump(
+			signature,
+			"step_method_missing",
+			pass_index
+		)
+
+		return
+
+	# The arithmetic that should have come first: ~70 passes x ~55ms = ~4000ms,
+	# which is the whole age-up. NPC_PASS_PROFILE's accounted_us was under 500us on
+	# most passes, so NPC aging was never the bulk of it -- the time is in the
+	# projection step itself, which has never been timed. Accumulate per age-up and
+	# report once, so the probe cannot distort what it measures.
+	# The engine's internal max_steps loop CANNOT batch at this budget: it checks
+	# `executed > 0 and elapsed >= frame_budget_ms` before each step, and a step
+	# costs ~3ms against a 2ms budget, so it always exits after exactly one step.
+	# Build 129 relied on max_steps=8 and passes went 41 -> 68 as a result.
+	#
+	# The outer loop is what actually batches, by making repeated CALLS. Restored,
+	# with max_steps=4 so a call can still do more when steps happen to be cheap.
+	# The 2000us outer budget is the load-bearing number -- 8000 broke the walker
+	# and the surface publication (see handoff notes). Do not raise it.
+	var step_t0: int = Time.get_ticks_usec()
+	var step_status: Dictionary = {}
+	var frame_budget_us: int = 2000
+
+	while true:
+		step_status = ValueSceneSupport._safe_dictionary(
+			gs.reality_projection_contract_engine.step_resident_projection(
+				signature,
+				4,
+				2
+			)
+		)
+
+		if bool(
+			step_status.get(
+				"complete",
+				step_status.get(
+					"is_complete",
+					false
+				)
+			)
+		):
+			break
+
+		if not bool(
+			step_status.get(
+				"success",
+				true
+			)
+		):
+			break
+
+		if Time.get_ticks_usec() - step_t0 >= frame_budget_us:
+			break
+	var step_us: int = Time.get_ticks_usec() - step_t0
+
+	set_meta(
+		"age_up_step_us_total",
+		int(
+			get_meta(
+				"age_up_step_us_total",
+				0
+			)
+		) + step_us
+	)
+
+	var projection_complete: bool = bool(
+		step_status.get(
+			"complete",
+			step_status.get(
+				"is_complete",
+				false
+			)
+		)
+	)
+
+	if projection_complete:
+		_finish_age_up_projection_pump(
+			signature,
+			"complete",
+			pass_index
+		)
+
+		return
+
+	if not bool(
+		step_status.get(
+			"success",
+			true
+		)
+	):
+		_finish_age_up_projection_pump(
+			signature,
+			"step_failed",
+			pass_index,
+			str(
+				step_status.get(
+					"reason",
+					"-"
+				)
+			)
+		)
+
+		return
+
+	var tree: SceneTree = get_tree()
+
+	if tree == null:
+		_finish_age_up_projection_pump(
+			signature,
+			"no_scene_tree",
+			pass_index
+		)
+
+		return
+
+	tree.process_frame.connect(
+		Callable(
+			self,
+			"_drive_age_up_projection_pump"
+		).bind(
+			signature,
+			pass_index + 1
+		),
+		CONNECT_ONE_SHOT
+	)
+
+
 func _deferred_run_age_up_from_button() -> void:
 	if (
 		gs == null
@@ -184357,6 +185359,93 @@ func _deferred_run_age_up_from_button() -> void:
 		)
 	)
 
+	# FIX: nothing re-projected the interactive main-tab surfaces after an age-up.
+	# begin_resident_projection()'s reuse branch returns the existing projection
+	# whenever the actor is unchanged, so the surface deck built at world start was
+	# served for the whole life. That is why activities still reported age 0 at
+	# thirteen, and why anything gated on actor.age -- school eligibility, parent
+	# interaction options -- kept offering infant content: ActivitiesContractEngine
+	# alone branches on int(actor.age) in five places, all reading the stale
+	# surface. force_rebuild was added by an earlier session with a comment
+	# predicting this ("anything acquired mid-life ... never reaches the UI") and
+	# was never given a caller. This is that caller.
+	#
+	# Placed in _deferred_run_age_up_from_button(), which _on_button_pressed()
+	# actually reaches. The same fix was first written into
+	# _begin_visible_age_up_runtime_from_button(), which has zero callers.
+	if (
+		not route_failed
+		and not age_result.is_empty()
+	):
+		# BOUNDARY 1 of 3: the age-up intent has committed year and age. Everything
+		# after this -- walker lanes, projection rebuild -- runs across later
+		# frames while the button is already free to fire again. That is the
+		# sequencing question the lock has to answer.
+		set_meta(
+			"age_up_wall_clock_started_at_us",
+			int(
+				Time.get_ticks_usec()
+			)
+		)
+
+		EraLog.truth(
+			"ERALIFE_AGE_UP_BOUNDARY|stage=intent_committed|year=%d|age=%d|frame=%d"
+			% [
+				int(
+					gs.year
+				),
+				int(
+					gs.player.age
+				),
+				int(
+					Engine.get_process_frames()
+				)
+			]
+		)
+
+		# The desktop scheduler advances prison sentences in player_phase_contract.
+		# Keep the UI from applying that yearly consequence a second time.
+
+		# Claim the transition lock. Released ONLY in
+		# _finish_age_up_projection_pump(), which every pump exit path routes
+		# through, or by the frame cap in _on_button_pressed().
+		set_meta(
+			"age_up_transition_lock",
+			true
+		)
+		set_meta(
+			"age_up_transition_lock_frame",
+			int(
+				Engine.get_process_frames()
+			)
+		)
+		set_meta(
+			"age_up_transition_lock_year",
+			int(
+				gs.year
+			)
+		)
+
+		# Release immediately if no pump started -- otherwise the lock's only
+		# release path never runs and the button is dead until the frame cap.
+		if not _request_age_up_projection_refresh():
+			set_meta(
+				"age_up_transition_lock",
+				false
+			)
+
+			EraLog.truth(
+				"ERALIFE_AGE_UP_LOCK|action=released_no_pump|year=%d|age=%d"
+				% [
+					int(
+						gs.year
+					),
+					int(
+						gs.player.age
+					)
+				]
+			)
+
 	if (
 		intent_report.is_empty()
 		or route_failed
@@ -184537,6 +185626,18 @@ func _deferred_run_age_up_from_button() -> void:
 		+ "|ui_waited_for_tail=false"
 		+ "|at_ms=" + str(Time.get_ticks_msec())
 	)
+
+	# FIX: this is the confirmed-live age-up completion path (age-ups run
+	# zero-frame, bypassing the loading overlay entirely -- see
+	# age_up_loading_overlay_bypassed above -- which is why the overlay's own
+	# exit-finished callback never fires and every fix placed there was inert).
+	# Nothing in this function ever refreshed runtime_hud_visibility_snapshot or
+	# told the HUD buttons to redraw from it, so a newly-eligible icon (food,
+	# restaurant, boxing, etc.) sat correctly computed but invisible until an
+	# unrelated hub visit forced a resync via _persist_runtime_hud_visibility_snapshot().
+	# Calling the same working pattern here.
+	call_deferred("_persist_runtime_hud_visibility_snapshot", "age_up_complete")
+	call_deferred("_sync_runtime_floating_hud_layering")
 
 
 func _on_life_button_pressed():
@@ -211235,6 +212336,31 @@ func _on_relationship_hub_panel_close_requested() -> void:
 		"relationship_hub_panel_close"
 	)
 
+	# FIX: setting current_panel and the nav state made the Life tab LOOK selected
+	# without drawing anything -- _apply_main_tab_press_frame_nav_state() only
+	# manages nav flags, it does not render. The Life panel stayed blank until the
+	# tab was clicked manually, and age-ups during that window committed correctly
+	# but were not displayed, so the diary appeared to skip years (2060 -> 2065)
+	# and then jump when Life was reopened.
+	#
+	# Only relationships and school were affected: they are the two hubs that take
+	# over the full surface and close back to Life this way. World and career never
+	# showed the bug.
+	# The hubs hide output_label when they take the surface, and nothing showed it
+	# again on close -- measured: label_visible=false, text_len=0. Restore
+	# visibility BEFORE rendering, because the render path skips work when the
+	# label is not visible, which is why simply calling it was not enough.
+	if output_label != null and is_instance_valid(output_label):
+		output_label.visible = true
+		output_label.scroll_active = true
+		output_label.bbcode_enabled = true
+
+	_invalidate_life_diary_contract_render_cache(
+		"relationship_hub_panel_close"
+	)
+	_render_life_diary_panel()
+
+
 
 func _on_relationship_hub_panel_section_requested(
 	section_id: String
@@ -211386,6 +212512,30 @@ func _on_school_hub_panel_close_requested() -> void:
 		"school_hub_panel_close"
 	)
 
+	# FIX: setting current_panel and the nav state made the Life tab LOOK selected
+	# without drawing anything -- _apply_main_tab_press_frame_nav_state() only
+	# manages nav flags, it does not render. The Life panel stayed blank until the
+	# tab was clicked manually, and age-ups during that window committed correctly
+	# but were not displayed, so the diary appeared to skip years (2060 -> 2065)
+	# and then jump when Life was reopened.
+	#
+	# Only relationships and school were affected: they are the two hubs that take
+	# over the full surface and close back to Life this way. World and career never
+	# showed the bug.
+	# The hubs hide output_label when they take the surface, and nothing showed it
+	# again on close -- measured: label_visible=false, text_len=0. Restore
+	# visibility BEFORE rendering, because the render path skips work when the
+	# label is not visible, which is why simply calling it was not enough.
+	if output_label != null and is_instance_valid(output_label):
+		output_label.visible = true
+		output_label.scroll_active = true
+		output_label.bbcode_enabled = true
+
+	_invalidate_life_diary_contract_render_cache(
+		"school_hub_panel_close"
+	)
+	_render_life_diary_panel()
+
 
 func _on_school_hub_panel_section_requested(
 		section_id: String
@@ -211522,7 +212672,22 @@ func _hub_panel_route_result(
 
 
 
-		for key in [
+		# FIX: this took the FIRST non-empty branch, and "result" is checked before
+		# "route_report". For begin_weapon_action the report carries both: "result"
+		# holds CrimeContractEngine's 5-key return (success, mode, open_crime_hub,
+		# crime_hub_section, interaction_contract -- no section_contract), while
+		# "route_report" holds the crime hub's 20-key wrapper WITH section_contract.
+		# Descending into "result" reached a level with interaction_contract, which
+		# is a leaf marker, so reduction stopped there and the section contract was
+		# discarded. Navigation is gated on it being non-empty, so arming a weapon
+		# reported success=true and never switched to the Targets tab.
+		#
+		# open_crime_weapon_picker worked only by accident: its "result" is empty,
+		# so the loop fell through to "route_report".
+		#
+		# Prefer a branch that actually carries a section_contract; otherwise keep
+		# the original first-non-empty order.
+		var branch_keys: Array = [
 			"result",
 			"route_report",
 			"engine_report",
@@ -211530,7 +212695,38 @@ func _hub_panel_route_result(
 			"commit_report",
 			"command_report",
 			"payload"
-		]:
+		]
+		var preferred_key: String = ""
+
+		for key in branch_keys:
+			var preferred_raw: Variant = cursor.get(
+				key,
+				{}
+			)
+
+			if typeof(preferred_raw) != TYPE_DICTIONARY:
+				continue
+
+			var preferred_nested: Dictionary = (
+				preferred_raw as Dictionary
+			)
+
+			if preferred_nested.is_empty():
+				continue
+
+			if not ValueSceneSupport._safe_dictionary(
+				preferred_nested.get(
+					"section_contract",
+					{}
+				)
+			).is_empty():
+				preferred_key = key
+				break
+
+		for key in branch_keys:
+			if preferred_key != "" and key != preferred_key:
+				continue
+
 			var nested_raw: Variant = cursor.get(
 				key,
 				{}
@@ -217727,6 +218923,19 @@ func _finish_post_age_up_ui_refresh_deferred(
 		"post_age_up_deferred_%s" % refresh_mode
 	)
 
+	# FIX: a newly-eligible sidebar icon (food/restaurant, boxing, superpower,
+	# power, etc.) never appeared the year it actually unlocked -- only after
+	# leaving some unrelated hub, because _restore_full_runtime_hud_visibility_
+	# from_truth() (the function that actually recomputes eligibility live and
+	# repaints the buttons) was only ever called from scene entry, spawn, and
+	# the general "return to main screen" handler that hub-close happens to go
+	# through. This is the actual age-up completion tail (reached via
+	# _show_age_up_output -> _force_post_age_up_ui_refresh -> here on every
+	# age-up), so call the same real refresh here too.
+	_restore_full_runtime_hud_visibility_from_truth(
+		"age_up_complete_%s" % refresh_mode
+	)
+
 	if not loading_safe:
 		_request_life_diary_focus_latest_year(
 			"post_age_up_deferred_%s" % refresh_mode
@@ -219227,6 +220436,19 @@ func _restore_runtime_hud_button_shells_after_surface_change(reason: String = "r
 	var show_superpower: bool = surface_allows_runtime_buttons and _player_has_superpower_hub_access()
 	var show_power: bool = surface_allows_runtime_buttons and _player_has_power_hub_access()
 	var show_wizard: bool = surface_allows_runtime_buttons and SupernaturalSceneSupport._player_has_visible_wizard_magic(gs)
+
+	# DIAGNOSTIC: pinning why food/restaurant HUD icons stay hidden past their unlock age.
+	EraLog.truth(
+		"ERALIFE_FOOD_HUD_RESTORE|reason=%s|year=%d|era=%s|show_food=%s|show_restaurant=%s|surface_allows=%s"
+		% [
+			reason,
+			int(gs.year) if gs != null else -1,
+			_food_lifestyle_current_era_name_for_mainscene(),
+			str(show_food),
+			str(show_restaurant),
+			str(surface_allows_runtime_buttons)
+		]
+	)
 
 	_apply_zero_frame_hud_button_shell(belongings_hud_button, show_belongings)
 	_apply_zero_frame_hud_button_shell(bending_hud_button, show_bending)

@@ -442,7 +442,27 @@ func _persist_resident_main_tab_surface_deck_if_complete(
 				)
 			) != actor_id
 		):
-			return
+			# FIX: was `return` -- one missing or foreign-actor surface discarded the
+			# whole deck. Same all-or-nothing defect as the streaming guard below.
+			EraLog.truth(
+				"ERALIFE_SURFACE_DECK_PERSIST_SKIP|actor_id=%d|surface=%s|reason=%s|contract_actor_id=%d"
+				% [
+					actor_id,
+					required_surface_id,
+					(
+						"empty_contract"
+						if contract.is_empty()
+						else "actor_mismatch"
+					),
+					int(
+						contract.get(
+							"actor_id",
+							-1
+						)
+					)
+				]
+			)
+			continue
 
 		var schema: String = str(
 			contract.get(
@@ -482,7 +502,37 @@ func _persist_resident_main_tab_surface_deck_if_complete(
 				"pending"
 			]
 		):
-			return
+			# FIX: this was `return`, which abandoned the ENTIRE deck because one
+			# surface was mid-stream. The relationships surface streams for 20+
+			# quanta (projection_pending=true from progress 0.12 through 0.84), so
+			# it aborted the persist almost every time. scenario_state never got
+			# resident_main_tab_surface_contracts_by_actor, so
+			# commit_current_life_checkpoint_contract() found an empty deck and the
+			# resume contract carried tab_packets=0 and
+			# relationship_cards_packet=false. On resume there was no relationships
+			# surface to publish, so the hub kept the previous world's year-79
+			# surface -- which is why pets never appeared. `continue` persists the
+			# surfaces that ARE terminal; each one is re-validated on resume by
+			# _interactive_surface_contract_terminal_for_actor() before use, so a
+			# partial deck is safe and strictly better than none.
+			EraLog.truth(
+				"ERALIFE_SURFACE_DECK_PERSIST_SKIP|actor_id=%d|surface=%s|schema=%s|truth_state=%s|pending=%s"
+				% [
+					actor_id,
+					required_surface_id,
+					schema,
+					truth_state,
+					str(
+						bool(
+							contract.get(
+								"projection_pending",
+								false
+							)
+						)
+					)
+				]
+			)
+			continue
 
 		if (
 			contract.has(
@@ -495,7 +545,14 @@ func _persist_resident_main_tab_surface_deck_if_complete(
 				)
 			)
 		):
-			return
+			EraLog.truth(
+				"ERALIFE_SURFACE_DECK_PERSIST_SKIP|actor_id=%d|surface=%s|reason=projection_incomplete"
+				% [
+					actor_id,
+					required_surface_id
+				]
+			)
+			continue
 
 		persisted_deck [
 			required_surface_id
@@ -518,9 +575,68 @@ func _persist_resident_main_tab_surface_deck_if_complete(
 		else {}
 	)
 
+	# FIX: this was a wholesale replace, so a projection cycle that had only
+	# rebuilt "mods" overwrote a complete five-surface deck with one key. The
+	# persist log shows the deck cycling 5 -> 1 -> 2 -> 3 -> 4 -> 5 repeatedly, and
+	# relationships is always the LAST surface to become terminal, so it lost that
+	# race most of the time -- which is why the checkpoint contract kept committing
+	# with tab_packets=0 / relationship_cards_packet=false. Merging keeps
+	# previously persisted terminal surfaces for the SAME actor; each is
+	# re-validated on resume by _interactive_surface_contract_terminal_for_actor()
+	# before use, so a retained surface cannot smuggle in stale truth unchecked.
+	var existing_actor_deck: Dictionary = (
+		(
+			deck_by_actor.get(
+				str(actor_id),
+				{}
+			) as Dictionary
+		).duplicate(false)
+		if typeof(
+			deck_by_actor.get(
+				str(actor_id),
+				{}
+			)
+		) == TYPE_DICTIONARY
+		else {}
+	)
+
+	for merged_surface_id in persisted_deck.keys():
+		existing_actor_deck [
+			merged_surface_id
+		] = persisted_deck [
+			merged_surface_id
+		]
+
 	deck_by_actor [
 		str(actor_id)
-	] = persisted_deck.duplicate(false)
+	] = existing_actor_deck
+
+	# DIAGNOSTIC: tab_packets=0 at save despite this function running, so either the
+	# deck lands on a different GameState than the one committed, or persisted_deck
+	# is empty every time. Report the runtime identity, the incoming deck keys and
+	# the persisted keys together so the two cases are distinguishable.
+	EraLog.truth(
+		"ERALIFE_SURFACE_DECK_PERSIST|gs=%d|tag=%s|signature=%s|actor_id=%d|incoming_keys=%s|persisted_keys=%s|merged_keys=%s"
+		% [
+			int(
+				runtime.get_instance_id()
+			) if runtime != null else -1,
+			str(
+				runtime.runtime_origin_tag
+			) if runtime != null else "-",
+			clean_signature,
+			actor_id,
+			str(
+				surface_deck.keys()
+			),
+			str(
+				persisted_deck.keys()
+			),
+			str(
+				existing_actor_deck.keys()
+			)
+		]
+	)
 
 	var now_ms: int = int(
 		Time.get_ticks_msec()
@@ -1273,6 +1389,101 @@ func begin_resident_projection(
 				signature
 			)
 
+		# FIX: force_rebuild ERASES in-flight work, and there is more than one
+		# caller. MainScene's age-up pump drives a rebuild across ~90-150 frames;
+		# RealityResidencyManager._service_ready_checkpoint_tail() independently
+		# calls begin on the SAME signature whenever a ready record has a lens
+		# attached. Whichever arrives second destroyed the first one's work
+		# mid-step, which is why the relationships surface went cold at
+		# installed=4/5 and the stall watchdog reported
+		# resident_projection_stalled_after_0_steps.
+		#
+		# The age-up transition lock cannot cover this: it gates the BUTTON, and
+		# the residency tail is not a button press. Mutual exclusion has to live
+		# here, keyed by signature, where every caller passes through.
+		#
+		# A rebuild is refused while another rebuild is actively being stepped.
+		# "Actively" means it has been stepped recently -- a driver that abandons
+		# its work must not lock the signature forever.
+		var in_flight_since_ms: int = int(
+			existing_work.get(
+				"last_stepped_at_ms",
+				0
+			)
+		)
+		var in_flight_idle_ms: int = (
+			int(
+				Time.get_ticks_msec()
+			) - in_flight_since_ms
+		)
+		var rebuild_in_flight: bool = (
+			force_rebuild
+			and in_flight_since_ms > 0
+			and in_flight_idle_ms < 4000
+			and not bool(
+				existing_work.get(
+					"complete",
+					false
+				)
+			)
+		)
+
+		if rebuild_in_flight:
+			EraLog.truth(
+				"ERALIFE_PROJECTION_REBUILD_REFUSED|signature=%s|source=%s|idle_ms=%d|reason=rebuild_already_in_flight"
+				% [
+					signature,
+					str(
+						context.get(
+							"source",
+							"-"
+						)
+					),
+					in_flight_idle_ms
+				]
+			)
+
+			return projection_status(
+				signature
+			)
+
+		# DIAGNOSTIC: this is the fall-through the force_rebuild-only guard above
+		# does not cover -- a non-force caller with mismatched actor/interactive
+		# flags erases in-flight work unconditionally. Report every time that
+		# happens while the existing work is still incomplete, so a stall can be
+		# traced back to whichever caller silently destroyed it.
+		var existing_incomplete: bool = not bool(
+			existing_work.get(
+				"complete",
+				false
+			)
+		)
+
+		if existing_incomplete:
+			EraLog.truth(
+				"ERALIFE_PROJECTION_REBUILD_SILENT_ERASE|signature=%s|existing_actor_id=%d|existing_interactive_only=%s|existing_cursor=%d|idle_ms=%d|new_source=%s|new_force_rebuild=%s|new_interactive_only=%s"
+				% [
+					signature,
+					existing_actor_id,
+					str(existing_interactive_only),
+					int(
+						existing_work.get(
+							"cursor",
+							-1
+						)
+					),
+					in_flight_idle_ms,
+					str(
+						context.get(
+							"source",
+							"-"
+						)
+					),
+					str(force_rebuild),
+					str(interactive_surfaces_only)
+				]
+			)
+
 		projection_work_by_signature.erase(
 			signature
 		)
@@ -1395,6 +1606,69 @@ func begin_resident_projection(
 				actor_id
 			)
 		)
+
+		# FIX: _interactive_surface_contract_terminal_for_actor() validates ONLY
+		# actor_id -- not age, not world year. A surface built at age 0 therefore
+		# stayed "terminal" for that actor forever, so activities could keep
+		# reporting age 0 after the player aged to 13, and anything gated on
+		# actor.age (school eligibility, parent interaction options) read the same
+		# stale surface. This was always latent; the deck merge added in the pets
+		# work made it durable, because a stale surface is now retained across
+		# projection cycles instead of being overwritten by the next rebuild.
+		# Contracts already record "age" and "year", so compare them.
+		if persisted_contract_terminal:
+			var contract_age: int = int(
+				persisted_contract.get(
+					"age",
+					-1
+				)
+			)
+			var contract_year: int = int(
+				persisted_contract.get(
+					"year",
+					-1
+				)
+			)
+			var live_age: int = (
+				int(
+					actor.age
+				)
+				if actor != null
+				else -1
+			)
+			var live_year: int = (
+				int(
+					runtime.year
+				)
+				if runtime != null
+				else -1
+			)
+
+			if (
+				(
+					contract_age >= 0
+					and live_age >= 0
+					and contract_age != live_age
+				)
+				or (
+					contract_year >= 0
+					and live_year >= 0
+					and contract_year != live_year
+				)
+			):
+				EraLog.truth(
+					"ERALIFE_SURFACE_DECK_STALE|surface=%s|actor_id=%d|contract_age=%d|live_age=%d|contract_year=%d|live_year=%d"
+					% [
+						surface_id,
+						actor_id,
+						contract_age,
+						live_age,
+						contract_year,
+						live_year
+					]
+				)
+
+				persisted_contract_terminal = false
 
 		if persisted_contract_terminal:
 			validated_persisted_surface_deck [
@@ -2034,6 +2308,19 @@ func step_resident_projection(
 		return projection_status(
 			clean_signature
 		)
+
+	# Stamp liveness for the rebuild exclusion in begin_resident_projection().
+	# A signature that is actively being stepped must not have its work erased out
+	# from under the driver; one that has been abandoned must not lock the
+	# signature forever, which is why this is a timestamp rather than a flag.
+	work [
+		"last_stepped_at_ms"
+	] = int(
+		Time.get_ticks_msec()
+	)
+	projection_work_by_signature [
+		clean_signature
+	] = work
 
 	var runtime = work.get(
 		"runtime_ref",
@@ -3185,6 +3472,101 @@ func _run_projection_step(
 				"step_id": step_id,
 				"work": work
 			}
+
+	# DIAGNOSTIC: build 67 forced a rebuild on the resumed runtime and got
+	# success=true, yet no surface=relationships packet was ever emitted at the
+	# checkpoint signature -- only school. So either the relationships step is
+	# never dispatched for that signature, or it is dispatched and its surface
+	# contract is empty / never renderable. This line distinguishes those and is
+	# placed ABOVE both the pending branch and the completion branch, so a step
+	# that silently defers forever still reports.
+	# Gated: this fires once per projection step, ~90 times per age-up. Printing is
+	# not free even without File Logging, and it was distorting the very timings it
+	# was added to explain. Set eralife_projection_step_trace in scenario_state to
+	# re-enable when needed.
+	if (
+		runtime != null
+		and typeof(runtime.scenario_state) == TYPE_DICTIONARY
+		and bool(
+			runtime.scenario_state.get(
+				"eralife_projection_step_trace",
+				false
+			)
+		)
+	):
+		EraLog.truth(
+			"ERALIFE_PROJECTION_STEP|signature=%s|step=%s|actor_id=%d|empty=%s|pending=%s|groups=%d|sections=%d|progress=%s|final_emitted=%s|progressive_emitted=%s"
+			% [
+				str(
+					work.get(
+						"signature",
+						""
+					)
+				),
+				step_id,
+				int(
+					work.get(
+						"actor_id",
+						-1
+					)
+				),
+				str(
+					surface_contract.is_empty()
+				),
+				str(
+					bool(
+						surface_contract.get(
+							"projection_pending",
+							false
+						)
+					)
+				),
+				_array(
+					surface_contract.get(
+						"groups",
+						[]
+					)
+				).size(),
+				_dict(
+					surface_contract.get(
+						"section_contracts",
+						{}
+					)
+				).size(),
+				str(
+					surface_contract.get(
+						"projection_progress",
+						"-"
+					)
+				),
+				str(
+					bool(
+						_dict(
+							work.get(
+								"surface_signal_emitted",
+								{}
+							)
+						).get(
+							step_id,
+							false
+						)
+					)
+				),
+				str(
+					bool(
+						_dict(
+							work.get(
+								"progressive_surface_signal_emitted",
+								{}
+							)
+						).get(
+							step_id,
+							false
+						)
+					)
+				)
+			]
+		)
 
 	if bool(
 		surface_contract.get(
@@ -4553,6 +4935,80 @@ func _service_resident_relationship_section_refresh_queue() -> void:
 
 
 
+
+	# DIAGNOSTIC: this is the only place a refresh job turns into a section
+	# contract. The panel gate shows pets arriving with 0 cards exactly once and
+	# never again, so the question is whether the retry jobs run at all, whether
+	# they run on a runtime whose graph holds the pet edges, and whether the
+	# section reports itself complete (which suppresses the continuation re-queue
+	# below). Reported for every job, ABOVE the completion branch.
+	var diag_groups: Array = _array(
+		section_contract.get(
+			"groups",
+			[]
+		)
+	)
+	var diag_cards: int = 0
+
+	for raw_diag_group in diag_groups:
+		diag_cards += _array(
+			_dict(
+				raw_diag_group
+			).get(
+				"cards",
+				[]
+			)
+		).size()
+
+	var diag_edges: int = 0
+
+	if (
+		gs != null
+		and typeof(
+			gs.canonical_relationship_graph
+		) == TYPE_DICTIONARY
+	):
+		diag_edges = _dict(
+			gs.canonical_relationship_graph.get(
+				"edges",
+				{}
+			)
+		).size()
+
+	EraLog.truth(
+		"ERALIFE_SECTION_REFRESH_JOB|gs=%d|tag=%s|section=%s|actor_id=%d|graph_edges=%d|groups=%d|cards=%d|complete=%s|contract_empty=%s|seq=%d|source=%s"
+		% [
+			int(
+				gs.get_instance_id()
+			) if gs != null else -1,
+			str(
+				gs.runtime_origin_tag
+			) if gs != null else "-",
+			section_id,
+			actor_id,
+			diag_edges,
+			diag_groups.size(),
+			diag_cards,
+			str(
+				section_projection_complete
+			),
+			str(
+				section_contract.is_empty()
+			),
+			int(
+				job.get(
+					"relationship_projection_refresh_sequence",
+					-1
+				)
+			),
+			str(
+				refresh_context.get(
+					"source",
+					"-"
+				)
+			)
+		]
+	)
 
 	if (
 		not section_contract.is_empty()

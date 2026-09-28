@@ -696,7 +696,30 @@ static func create_resident_chassis_shell() -> GameState:
 	return chassis_runtime
 
 
+# Every GameState records where it was constructed. A load leaves several runtimes
+# alive at once and it has not been clear which one owns what -- this makes the set
+# enumerable instead of guessed at.
+var runtime_origin_tag: String = ""
+static var _runtime_birth_serial: int = 0
+
+
 func _init() -> void:
+	_runtime_birth_serial += 1
+	runtime_origin_tag = (
+		"chassis_shell#%d" % _runtime_birth_serial
+		if _resident_chassis_shell_construction_depth > 0
+		else "runtime#%d" % _runtime_birth_serial
+	)
+
+	EraLog.truth(
+		"ERALIFE_GS_BORN|id=%d|tag=%s|chassis_depth=%d"
+		% [
+			int(get_instance_id()),
+			runtime_origin_tag,
+			_resident_chassis_shell_construction_depth
+		]
+	)
+
 	if _resident_chassis_shell_construction_depth > 0:
 		return
 
@@ -13514,10 +13537,15 @@ func push_world_feed(text: String, meta:= {}):
 	if text == "":
 		return
 
+	# TIMING: event emission grows 24ms -> 57ms across ten years, so something here
+	# scales with accumulated history. Split entry construction from the commit
+	# signal to see which.
+	var wf_t0: int = Time.get_ticks_usec()
 	var new_entry:= make_world_feed_entry(
 		text,
 		meta
 	)
+	var wf_make_us: int = Time.get_ticks_usec() - wf_t0
 	var new_key: String = _world_feed_entry_dedupe_key(
 		new_entry
 	)
@@ -13571,6 +13599,8 @@ func push_world_feed(text: String, meta:= {}):
 	if world_feed.size() > WORLD_FEED_LIMIT:
 		world_feed.pop_front()
 
+	var wf_emit_t0: int = Time.get_ticks_usec()
+
 	world_feed_entry_contract_committed.emit({
 		"schema": "eralife.world_feed_entry_commit_contract",
 		"version": 1,
@@ -13590,6 +13620,19 @@ func push_world_feed(text: String, meta:= {}):
 			Time.get_ticks_msec()
 		)
 	})
+
+	var wf_emit_us: int = Time.get_ticks_usec() - wf_emit_t0
+
+	if wf_make_us + wf_emit_us > 2000:
+		EraLog.truth(
+			"ERALIFE_WORLD_FEED_TIMING|make_us=%d|emit_us=%d|feed_size=%d"
+			% [
+				wf_make_us,
+				wf_emit_us,
+				world_feed.size()
+			]
+		)
+
 
 func _world_feed_entry_dedupe_key(entry: Dictionary) -> String:
 	if typeof(entry) != TYPE_DICTIONARY or entry.is_empty():
@@ -14518,6 +14561,8 @@ func _merge_body_runtime_context(base: Dictionary, patch: Dictionary) -> Diction
 func _serialize_npc(npc: Person) -> Dictionary:
 	return {
 		"id": npc.id,
+		"last_biology_year": int(npc.last_biology_year),
+		"birth_year": int(npc.birth_year),
 		"name": npc.name,
 		"first_name": npc.first_name,
 		"last_name": npc.last_name,
@@ -17141,6 +17186,43 @@ func _enrich_current_life_checkpoint_resume_presentation(
 			main_tab_surface_contracts = (
 				direct_deck_raw as Dictionary
 			).duplicate(false)
+
+	# DIAGNOSTIC: this read produces tab_packets in the resume contract. Report the
+	# committing runtime's identity alongside what it found, so it can be compared
+	# against ERALIFE_SURFACE_DECK_PERSIST (which reports the runtime the projection
+	# engine wrote the deck to). Differing tags mean the deck is written to a
+	# different GameState than the one being saved.
+	EraLog.truth(
+		"ERALIFE_CHECKPOINT_CONTRACT_DECK_READ|gs=%d|tag=%s|actor_id=%d|found_keys=%s|by_actor_keys=%s|direct_keys=%s"
+		% [
+			int(
+				get_instance_id()
+			),
+			str(
+				runtime_origin_tag
+			),
+			actor_id,
+			str(
+				main_tab_surface_contracts.keys()
+			),
+			str(
+				_safe_dictionary(
+					scenario_state.get(
+						"resident_main_tab_surface_contracts_by_actor",
+						{}
+					)
+				).keys()
+			),
+			str(
+				_safe_dictionary(
+					scenario_state.get(
+						"resident_main_tab_surface_contracts",
+						{}
+					)
+				).keys()
+			)
+		]
+	)
 
 	var era_name: String = ""
 
@@ -22520,12 +22602,28 @@ func get_npc_field_by_id(id: int, field: String, default_value = null):
 	return facts.get(field, default_value)
 
 
-func get_relationship_label_between(observer: Person, target: Person) -> String:
+func get_relationship_label_between(
+	observer: Person,
+	target: Person,
+	observer_facts_override: Dictionary = {}
+) -> String:
+	# observer_facts_override lets a caller that resolves labels for MANY targets
+	# against the SAME observer build the observer's facts once instead of once
+	# per target. get_npc_facts_by_id() does a linear scan of the population and
+	# then constructs a 51-field dictionary, so rebuilding the player's facts for
+	# every NPC was the dominant cost in WorldEngine's yearly age-event pass
+	# (measured at 22-59ms per NPC, against a 1-2ms drain budget).
+	#
+	# Optional and defaulted, so every existing caller is unaffected.
 	if observer == null or target == null:
 		return "Stranger"
 
 	var p: Person = observer
-	var my_facts: Dictionary = get_npc_facts_by_id(int(p.id))
+	var my_facts: Dictionary = (
+		observer_facts_override
+		if not observer_facts_override.is_empty()
+		else get_npc_facts_by_id(int(p.id))
+	)
 	var target_facts: Dictionary = get_npc_facts_by_id(int(target.id))
 	if my_facts == {} or target_facts == {}:
 		return "Stranger"

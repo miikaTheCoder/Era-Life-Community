@@ -52,7 +52,8 @@ if ! rg -q "^DESKTOP MODES: $mode PASS$" "$profile_dir/$run_label.log"; then
     echo "The game exited without completing the test; inspect $profile_dir/$run_label.log" >&2
     exit 1
 fi
-if rg -q '^SCRIPT ERROR:|Parse Error:|Failed to load script' "$profile_dir/$run_label.log"; then
-    echo "Godot reported a script error; inspect $profile_dir/$run_label.log" >&2
+if rg -q '^SCRIPT ERROR:|Parse Error:|Failed to load script' "$profile_dir/$run_label.log" || \
+    rg '^ERROR:' "$profile_dir/$run_label.log" | rg -v '^ERROR: [0-9]+ resources still in use at exit'; then
+    echo "Godot reported an error; inspect $profile_dir/$run_label.log" >&2
     exit 1
 fi
