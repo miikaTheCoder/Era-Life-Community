@@ -1,43 +1,36 @@
 # EraLife desktop and Portrait: agent handoff
 
-Last checked: **2026-09-27**. Read [AGENTS.md](../AGENTS.md) for repository rules
-and [Architecture](ARCHITECTURE.md) for ownership. This guide is kept on both
-active branches so a new task can continue without the original conversation.
-Branch names, worktree paths, build files, and test results below are a dated
-snapshot: inspect Git and the current task before acting.
+Last checked: **2026-09-28**. Read [AGENTS.md](../AGENTS.md), then
+[ROADMAP.md](../ROADMAP.md) for priorities and [Architecture](ARCHITECTURE.md)
+for ownership. This guide is shared by the two permanent branches.
 
-**Desktop integration, 2026-09-28:** `codex/sync-upstream-2026-09-28` combines
-desktop `b399a33` with the eight upstream commits through `57ee128`, in the
-isolated worktree `/home/nextg/Work/miikaTheCoder/Era-Life-Community-upstream-sync`.
-All 23 regressions, sequential desktop cold Continue and the Shared Lives
-business save/load cycle passed. Retain the concurrent-run hydration timeout
-described in [merge decisions and evidence](UPSTREAM-SYNC-2026-09-28.md).
-This is a separate desktop integration branch; the Portrait port remains open.
+## Start here
 
-For **what to work on next**, read [ROADMAP.md](../ROADMAP.md). It contains stable
-item IDs, priorities, completion criteria, and a work log. Claim a scoped item when
-starting it and record the result before handing it off; follow the current user
-request when it differs from the queue.
+**Desktop `main` is the default for new tasks.** Use `portrait` only for phone
+work. [Branch workflow](BRANCHES.md) records the policy and consolidation history.
 
-## Choose the correct version first
+| Target | Branch | Local checkout |
+| --- | --- | --- |
+| Desktop | `main` | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| EraLife Portrait | `portrait` | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
-Both versions belong to `miikaTheCoder/Era-Life-Community`. They are separate Git
-branches/worktrees, not two modes that can be selected by copying one config file.
+`browser-play` is an active task in
+`/home/nextg/Work/miikaTheCoder/Era-Life-Community-browser-play`. Its owner is
+still working there. Leave that branch and worktree alone, including its
+uncommitted files; it is excluded from this cleanup.
 
-| Target | Shared Lives branch | Latest gameplay commit in this snapshot | Local checkout on this host |
-| --- | --- | --- | --- |
-| Desktop | `codex/shared-lives-desktop` | `c10ac54` (Continue focus follow-up; includes live display, R05 and desktop R01) | `/home/nextg/opencode-sandbox/Era-Life-Community` |
-| EraLife Portrait | `codex/shared-lives-portrait` | `74e8b07` (shared R01 port: `e538708`) | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
+Desktop `main` contains verified integration `cffca1d`, including Shared Lives,
+Living Households, R01, R07, and the eight upstream commits through `57ee128`.
+Its 23 regressions, sequential cold Continue and Shared Lives save/load cycle
+passed before promotion. Retain the concurrent-run hydration timeout described
+in [integration evidence](UPSTREAM-SYNC-2026-09-28.md). This consolidation changes
+branch organization and documentation, not gameplay or release artifacts.
 
-Shared Lives, R01, desktop R04 and desktop R05 are pushed to the corresponding
-GitHub development branches. Desktop R07 input and display repairs are also pushed;
-the latest focus follow-up is `c10ac54`. R04, R05 and the earlier R07 repairs have
-local Linux packages. The latest package is `6d0deea` and excludes the new focus
-follow-up; Portrait R01 has not been repackaged. Neither state means a branch is
-merged into `main` or published as a release. Older starting points include `era-life-new-ui`
-(desktop, `a3799d2`) and `codex/mobile-startup-performance` (Portrait, `7673961`).
-`mobile` and `codex/mobile-portrait` are older mobile work. Do not choose `main`
-or those older branches merely because a historical README paragraph names them.
+`portrait` preserves the former Shared Lives phone branch at `d9628e8`, including
+R01's shared port `e538708` and mobile Continue repair `74e8b07`. Desktop R05,
+R07 and the latest upstream gameplay remain separate porting work. The latest
+recorded desktop package is `6d0deea`, older than current `main`; Portrait R01
+has not been repackaged. Do not describe old artifacts as builds of these tips.
 
 Start in the checkout assigned to your task:
 
@@ -46,15 +39,14 @@ pwd
 git status --short --branch
 git worktree list
 git log -5 --oneline
-git remote -v
 ```
 
-Confirm paths still exist. A worktree can be removed or occupied by another task.
-Use explicit working directories, preserve uncommitted changes, and use a separate
-worktree/`codex/` branch when concurrent work needs isolation. Do not switch or
-reset another task's checkout to match this snapshot. On another machine, locate
-or create a checkout from the corresponding branch; the paths above are host-local.
-`origin` is the user's fork; `upstream` is the original project.
+Both permanent branches track `origin`, the user's fork. `upstream` is the
+original community project and is used for deliberate imports. Historical
+feature branches named later in this guide or its linked evidence are not
+current starting points. Use a temporary `codex/` branch only when isolation or
+concurrent work needs it; integrate and retire it when the task is complete.
+Preserve another task's checkout and uncommitted changes.
 
 ## What is shared, and what must stay platform-specific
 
@@ -272,9 +264,9 @@ Start follow-up investigations with [Shared Lives](SHARED-LIVES.md),
 [desktop gameplay](DESKTOP-GAMEPLAY.md), and
 [organization validation](ORGANIZATION-VALIDATION.md). Portrait-specific history
 lives on the Portrait branch:
-[Portrait UI](https://github.com/miikaTheCoder/Era-Life-Community/blob/codex/shared-lives-portrait/docs/MOBILE-PORTRAIT.md),
-[startup performance](https://github.com/miikaTheCoder/Era-Life-Community/blob/codex/shared-lives-portrait/docs/STARTUP-PERFORMANCE.md),
-and [Android](https://github.com/miikaTheCoder/Era-Life-Community/blob/codex/shared-lives-portrait/docs/ANDROID.md).
+[Portrait UI](https://github.com/miikaTheCoder/Era-Life-Community/blob/portrait/docs/MOBILE-PORTRAIT.md),
+[startup performance](https://github.com/miikaTheCoder/Era-Life-Community/blob/portrait/docs/STARTUP-PERFORMANCE.md),
+and [Android](https://github.com/miikaTheCoder/Era-Life-Community/blob/portrait/docs/ANDROID.md).
 Read the dated updates: older paragraphs describe superseded mobile builds.
 
 ## Leave the next task a usable handoff

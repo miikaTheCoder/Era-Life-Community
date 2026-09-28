@@ -3,6 +3,11 @@
 Status: verified on Linux desktop on `codex/sync-upstream-2026-09-28`, with the
 concurrent cold-load timing limitation retained below.
 
+**Promoted 2026-09-28:** integration commit `cffca1d` is now on desktop `main`.
+The old integration branch and checkout are retired after preserving their
+history and local evidence. Use [branch workflow](BRANCHES.md) for current paths.
+The remaining text records the original integration run.
+
 This branch merges upstream `57ee128` into desktop `b399a33`. Its isolated
 worktree is `/home/nextg/Work/miikaTheCoder/Era-Life-Community-upstream-sync`.
 The existing desktop and Portrait branches remain separate. This integration

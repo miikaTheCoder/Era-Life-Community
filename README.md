@@ -2,6 +2,11 @@
 
 A development fork of [Browleytheboi/Era-Life-Community](https://github.com/Browleytheboi/Era-Life-Community), a reconstructed Godot project. Original and community contributor history is preserved. See [the reconstruction notes](project/README-RECONSTRUCTION.md) for its history and known gameplay issues.
 
+**Start here:** `main` is the current desktop game and the default for new tasks.
+`portrait` is the phone version. See [branch workflow](docs/BRANCHES.md) for the
+two checkouts and temporary task branches. The active `browser-play` task remains
+separate and must be left alone until its owner finishes it.
+
 Packaged desktop builds belong under [this fork's Releases](https://github.com/miikaTheCoder/Era-Life-Community/releases). The first desktop version is an alpha; Windows and macOS packages still need native playtesting.
 
 Desktop Narrative and Household entry flows are now connected to the simulation.
@@ -12,7 +17,7 @@ keyboard actions during navigation refreshes. The subsequent
 [live display repair](docs/LIVE-DISPLAY.md) keeps the diary and balance current
 after Continue, Age Up and family choices.
 
-The `era-life-new-ui` branch introduces the dark life-journal interface. See
+The desktop game includes the dark life-journal interface. See
 [UI design and validation](docs/NEW-UI.md) for layout, implementation, and checks.
 
 The first **Life Stories & Legacies** content release adds six branching stories
@@ -29,7 +34,7 @@ on the desktop branch: 11 chapters and 30 responses about work, practical help,
 relationships and boundaries. See [Living Households](docs/LIVING-HOUSEHOLDS.md).
 The Portrait port remains separate work under R06.
 
-The Shared Lives branches also include repairs for cold Continue, business bank
+Both permanent branches include repairs for cold Continue, business bank
 restoration, and Portrait's saved-life button. See [cold-restore validation](docs/COLD-RESTORE.md)
 for tested source commits, preserved fixtures, and device limitations.
 
@@ -59,10 +64,10 @@ The regression runner uses Godot 4.4.1 and isolated test profiles. See the
 [organization validation notes](docs/ORGANIZATION-VALIDATION.md) for the scope
 and limits of the repository reorganization.
 
-## Current project status (2026-09-04)
+## Historical desktop milestone (2026-09-04)
 
-The local `main` branch contains the Crime World foundation and the subsequent
-desktop-stability work. The working tree is clean.
+The following records the September 4 milestone. Current code is on `main` and
+`portrait`; use the [roadmap](ROADMAP.md) for later work and remaining gaps.
 
 Implemented and checked:
 
@@ -97,7 +102,10 @@ To publish from your own fork, follow the [desktop release checklist](docs/RELEA
 It covers preserving this checkout, connecting the correct upstream, publishing source,
 testing each platform, and drafting a GitHub prerelease.
 
-The source also retains an experimental [Android port and build instructions](docs/ANDROID.md), preserved separately in the local `mobile` branch. Build its signed test APK with `./scripts/build.sh android` after installing the Android templates and SDK tools. The current compatibility build requires 32-bit ARM app support; the ARM64 build still fails during startup on the tested phone. Android APKs are not part of the desktop alpha release.
+Current phone development is on `portrait`; its [handoff](docs/AGENT-HANDOFF.md)
+links the startup, build and device evidence. The earlier Android compatibility
+work is preserved in Git history. Android APKs are not part of the desktop alpha
+release.
 
 ## Build
 

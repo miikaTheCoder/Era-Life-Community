@@ -5,6 +5,10 @@ Portrait. Use [the agent handoff](docs/AGENT-HANDOFF.md) to find the active
 branches, worktrees, commands, and evidence; use [AGENTS.md](AGENTS.md) for code
 ownership and repository rules.
 
+**Default checkout:** desktop `main`. Phone work uses `portrait`. These are the
+two permanent branches; see [branch workflow](docs/BRANCHES.md). `browser-play`
+belongs to a separate active task and is excluded from the consolidation.
+
 ## Direction
 
 Build lives worth continuing: recurring people with their own decisions, work and
@@ -27,7 +31,7 @@ support them. Proposed content below can change with playtesting and user input.
 | Desktop validation | 23 regressions passed; consecutive Age Up input and live diary/balance refresh repaired; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 and R05 Linux packages verified |
 | Portrait validation | 23 headless regressions plus final focused checks passed; content flow inspected at 420×900; signed APK built, not retested on the Honor phone |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
-| Release status | Current work is on the Shared Lives branches. A push or an APK export does not mean it is merged, published, or fully device-verified |
+| Release status | Current desktop work is integrated into `main`; phone work is on `portrait`. Source integration does not publish a release or certify an APK on a device |
 
 These are dated results, not certification of future commits. The exact evidence
 and limitations live in [Shared Lives](docs/SHARED-LIVES.md) and the
@@ -261,6 +265,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-27 | R07 | First-click investigation, desktop `c10ac54` | Reproduced and repaired focus loss during navigation rebinding and Continue destination publication; focused tests failed before the fix and all 23 regressions pass afterward. Added graphical click traces and exact-one-activation checks. Cold Continue from the original 2003 save passed three years and care choices, another cold Continue/year/save, and final exact restore at 2007 with eight diary years and $9,700. The original isolated miss also passed before the fix, so its cause remains unconfirmed. Next: retain that record for a matching trace if it recurs; wider profiling and Portrait ports remain open. |
 
 | 2026-09-28 | Upstream integration | `codex/sync-upstream-2026-09-28`, desktop `b399a33` plus upstream `57ee128` | Verified Linux desktop integration: all 23 regressions; creation for three years, cold Continue for three more years and save; Shared Lives choice/save plus repeated cold Continue with exact company balances. Repaired detached relationship-row rendering and avoided duplicate prison ticks. Retain the concurrent cold-load timeout in [integration evidence](docs/UPSTREAM-SYNC-2026-09-28.md). Next: review for desktop promotion; Portrait port remains separate. |
+
+| 2026-09-28 | Branch consolidation | `main` from desktop integration `cffca1d`; `portrait` renamed from `codex/shared-lives-portrait` at `d9628e8` | Established two permanent branches and the normal project folder as desktop `main`. Superseded commits are preserved in the permanent branches or the release-automation archive tag, with a verified local Git bundle for recovery. Updated startup guidance on both branches. Browser work remains owned by its active task and untouched. Gameplay files are unchanged from the verified branch tips; no new gameplay certification or release is claimed. See [branch workflow](docs/BRANCHES.md). |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

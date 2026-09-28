@@ -6,10 +6,10 @@ Keep Android out of the desktop release assets; it remains a separate workstream
 For this checkout, the fork is now confirmed as
 [`miikaTheCoder/Era-Life-Community`](https://github.com/miikaTheCoder/Era-Life-Community).
 `origin` points to that fork and `upstream` points to the community repository.
-The Android/checkpoint foundation is preserved in the local `mobile` branch;
-desktop alpha work is on `codex/desktop-alpha`. Do not repeat the fork, branch
-creation, or remote-renaming commands below in this already-configured checkout.
-They are retained as instructions for setting up another checkout.
+Desktop development is on `main`, and phone development is on `portrait`.
+See [branch workflow](BRANCHES.md). Do not repeat the fork or remote-renaming
+commands below in this already-configured checkout. Those setup instructions
+describe the original fork setup and are only needed for another repository.
 
 ## 1. Choose and fork the upstream repository
 
@@ -30,16 +30,15 @@ relationship. Do not delete or overwrite this local checkout.
 
 ## 2. Preserve the local work and connect your fork
 
-This checkout originally had staged Android work and unstaged desktop repairs.
-Those layers are now being preserved in separate commits. Changing the remote
-does not upload commits. Preserve the working files, review both sets of changes,
-and keep required shared code together.
+The original checkout had staged Android work and unstaged desktop repairs.
+Those layers are preserved in history. Changing a remote does not upload commits.
+Preserve working files and keep required shared code together.
 
-Start a desktop branch from this checkout (example name):
+For release work in the existing desktop checkout, first confirm the branch and
+working tree. Use a temporary branch only if the work needs isolation:
 
 ```sh
-git switch -c codex/desktop-alpha
-git status --short
+git status --short --branch
 git diff
 git diff --cached
 ```
@@ -93,11 +92,12 @@ After the staged result is the intended source:
 
 ```sh
 git commit -m "Connect desktop life modes and package desktop builds"
-git push -u origin codex/desktop-alpha
+git push origin main
 ```
 
-This publishes source on your fork's desktop branch. A merge into your own default
-branch can follow review. If you open a pull request for that, explicitly choose
+This publishes reviewed source already integrated into your fork's desktop `main`.
+If the work uses a temporary branch, review and integrate it first. If you open a
+pull request for that, explicitly choose
 **your fork** as the base repository; GitHub may otherwise suggest the community
 repository. A contribution back upstream is a separate, optional pull request.
 
