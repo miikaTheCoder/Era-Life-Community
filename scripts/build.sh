@@ -3,8 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 target="${1:-all}"
-if [[ $# -gt 1 || ! "$target" =~ ^(linux|windows|macos|android|all)$ ]]; then
-    echo "Usage: $0 [linux|windows|macos|android|all] (all = Linux, Windows, macOS)" >&2
+if [[ $# -gt 1 || ! "$target" =~ ^(linux|windows|macos|android|web|all)$ ]]; then
+    echo "Usage: $0 [linux|windows|macos|android|web|all] (all = Linux, Windows, macOS)" >&2
     exit 2
 fi
 
@@ -53,6 +53,14 @@ run_godot() {
 }
 
 run_godot import --import
+if [[ "$target" == web ]]; then
+    mkdir -p -- "$repo_root/build/web"
+    run_godot export-web --export-release Web "$repo_root/build/web/index.html"
+    (cd -- "$repo_root/build/web" && sha256sum index.* > SHA256SUMS.txt)
+    echo "Web build ready: $repo_root/build/web/index.html"
+    echo "Preview with: python3 scripts/serve-web.py"
+    exit 0
+fi
 if [[ "$target" == android ]]; then
     if [[ -z "${JAVA_HOME:-}" ]]; then
         export JAVA_HOME="$(dirname -- "$(dirname -- "$(readlink -f -- "$(command -v javac)")")")"

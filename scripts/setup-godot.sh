@@ -5,8 +5,8 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 tool_root="$repo_root/build/tools"
 version="4.4.1"
 target="${1:-desktop}"
-if [[ $# -gt 1 || ! "$target" =~ ^(desktop|android|all)$ ]]; then
-    echo "Usage: $0 [desktop|android|all]" >&2
+if [[ $# -gt 1 || ! "$target" =~ ^(desktop|android|web|all)$ ]]; then
+    echo "Usage: $0 [desktop|android|web|all]" >&2
     exit 2
 fi
 
@@ -52,5 +52,9 @@ if [[ "$target" == android || "$target" == all ]]; then
     unzip -q -j -o "$download_dir/$templates_archive" \
         'templates/android_debug.apk' 'templates/android_release.apk' -d "$template_dir"
 fi
+if [[ "$target" == web || "$target" == all ]]; then
+    unzip -q -j -o "$download_dir/$templates_archive" \
+        'templates/web_debug.zip' 'templates/web_release.zip' -d "$template_dir"
+fi
 chmod +x "$editor_dir/Godot_v$version-stable_linux.x86_64"
-echo "Toolchain ready in $tool_root. Run ./scripts/build.sh all for desktop or ./scripts/build.sh android for Android."
+echo "Toolchain ready in $tool_root. Run ./scripts/build.sh all for desktop, ./scripts/build.sh android for Android, or ./scripts/build.sh web for browsers."

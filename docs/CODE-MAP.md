@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-374 scripts; 922,753 source lines.
+374 scripts; 922,768 source lines.
 
 ## Largest files
 
@@ -26,7 +26,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
 | [StickFighterMiniGameProvider.gd](../project/systems/minigames/StickFighterMiniGameProvider.gd) | 13,025 | 107 |
 | [SchoolEngine.gd](../project/systems/education/SchoolEngine.gd) | 12,940 | 205 |
-| [GameStateContractEngine.gd](../project/core/state/GameStateContractEngine.gd) | 12,450 | 183 |
+| [GameStateContractEngine.gd](../project/core/state/GameStateContractEngine.gd) | 12,452 | 183 |
 | [CrownHubContractEngine.gd](../project/systems/politics/CrownHubContractEngine.gd) | 11,594 | 87 |
 | [RealityResidencyManager.gd](../project/systems/realities/RealityResidencyManager.gd) | 11,547 | 56 |
 | [LuxuryShopEngine.gd](../project/systems/economy/LuxuryShopEngine.gd) | 9,845 | 64 |

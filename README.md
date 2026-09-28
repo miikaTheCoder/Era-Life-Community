@@ -118,6 +118,11 @@ If you already have Godot 4.4.1 and its export templates installed, skip setup:
 GODOT_BIN=/absolute/path/to/godot-4.4.1 ./scripts/build.sh all
 ```
 
+For the desktop browser export, install the Web templates with
+`bash scripts/setup-godot.sh web`, run `bash scripts/build.sh web`, and preview
+with `python3 scripts/serve-web.py`. Open `http://localhost:8060/`. See
+[Web build, hosting, persistence, and validation](docs/WEB.md).
+
 `GODOT_BIN` uses that editor's normal template locations (or the XDG directories you set). On other hosts, install [the official Godot 4.4.1 editor and templates](https://github.com/godotengine/godot-builds/releases/tag/4.4.1-stable), import `project/project.godot`, and use the included **Linux**, **Windows Desktop**, or **macOS** export preset. Create the output directory before exporting. When exporting manually, include the repository license and the notices in `third_party/godot/` with the result.
 
 ## Run

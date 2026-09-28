@@ -5467,7 +5467,9 @@ func _runtime_web_origin() -> String:
 	if not ClassDB.class_exists("JavaScriptBridge"):
 		return ""
 
-	var origin_raw: Variant = JavaScriptBridge.eval("window.location.origin || ''", true)
+	# This contract is also constructed in hydration workers. Both the browser
+	# window and its same-origin workers expose location on the global scope.
+	var origin_raw: Variant = JavaScriptBridge.eval("globalThis.location.origin || ''", true)
 	return str(origin_raw).strip_edges().trim_suffix("/")
 
 

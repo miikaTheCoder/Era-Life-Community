@@ -314,7 +314,7 @@ func _ensure_runtime_nodes() -> void:
 	if manifest_request == null:
 		manifest_request = HTTPRequest.new()
 		manifest_request.name = "ReleaseManifestRequest"
-		manifest_request.use_threads = true
+		manifest_request.use_threads = not OS.has_feature("web")
 		manifest_request.body_size_limit = (
 			MANIFEST_MAX_BODY_BYTES
 		)
@@ -330,7 +330,7 @@ func _ensure_runtime_nodes() -> void:
 	if live_bundle_request == null:
 		live_bundle_request = HTTPRequest.new()
 		live_bundle_request.name = "ReleaseLiveBundleRequest"
-		live_bundle_request.use_threads = true
+		live_bundle_request.use_threads = not OS.has_feature("web")
 		live_bundle_request.body_size_limit = (
 			LIVE_BUNDLE_MAX_BODY_BYTES
 		)

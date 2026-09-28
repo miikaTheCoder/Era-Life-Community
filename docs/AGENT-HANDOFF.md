@@ -271,6 +271,12 @@ Read the dated updates: older paragraphs describe superseded mobile builds.
 
 ## Leave the next task a usable handoff
 
+Desktop browser work is on `browser-play`, based on desktop `b399a33`. See
+[the Web guide](WEB.md) for export/preview commands, browser persistence checks,
+native validation, the PWA cache and static-host startup check, and the retained
+nonfatal Emscripten warning. This additional
+target does not replace either Shared Lives checkout or the Portrait branch.
+
 Keep this guide aligned on both active branches when their locations, porting
 workflow, or status changes. Record the target branch and commit, what changed,
 checks actually run and their log locations, artifact path, unresolved failures,
