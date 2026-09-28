@@ -4,14 +4,18 @@ Updated 2026-09-28. There are two permanent development branches:
 
 | Branch | Purpose | Local checkout |
 | --- | --- | --- |
-| `main` | Current desktop game; default for new tasks | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| `main` | Current desktop and browser game; default for new tasks | `/home/nextg/opencode-sandbox/Era-Life-Community` |
 | `portrait` | Phone version with its own startup and touch presentation | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
-`browser-play` is an unfinished task in
-`/home/nextg/Work/miikaTheCoder/Era-Life-Community-browser-play`. Its branch and
-worktree are owned by another active task and must be left alone. Browser support
-can be integrated into `main` when that task is ready; it does not need a permanent
-third product branch.
+The completed `browser-play` work is preserved in commit `cd6ca7d` and integrated
+into `main`. Browser exports use the normal project checkout and do not need a
+third permanent branch. See [the Web guide](WEB.md) for commands and evidence.
+
+The temporary browser branch and checkout are retired after integration. Its
+complete checkout, local builds, and logs are preserved in
+`/home/nextg/Work/miikaTheCoder/Era-Life-browser-integration-backup-2026-09-28`.
+The archive was verified against all 1,333 regular files, and the Git bundle
+preserves the browser commit alongside both permanent branches.
 
 ## Starting and finishing work
 

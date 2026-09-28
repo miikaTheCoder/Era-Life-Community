@@ -6,10 +6,10 @@ This repository became standalone on GitHub on 2026-09-28. Its URL, development
 branches, and published releases are unchanged. The original project remains
 available through the `upstream` Git remote for deliberate imports.
 
-**Start here:** `main` is the current desktop game and the default for new tasks.
+**Start here:** `main` is the current desktop and browser game, and the default for new tasks.
 `portrait` is the phone version. See [branch workflow](docs/BRANCHES.md) for the
-two checkouts and temporary task branches. The active `browser-play` task remains
-separate and must be left alone until its owner finishes it.
+two checkouts and temporary task branches. Browser builds use the `main`
+checkout; see [the Web guide](docs/WEB.md) for commands and validation.
 
 Packaged desktop builds belong under [this project's Releases](https://github.com/miikaTheCoder/Era-Life-Community/releases). The first desktop version is an alpha; Windows and macOS packages still need native playtesting.
 
