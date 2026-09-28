@@ -59,11 +59,11 @@ before implementation. `Verified` requires the evidence in its completion criter
 | ID | Item | Target | Status | Depends on |
 | --- | --- | --- | --- | --- |
 | R01 | Reliable save → cold restart → continue | Desktop, then Portrait | Verified: desktop + Portrait preview | None |
-| R02 | Character / Back / Explore navigation | Portrait | Queued | None; can be an independent fix |
-| R03 | God Mode → Begin Life phone crash | Portrait | Queued; device access needed for final verification | None; keep separate from R02 |
+| R02 | Character / Back / Explore navigation | Portrait | Verified on Honor: five repeated cycles | None |
+| R03 | God Mode → Begin Life phone crash | Portrait | Rebuilt APK entered a playable God Mode life once; repeat verification open | Repeat God Mode entry on Honor |
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Desktop verified and packaged; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
 | R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
-| R06 | Port Living Households and test it on a phone | Portrait | Queued | R05 and Portrait R04 |
+| R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Focus gaps repaired; isolated first-click miss unconfirmed; profiling open | Use stable routes from R01–R03 |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
 
@@ -277,6 +277,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-28 | Standalone repository | Owner completed GitHub detachment; desktop `a2ceae7`, Portrait `ad6fe96` preserved | Verified standalone status, unchanged URL and branch tips, release tags, both releases and all eight asset digests. History, license and credits retained; local Git and release backups verified. Updated repository guidance on both permanent branches. Browser task and gameplay files untouched. |
 
 | 2026-09-28 | Browser integration and branch retirement | Completed browser `cd6ca7d` into desktop `main` | All 23 regressions, Web export/checksums, native Household three-year save and repeat cold Continue passed. Browser narrative entry, age/save/reload/Continue and another year passed through the supplied preview server. Retained one native hydration timeout that passed on repeat and an intermittent plain-static-host reload stall. The browser checkout and evidence are archived; only `main` and `portrait` remain as development branches. Portrait received shared documentation only. Next: reproduce the loading timing failures under R07 before public browser hosting. See [Web integration evidence](docs/WEB.md#integration-into-main-2026-09-28). |
+
+| 2026-09-28 | Portrait phone repair and session check | `portrait` at `0eb9293`; desktop `main` unchanged | R02 passed five Character, Android Back, Menu, Back cycles on Honor. God Mode Begin Life reached playable life once. Household creation reached Ada, Bea and Cora; Ada aged from 25 to 29 and saved. Native Continue crashed in earlier APKs at about 65,000 memory mappings. The reduced-copy APK restored Ada at age 29 in 2004 with $10,000 and the 2001 to 2004 journal after a full process stop. Portrait focused regressions and 420x900 graphical checks passed. Next: verify household cast after restore, make a meaningful choice on Honor, repeat the full cold session, and repeat God Mode entry. |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,
