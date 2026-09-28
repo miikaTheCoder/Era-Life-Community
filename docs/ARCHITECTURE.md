@@ -37,6 +37,7 @@ reads source directly, so it works before importing Godot.
 | `project/ui/main/support/` | Static scene-support functions grouped by subject |
 | `project/scenes/` | Scene resources, main scene coordinator and mobile bootstrap |
 | `project/platform/mobile/` | Mobile detection, input adaptation and scrolling |
+| `project/platform/web/` | Browser export shell and service-worker startup coordination |
 | `project/mods/` | Mod loading, bundles, menus and marketplace contracts |
 | `project/integrations/` | Network/account, updater and AI boundaries |
 | `project/data/` | Data loading, names, NPC factory and authored content |
@@ -71,7 +72,8 @@ arguments are literal stems, not wildcard patterns.
 ## Runtime boundaries
 
 `project.godot` starts `scenes/main.scn` on desktop and `scenes/mobile_boot.tscn`
-on Android. Network and updater autoload names remain unchanged; their scripts
+on Android. The Web export uses the desktop main scene through
+`platform/web/boot.html`; see [Web build and validation](WEB.md). Network and updater autoload names remain unchanged; their scripts
 live under `integrations/`.
 
 The main scene coordinates the UI and a `GameState`. The state creates and owns

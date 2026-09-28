@@ -8,29 +8,29 @@ for ownership. This guide is shared by the two permanent branches.
 GitHub on 2026-09-28. Its URL, branch tips, release tags, both releases, and all
 eight release assets were verified after detachment. History, credits, and the
 license are retained. See [the conversion record](BRANCHES.md#standalone-repository)
-for backups. The active `browser-play` worktree was left untouched.
+for backups. Browser work was preserved separately during that conversion and
+has since been integrated into `main` from commit `cd6ca7d`.
 
 ## Start here
 
-**Desktop `main` is the default for new tasks.** Use `portrait` only for phone
+**Desktop and browser `main` is the default for new tasks.** Use `portrait` only for phone
 work. [Branch workflow](BRANCHES.md) records the policy and consolidation history.
 
 | Target | Branch | Local checkout |
 | --- | --- | --- |
-| Desktop | `main` | `/home/nextg/opencode-sandbox/Era-Life-Community` |
+| Desktop and browser | `main` | `/home/nextg/opencode-sandbox/Era-Life-Community` |
 | EraLife Portrait | `portrait` | `/home/nextg/.codex/worktrees/mobile-portrait/Era-Life-Community` |
 
-`browser-play` is an active task in
-`/home/nextg/Work/miikaTheCoder/Era-Life-Community-browser-play`. Its owner is
-still working there. Leave that branch and worktree alone, including its
-uncommitted files; it is excluded from this cleanup.
+The completed browser target now lives on `main`. See [the Web guide](WEB.md)
+for build/preview commands, local browser saves, startup caching, and integration
+evidence. Browser work does not port desktop gameplay or presentation to Portrait.
 
 Desktop `main` contains verified integration `cffca1d`, including Shared Lives,
 Living Households, R01, R07, and the eight upstream commits through `57ee128`.
 Its 23 regressions, sequential cold Continue and Shared Lives save/load cycle
 passed before promotion. Retain the concurrent-run hydration timeout described
-in [integration evidence](UPSTREAM-SYNC-2026-09-28.md). This consolidation changes
-branch organization and documentation, not gameplay or release artifacts.
+in [integration evidence](UPSTREAM-SYNC-2026-09-28.md). The later browser merge
+preserves those fixes and adds the Web export and its platform adaptations.
 
 `portrait` preserves the former Shared Lives phone branch at `d9628e8`, including
 R01's shared port `e538708` and mobile Continue repair `74e8b07`. Desktop R05,
@@ -276,6 +276,17 @@ and [Android](https://github.com/miikaTheCoder/Era-Life-Community/blob/portrait/
 Read the dated updates: older paragraphs describe superseded mobile builds.
 
 ## Leave the next task a usable handoff
+
+Desktop browser work originated on `browser-play`, based on desktop `b399a33`,
+and is now integrated into `main` from `cd6ca7d`. See
+[the Web guide](WEB.md) for export/preview commands, browser persistence checks,
+native validation, the PWA cache and static-host startup check, and the retained
+nonfatal Emscripten warning. Use the permanent `main` checkout for this target.
+Integration passed all 23 regressions, the Web export, desktop three-year save
+and repeat cold Continue, and browser save/reload/Continue plus continued play.
+Retain the first desktop hydration timeout and intermittent plain-static-host
+reload stall described in the Web guide. Use the supplied preview server;
+public hosting and Portrait gameplay ports remain separate work.
 
 Keep this guide aligned on both active branches when their locations, porting
 workflow, or status changes. Record the target branch and commit, what changed,

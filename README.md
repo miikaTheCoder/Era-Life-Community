@@ -6,10 +6,10 @@ This repository became standalone on GitHub on 2026-09-28. Its URL, development
 branches, and published releases are unchanged. The original project remains
 available through the `upstream` Git remote for deliberate imports.
 
-**Start here:** `main` is the current desktop game and the default for new tasks.
+**Start here:** `main` is the current desktop and browser game, and the default for new tasks.
 `portrait` is the phone version. See [branch workflow](docs/BRANCHES.md) for the
-two checkouts and temporary task branches. The active `browser-play` task remains
-separate and must be left alone until its owner finishes it.
+two checkouts and temporary task branches. Browser builds use the same `main`
+checkout; see [the Web guide](docs/WEB.md) for build and preview commands.
 
 Packaged desktop builds belong under [this project's Releases](https://github.com/miikaTheCoder/Era-Life-Community/releases). The first desktop version is an alpha; Windows and macOS packages still need native playtesting.
 
@@ -129,6 +129,11 @@ If you already have Godot 4.4.1 and its export templates installed, skip setup:
 ```sh
 GODOT_BIN=/absolute/path/to/godot-4.4.1 ./scripts/build.sh all
 ```
+
+For the desktop browser export, install the Web templates with
+`bash scripts/setup-godot.sh web`, run `bash scripts/build.sh web`, and preview
+with `python3 scripts/serve-web.py`. Open `http://localhost:8060/`. See
+[Web build, hosting, persistence, and validation](docs/WEB.md).
 
 `GODOT_BIN` uses that editor's normal template locations (or the XDG directories you set). On other hosts, install [the official Godot 4.4.1 editor and templates](https://github.com/godotengine/godot-builds/releases/tag/4.4.1-stable), import `project/project.godot`, and use the included **Linux**, **Windows Desktop**, or **macOS** export preset. Create the output directory before exporting. When exporting manually, include the repository license and the notices in `third_party/godot/` with the result.
 

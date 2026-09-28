@@ -25,6 +25,11 @@ run/flush_stdout_on_print.android=true
 SelfHostRuntime="*res://integrations/network/SelfHostRuntimeLayer.gd"
 ReleaseUpdateRuntimeLayer="*res://integrations/updates/ReleaseUpdateRuntimeLayer.gd"
 
+[audio]
+
+; Stream long music tracks instead of allocating complete Web Audio samples.
+general/default_playback_type.web=0
+
 [community]
 
 updates/allow_upstream_runtime=false
@@ -54,5 +59,7 @@ pointing/emulate_mouse_from_touch=true
 environment/defaults/default_clear_color=Color(0.063, 0.071, 0.078, 1)
 
 renderer/rendering_method="mobile"
+renderer/rendering_method.web="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_s3tc_bptc=true
 textures/vram_compression/import_etc2_astc=true

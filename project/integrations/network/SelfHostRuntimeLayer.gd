@@ -400,7 +400,7 @@ func _ensure_runtime_nodes() -> void:
 		if not tick_timer.timeout.is_connected(_on_duckdns_tick):
 			tick_timer.timeout.connect(_on_duckdns_tick)
 
-	if remote_shell_server == null:
+	if remote_shell_server == null and not OS.has_feature("web"):
 		remote_shell_server = TCPServer.new()
 func save_local_remote_shell_config(
 	config: Dictionary = {}
@@ -534,6 +534,9 @@ func save_local_remote_shell_config(
 	}
 
 func _refresh_remote_shell_from_contract_or_config() -> void:
+	if OS.has_feature("web"):
+		stop_remote_shell_bridge("unsupported_on_web")
+		return
 	_ensure_runtime_nodes()
 	local_config = load_local_config()
 
@@ -586,6 +589,16 @@ func _refresh_remote_shell_from_contract_or_config() -> void:
 func start_remote_shell_bridge(
 	options: Dictionary = {}
 ) -> Dictionary:
+	if OS.has_feature("web"):
+		stop_remote_shell_bridge("unsupported_on_web")
+		return {
+			"schema": "eralife.remote_shell_start_report",
+			"version": REMOTE_SHELL_VERSION,
+			"success": false,
+			"error": ERR_UNAVAILABLE,
+			"reason": "unsupported_on_web",
+			"token_echoed": false,
+		}
 	_ensure_runtime_nodes()
 	local_config = load_local_config()
 

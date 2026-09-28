@@ -5,9 +5,9 @@ Portrait. Use [the agent handoff](docs/AGENT-HANDOFF.md) to find the active
 branches, worktrees, commands, and evidence; use [AGENTS.md](AGENTS.md) for code
 ownership and repository rules.
 
-**Default checkout:** desktop `main`. Phone work uses `portrait`. These are the
-two permanent branches; see [branch workflow](docs/BRANCHES.md). `browser-play`
-belongs to a separate active task and is excluded from the consolidation.
+**Default checkout:** desktop and browser `main`. Phone work uses `portrait`.
+These are the two permanent branches; see [branch workflow](docs/BRANCHES.md).
+The completed browser export is integrated into `main`; see [the Web guide](docs/WEB.md).
 
 The GitHub repository is now standalone, with its original history and credits
 preserved. See [the conversion record](docs/BRANCHES.md#standalone-repository).
@@ -34,6 +34,7 @@ support them. Proposed content below can change with playtesting and user input.
 | Desktop validation | 23 regressions passed; consecutive Age Up input and live diary/balance refresh repaired; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 and R05 Linux packages verified |
 | Portrait validation | 23 headless regressions plus final focused checks passed; content flow inspected at 420×900; signed APK built, not retested on the Honor phone |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
+| Browser target | Integrated into `main`; Web export, narrative entry, save/reload/Continue and continued play verified on the preview server. Intermittent plain-static-host reload stall remains open; see [Web evidence](docs/WEB.md) |
 | Release status | Current desktop work is integrated into `main`; phone work is on `portrait`. Source integration does not publish a release or certify an APK on a device |
 
 These are dated results, not certification of future commits. The exact evidence
@@ -253,6 +254,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 
 | Date | Item | Task / branch / commit | Outcome and next action |
 | --- | --- | --- | --- |
+| 2026-09-28 | Desktop Web port (user request) | `browser-play`, based on desktop `b399a33` | Web export, normal menu, new narrative life, five years, binary save and browser reload/Continue verified; continued play reached age 7 and a second save was detected after reload. All 23 regressions and native Linux/Windows/macOS/Android exports pass; desktop Household three-year smoke passes. See [Web evidence](docs/WEB.md). No Portrait gameplay port or public hosting is included. |
+| 2026-09-28 | R07 Web startup follow-up (user request) | `browser-play` | Cold Linux probe localized most pre-first-frame time to loading the large main scene; packaged Linux launch measured about 7.2 seconds on this host. Enabled a versioned Web PWA cache for engine and pack. A fresh plain static origin reached the normal intro without a manual refresh after fixing the default shell's service-worker activation race; repeat reload requested neither large file again. Final Web export and 23 regressions passed. See [Web startup evidence](docs/WEB.md). First-visit CPU cost and older Mac performance remain unmeasured; next: profile on representative slower hardware before attempting a large scene split. |
 | 2026-09-26 | Baseline | Desktop `32ad0fb`; Portrait `ebaf71c` | Shared Lives implemented and ported, with the documented validation limits. Next shared implementation item: reproduce R01 on desktop. |
 | 2026-09-26 | Planning | Shared roadmap on both Shared Lives branches | Priorities and completion criteria recorded. R01–R08 remain unclaimed; no new gameplay or crash fix is claimed here. |
 | 2026-09-27 | R01 | Save/continue task; desktop `e2424ff`, Portrait `e538708` + `74e8b07` | Verified: hydration progress, projection scheduling, company banking, and mobile Continue update. 19 desktop and 23 Portrait regressions pass. New and existing saves passed separate-process Continue, age/save, and repeated restore checks. See [cold-restore evidence](docs/COLD-RESTORE.md). Next: desktop R04 readiness and R05 content; Portrait creation gaps, R02, and R03 remain open. |
@@ -272,6 +275,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-28 | Branch consolidation | `main` from desktop integration `cffca1d`; `portrait` renamed from `codex/shared-lives-portrait` at `d9628e8` | Established two permanent branches and the normal project folder as desktop `main`. Superseded commits are preserved in the permanent branches or the release-automation archive tag, with a verified local Git bundle for recovery. Updated startup guidance on both branches. Browser work remains owned by its active task and untouched. Gameplay files are unchanged from the verified branch tips; no new gameplay certification or release is claimed. See [branch workflow](docs/BRANCHES.md). |
 
 | 2026-09-28 | Standalone repository | Owner completed GitHub detachment; desktop `a2ceae7`, Portrait `ad6fe96` preserved | Verified standalone status, unchanged URL and branch tips, release tags, both releases and all eight asset digests. History, license and credits retained; local Git and release backups verified. Updated repository guidance on both permanent branches. Browser task and gameplay files untouched. |
+
+| 2026-09-28 | Browser integration and branch retirement | Completed browser `cd6ca7d` into desktop `main` | All 23 regressions, Web export/checksums, native Household three-year save and repeat cold Continue passed. Browser narrative entry, age/save/reload/Continue and another year passed through the supplied preview server. Retained one native hydration timeout that passed on repeat and an intermittent plain-static-host reload stall. The browser checkout and evidence are archived; only `main` and `portrait` remain as development branches. Portrait received shared documentation only. Next: reproduce the loading timing failures under R07 before public browser hosting. See [Web integration evidence](docs/WEB.md#integration-into-main-2026-09-28). |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,

@@ -8,7 +8,7 @@ ordinary hyphens instead. Check your output and edited text before finishing.
 
 ## Start on the right branch
 
-`main` is the current desktop game and the default for new tasks. `portrait` is
+`main` is the current desktop and browser game, and the default for new tasks. `portrait` is
 the phone version. Use the normal project folder for desktop work and the existing
 Portrait worktree for phone work. Read [the agent handoff](docs/AGENT-HANDOFF.md)
 and [branch workflow](docs/BRANCHES.md) before choosing a different checkout.
@@ -18,9 +18,9 @@ on the intended permanent branch for sequential work when its checkout is clean.
 Create a temporary `codex/` branch only when isolation or concurrent work needs
 one, starting from current `main` or `portrait`. Integrate completed work and
 remove its temporary branch after checking that all commits are preserved.
-Preserve another task's checkout and uncommitted changes. `browser-play` is an
-active task owned separately; leave its branch and worktree alone until that task
-is finished. Keep shared gameplay and platform presentation responsibilities clear.
+Preserve another task's checkout and uncommitted changes. Browser support lives
+on `main`; it does not need a permanent product branch. Keep shared gameplay
+and platform presentation responsibilities clear.
 
 ## Continue from the roadmap
 
