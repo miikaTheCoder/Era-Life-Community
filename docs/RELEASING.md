@@ -3,63 +3,40 @@
 Nothing in the build scripts pushes code or publishes a GitHub release.
 Keep Android out of the desktop release assets; it remains a separate workstream.
 
-For this checkout, the fork is now confirmed as
-[`miikaTheCoder/Era-Life-Community`](https://github.com/miikaTheCoder/Era-Life-Community).
-`origin` points to that fork and `upstream` points to the community repository.
-Desktop development is on `main`, and phone development is on `portrait`.
-See [branch workflow](BRANCHES.md). Do not repeat the fork or remote-renaming
-commands below in this already-configured checkout. Those setup instructions
-describe the original fork setup and are only needed for another repository.
+The release repository is
+[`miikaTheCoder/Era-Life-Community`](https://github.com/miikaTheCoder/Era-Life-Community),
+which became standalone on GitHub on 2026-09-28. `origin` points to this repository;
+`upstream` retains the original community source for deliberate imports. History,
+credits, and the existing license are preserved. See [branch workflow](BRANCHES.md).
 
-## 1. Choose and fork the upstream repository
+## 1. Confirm the repository and branch
 
-Open the community repository you want to build on, click **Fork**, select your
-GitHub account, and create the fork. Forking an existing fork is supported; keep
-the community history and credit its contributors. See [GitHub's fork guide](https://docs.github.com/en/pull-requests/how-tos/work-with-forks/fork-a-repo).
-
-On 2026-08-31 this checkout's `origin` was
-`https://github.com/Browleytheboi/Era-Life-Community.git`. GitHub's public API
-reported `fork: false` and default branch `main`. That tells us its GitHub fork
-status, not the provenance of all its contents or who owns your account.
-
-If that is the community repository, fork it. If you mean a different community
-repository, use its exact URL and compare the histories before transferring our
-changes. If the current remote already belongs to you, do not try to fork it into
-the same account. We still need the intended upstream URL to establish the right
-relationship. Do not delete or overwrite this local checkout.
-
-## 2. Preserve the local work and connect your fork
-
-The original checkout had staged Android work and unstaged desktop repairs.
-Those layers are preserved in history. Changing a remote does not upload commits.
-Preserve working files and keep required shared code together.
-
-For release work in the existing desktop checkout, first confirm the branch and
-working tree. Use a temporary branch only if the work needs isolation:
+Desktop releases come from reviewed `main`; phone work uses `portrait`.
+For a fresh checkout, clone the existing standalone repository. The earlier fork
+setup is complete and must not be repeated for ordinary development or releases.
 
 ```sh
+git remote -v
 git status --short --branch
+```
+
+Confirm that `origin` belongs to `miikaTheCoder/Era-Life-Community` and that the
+intended source is integrated into `main`. Publishing to the original community
+repository is a separate task and is not part of this release workflow.
+
+## 2. Preserve local work and prepare the release
+
+Review the working tree and index before staging or changing branches:
+
+```sh
 git diff
 git diff --cached
 ```
 
-Do not use a hard reset, force push, or overwrite the source with a different
-clone. If a selected upstream has unrelated history, preserve the current work in
-a local commit and port the relevant fixes into a fresh clone of the correct fork;
-do not merge unrelated histories just to make the push succeed.
-
-**Only if you forked the current `Browleytheboi/Era-Life-Community` repository**, and
-there is no existing `upstream` remote, the usual remote setup is:
-
-```sh
-git remote rename origin upstream
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-FORK.git
-git remote -v
-```
-
-Replace the placeholder with the URL GitHub gave you. `origin` should be your
-fork; `upstream` should be the community repository. This setup is already applied
-in the current checkout. [GitHub remote guidance](https://docs.github.com/en/pull-requests/how-tos/work-with-forks/configuring-a-remote-repository-for-a-fork).
+Use a temporary branch only when isolation is needed. Preserve another task's
+checkout and unfinished changes, especially the active `browser-play` task.
+Do not use a hard reset, force push, or replace the source with a different clone
+to obtain a clean release tree. Integrate reviewed work into `main` first.
 
 ## 3. Review source, credits, and the version
 
@@ -75,18 +52,18 @@ in the current checkout. [GitHub remote guidance](https://docs.github.com/en/pul
 - Review both staged and unstaged changes for secrets, personal saves, and unrelated
   work. Keep `build/`, SDKs, signing keys, local settings, and private credentials out
   of Git. The release verification `.pub` key is intentionally public.
-- Choose an unused alpha tag, for example **`v0.1.3-alpha.1`**. This is a suggestion,
-  not a tag already created. Check your fork's existing tags first.
+- Choose an unused alpha tag. `v0.1.3-alpha.1` and `v0.1.4-alpha.1` are already
+  published; older commands below are examples and must use a new version.
 - Set `application/config/version` in `project/project.godot` to the corresponding
   numeric version, e.g. `0.1.3`. The macOS preset inherits it and needs a numeric
   dotted version. Keep `-alpha.1` in the Git tag/release title. Do not change Android's
   separate version codes for this desktop release.
 
-## 4. Commit and publish the source to your fork
+## 4. Commit and publish the source to this repository
 
 Stage the reviewed files explicitly, including new scripts, docs, tests, and engine
-notices. Review `git diff --cached` before committing; there were already staged
-changes before this release preparation, so a blanket `git add .` is inappropriate.
+notices. Review `git diff --cached` before committing and keep any unrelated staged
+work out of the release commit.
 
 After the staged result is the intended source:
 
@@ -95,11 +72,10 @@ git commit -m "Connect desktop life modes and package desktop builds"
 git push origin main
 ```
 
-This publishes reviewed source already integrated into your fork's desktop `main`.
+This publishes reviewed source already integrated into this repository's desktop `main`.
 If the work uses a temporary branch, review and integrate it first. If you open a
-pull request for that, explicitly choose
-**your fork** as the base repository; GitHub may otherwise suggest the community
-repository. A contribution back upstream is a separate, optional pull request.
+pull request for that, choose **miikaTheCoder/Era-Life-Community** as its base
+repository. No contribution to the original project is required for this release.
 
 ## 5. Build from the exact release commit
 
@@ -176,9 +152,9 @@ tagging. Publish a new version to correct a released build.
 
 ## 8. Draft, review, and publish the GitHub release
 
-1. Open **your fork → Releases → Draft a new release**.
+1. Open **this repository → Releases → Draft a new release**.
 2. Select the tag pushed in step 7. Do not accidentally target an older `main` commit.
-3. Give it a title such as `Era Life Community — Desktop Alpha 1`.
+3. Give it a title such as `Era Life Community - Desktop Alpha 1`.
 4. Describe working modes, save/aging repairs, tested systems, and remaining limits.
    Use [RELEASE-NOTES-DRAFT.md](RELEASE-NOTES-DRAFT.md) as a starting point, replacing
    its placeholders and updating platform results before publication.

@@ -27,8 +27,8 @@ third product branch.
    are preserved and its worktree has no unfinished work. Preserve useful test
    evidence before removing a worktree.
 
-Both permanent branches track the user's fork, `origin`. `upstream` is the
-original community repository and is used for deliberate imports. Ordinary pulls
+Both permanent branches track the user's standalone repository, `origin`.
+`upstream` is the original community repository and is used for deliberate imports. Ordinary pulls
 on `main` must not silently select `upstream/main`.
 
 Shared gameplay still develops on desktop first, followed by a verified Portrait
@@ -67,3 +67,25 @@ git fetch /path/to/before-consolidation.bundle refs/heads/OLD-NAME:refs/heads/co
 
 Historical documents retain the branch names and commits used for their tests.
 Use the branch table at the top of this file to choose current work.
+
+## Standalone repository
+
+On 2026-09-28 the owner completed GitHub's Leave fork network operation for
+`miikaTheCoder/Era-Life-Community`. GitHub's API confirmed `fork: false`, with no
+parent or source repository, and `main` still selected as the default branch.
+The repository URL and local remote URLs are unchanged. The `upstream` Git remote
+still permits explicit fetches from the original community project; ordinary
+development and releases belong to this standalone repository.
+
+The conversion preserved desktop `a2ceae7`, Portrait `ad6fe96`, both release tags,
+and the release-automation archive tag. Both published releases and their eight
+assets remain available; their sizes and SHA-256 digests match the verified
+backup. GitHub still attributes the checked desktop commit to `miikaTheCoder`.
+The original Git history, contributor credits, and license remain intact.
+
+The pre-conversion backup is at
+`/home/nextg/Work/miikaTheCoder/Era-Life-standalone-backup-2026-09-28`.
+It contains the complete history for `main`, `portrait` and local tags in a
+verified bundle, public repository metadata, and both releases with all assets
+checked against their published checksums. The local `browser-play` task was
+excluded from changes. No gameplay or save files were modified by the conversion.

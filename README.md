@@ -1,13 +1,17 @@
 # ERA-LIFE Community
 
-A development fork of [Browleytheboi/Era-Life-Community](https://github.com/Browleytheboi/Era-Life-Community), a reconstructed Godot project. Original and community contributor history is preserved. See [the reconstruction notes](project/README-RECONSTRUCTION.md) for its history and known gameplay issues.
+An independently maintained life simulator based on the reconstructed [Browleytheboi/Era-Life-Community](https://github.com/Browleytheboi/Era-Life-Community) project. Original and community contributor history, credits, and the existing license are preserved. See [the reconstruction notes](project/README-RECONSTRUCTION.md) for its history and known gameplay issues.
+
+This repository became standalone on GitHub on 2026-09-28. Its URL, development
+branches, and published releases are unchanged. The original project remains
+available through the `upstream` Git remote for deliberate imports.
 
 **Start here:** `main` is the current desktop game and the default for new tasks.
 `portrait` is the phone version. See [branch workflow](docs/BRANCHES.md) for the
 two checkouts and temporary task branches. The active `browser-play` task remains
 separate and must be left alone until its owner finishes it.
 
-Packaged desktop builds belong under [this fork's Releases](https://github.com/miikaTheCoder/Era-Life-Community/releases). The first desktop version is an alpha; Windows and macOS packages still need native playtesting.
+Packaged desktop builds belong under [this project's Releases](https://github.com/miikaTheCoder/Era-Life-Community/releases). The first desktop version is an alpha; Windows and macOS packages still need native playtesting.
 
 Desktop Narrative and Household entry flows are now connected to the simulation.
 See [desktop gameplay and validation](docs/DESKTOP-GAMEPLAY.md) for how to play,
@@ -98,7 +102,7 @@ headless runs use isolated writable XDG data/config/cache directories and the
 pinned Godot 4.4.1 binary, avoiding the inaccessible `user://` path that caused
 the null-pointer crash. No save or project data was lost by that crash.
 
-To publish from your own fork, follow the [desktop release checklist](docs/RELEASING.md).
+To publish this project, follow the [desktop release checklist](docs/RELEASING.md).
 It covers preserving this checkout, connecting the correct upstream, publishing source,
 testing each platform, and drafting a GitHub prerelease.
 
@@ -147,7 +151,7 @@ The macOS ZIP contains a universal Intel/Apple Silicon app with an ad-hoc testin
 The presets explicitly include the release verification public key and exclude the old Discord gateway dependency tree. No online release is published by these scripts.
 
 Desktop builds disable the inherited upstream runtime update channel through
-`community/updates/allow_upstream_runtime=false`. Update this fork manually from
+`community/updates/allow_upstream_runtime=false`. Update this project manually from
 its GitHub Releases. The existing signature verification code and public key are
 unchanged; Android retains its prior update policy.
 
