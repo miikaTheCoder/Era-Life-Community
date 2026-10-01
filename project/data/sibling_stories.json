@@ -1,0 +1,622 @@
+{
+  "schema": "eralife.life_stories",
+  "version": 1,
+  "stories": [
+    {
+      "id": "sibling_fairness",
+      "series": "Family Crossroads",
+      "title": "What We Call Fair",
+      "category": "family",
+      "cast": "household_siblings",
+      "eligibility": {
+        "min_age": 25,
+        "max_age": 85,
+        "completed_story": "household_balance"
+      },
+      "start": "comparison",
+      "death_node": "loss",
+      "era_context": {
+        "Ancient Era": "Journeys, household labor and seasonal work make equal shares of time difficult.",
+        "Medieval Era": "Family duties and seasonal work leave each household with different resources.",
+        "Industrial Era": "Shifts and distance mean the same promise costs each sibling something different.",
+        "Modern Era": "Work schedules, travel and unseen planning compete with the time a family can give.",
+        "Future Era": "Tools can arrange a task, but they cannot decide what siblings owe one another."
+      },
+      "nodes": {
+        "comparison": {
+          "title": "The part you did not see",
+          "text": "Your earlier care arrangement for {relative} has settled into family history. Your sibling {supporter} remembers it differently. They say the calls, travel and quiet decisions were never shared as evenly as the named tasks. They want that work acknowledged before anyone makes another promise.",
+          "deadline": 2,
+          "default": "listen",
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Ask what my sibling carried",
+              "result": "I listened as {supporter} described the work I had not seen around {relative}. We agreed to begin with what each of us could actually give.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 5
+                },
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": -1
+              },
+              "legacy": "shared_responsibility",
+              "next": "planning",
+              "delay": 1
+            },
+            {
+              "id": "contribute",
+              "label": "Send money for the practical help we agree on",
+              "result": "I sent {supporter} money for practical support for {relative}. I acknowledged the work it could cover and the attention it could not replace.",
+              "transfer": -250,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 4
+                }
+              ],
+              "legacy": "funded_support",
+              "next": "planning",
+              "delay": 1
+            },
+            {
+              "id": "deflect",
+              "label": "Say my earlier contribution was enough",
+              "result": "I told {supporter} I had already done my part for {relative}. They heard a refusal to count the work that had landed on them.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -9
+                }
+              ],
+              "stats": {
+                "mental_health": -2
+              },
+              "legacy": "unresolved_resentment",
+              "next": "fracture",
+              "delay": 1
+            }
+          ]
+        },
+        "planning": {
+          "title": "Whose plan is it?",
+          "text": "{relative} wants help without losing the right to choose how life at home works. {supporter} wants a plan that does not depend on them filling every gap. Equal amounts of money or time will not necessarily mean equal effort. Your sibling will decide whether they trust another agreement.",
+          "deadline": 2,
+          "default": "ask_parent",
+          "choices": [
+            {
+              "id": "ask_parent",
+              "label": "Let our parent name the help, then divide it",
+              "result": "I asked {relative} what help was welcome before dividing it with {supporter}. We named the planning work as well as the errands.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 5
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 4
+                },
+                {
+                  "from": "supporter",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "legacy": "shared_responsibility",
+              "next": "review",
+              "next_untrusted": "fracture",
+              "delay": 1
+            },
+            {
+              "id": "take_control",
+              "label": "Make the arrangements myself",
+              "result": "I made the arrangements for {relative} before asking either of them. {supporter} objected to being assigned a part in a plan nobody had agreed to.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -5
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -7
+                }
+              ],
+              "stats": {
+                "job_performance": -3,
+                "mental_health": -3
+              },
+              "legacy": "imposed_arrangement",
+              "next": "fracture",
+              "delay": 1
+            },
+            {
+              "id": "name_limits",
+              "label": "Agree on a smaller, dependable contribution",
+              "result": "I named a smaller contribution I could keep. {supporter} and I left room for {relative} to refuse help, and for both of us to have lives beyond it.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "respectful_boundaries",
+              "next": "review",
+              "next_untrusted": "fracture",
+              "delay": 1
+            }
+          ]
+        },
+        "fracture": {
+          "title": "A sibling says no",
+          "text": "{supporter} refuses another shared arrangement for {relative}. Earlier promises have made them wary. They are willing to hear you, but they are not offering forgiveness or more time on demand.",
+          "deadline": 2,
+          "default": "acknowledge",
+          "choices": [
+            {
+              "id": "acknowledge",
+              "label": "Acknowledge my part without asking for forgiveness",
+              "result": "I named the promises I had left for {supporter} to carry. I asked for a chance to act differently, without asking them to trust me immediately.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 9
+                }
+              ],
+              "stats": {
+                "mental_health": -1
+              },
+              "legacy": "repair_begun",
+              "next": "repair",
+              "delay": 1
+            },
+            {
+              "id": "step_back",
+              "label": "Accept separate arrangements for now",
+              "result": "I accepted that {supporter} needed separate arrangements. I told {relative} which help I could still give without speaking for my sibling.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 1
+                }
+              ],
+              "stats": {
+                "mental_health": 2
+              },
+              "legacy": "respectful_distance",
+              "next": "distance",
+              "delay": 1
+            },
+            {
+              "id": "blame",
+              "label": "Insist my sibling is being unfair",
+              "result": "I told {supporter} they were being unfair. We left the conversation with different accounts of what our family owed each other.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -12
+                },
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -2
+                }
+              ],
+              "legacy": "unresolved_resentment",
+              "outcome": "Two versions of the same family"
+            }
+          ]
+        },
+        "repair": {
+          "title": "The promise that can be checked",
+          "text": "A year has passed since you acknowledged the disagreement. {supporter} asks what changed for {relative}, rather than accepting another large promise. The trust between you still matters; a practical contribution does not guarantee reconciliation.",
+          "deadline": 2,
+          "default": "keep_small",
+          "choices": [
+            {
+              "id": "show_up",
+              "label": "Take on the agreed tasks and the planning behind them",
+              "result": "I took on the tasks and the planning I had agreed to. {supporter} could judge what I did for {relative}, rather than another promise about next year.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 8
+                },
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 3
+                }
+              ],
+              "stats": {
+                "job_performance": -3,
+                "mental_health": -2
+              },
+              "legacy": "trust_repaired",
+              "next": "review",
+              "next_untrusted": "distance",
+              "delay": 1
+            },
+            {
+              "id": "keep_small",
+              "label": "Keep one small promise consistently",
+              "result": "I kept one small promise to {relative}. I let {supporter} decide whether that was enough to reopen a shared plan.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 4
+                },
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 2
+              },
+              "legacy": "respectful_boundaries",
+              "next": "review",
+              "next_untrusted": "distance",
+              "delay": 1
+            },
+            {
+              "id": "buy_break",
+              "label": "Pay for a break without buying an apology",
+              "result": "I sent {supporter} money for an agreed break from practical duties around {relative}. I accepted that it did not purchase forgiveness.",
+              "transfer": -350,
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 2
+              },
+              "legacy": "funded_support",
+              "next": "review",
+              "next_untrusted": "distance",
+              "delay": 1
+            }
+          ]
+        },
+        "review": {
+          "title": "The family papers",
+          "text": "{relative} is putting family papers and keepsakes in order. {supporter} worries that whoever keeps the originals will also get to tell the only version of the family story. Your parent wants a say in who keeps the originals and how the memories are shared.",
+          "deadline": 2,
+          "default": "copies",
+          "choices": [
+            {
+              "id": "copies",
+              "label": "Make copies and record both siblings' memories",
+              "result": "With {relative}'s permission, {supporter} and I made copies of the family papers and recorded both versions of our memories. Keeping an original did not give either of us the last word.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 5
+                },
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 3
+                }
+              ],
+              "next": "return",
+              "delay": 2
+            },
+            {
+              "id": "respect_wishes",
+              "label": "Respect our parent's wishes about the originals",
+              "result": "I respected {relative}'s wishes about the originals and asked that {supporter} could still share the memories. We did not need identical shares to recognize each other.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 5
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 2
+                }
+              ],
+              "legacy": "respectful_boundaries",
+              "next": "return",
+              "delay": 2
+            },
+            {
+              "id": "claim",
+              "label": "Argue that I deserve to keep the originals",
+              "result": "I argued that my help gave me a stronger claim to the family papers. {relative} disliked having care counted as a bid, and {supporter} stepped away.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": -5
+                },
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -9
+                }
+              ],
+              "legacy": "unresolved_resentment",
+              "next": "distance",
+              "delay": 1
+            }
+          ]
+        },
+        "return": {
+          "title": "What we bring to the table",
+          "text": "Two years later, {supporter} asks whether the family can meet without keeping score. {relative} is still part of the conversation. You have a history of actual choices behind you, and a chance to decide which parts of it your children will hear.",
+          "deadline": 2,
+          "default": "room",
+          "choices": [
+            {
+              "id": "renew",
+              "label": "Keep sharing responsibility and tell the whole story",
+              "result": "I renewed our arrangement with {supporter} and made room for {relative}'s account too. I wanted the next generation to remember how we worked at fairness, including where we had failed.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 5
+                },
+                {
+                  "from": "player",
+                  "to": "relative",
+                  "delta": 2
+                }
+              ],
+              "outcome": "A family agreement worth continuing"
+            },
+            {
+              "id": "room",
+              "label": "Keep our boundaries and make room for each other",
+              "result": "I kept my boundaries while making room for {supporter} and {relative}. Our contributions were different, but neither sibling had to disappear from the family story.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 3
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "respectful_boundaries",
+              "outcome": "Different lives at the same table"
+            },
+            {
+              "id": "silence",
+              "label": "Leave our versions of the story apart",
+              "result": "I left {supporter} with their version of the story and kept mine. The disagreement stayed part of what our children would inherit from us.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -5
+                }
+              ],
+              "legacy": "unresolved_resentment",
+              "outcome": "An argument carried forward"
+            }
+          ]
+        },
+        "distance": {
+          "title": "Separate ways of showing up",
+          "text": "You and {supporter} have been making separate arrangements for {relative}. Distance has reduced the arguments, but it has not settled what either sibling remembers. You can respect that distance, keep measuring debts, or choose to leave this family chapter private.",
+          "deadline": 2,
+          "default": "respect",
+          "choices": [
+            {
+              "id": "respect",
+              "label": "Respect the distance without making someone the villain",
+              "result": "I respected the distance between {supporter} and me. I kept the help I had promised {relative} and left space for a family story with more than one honest account.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": 2
+                }
+              ],
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "respectful_distance",
+              "outcome": "Boundaries without a final blame"
+            },
+            {
+              "id": "resent",
+              "label": "Keep a record of what I think I am owed",
+              "result": "I kept measuring what {supporter} owed me. Our children would have to decide what to do with an argument that neither sibling had put down.",
+              "relationships": [
+                {
+                  "from": "player",
+                  "to": "supporter",
+                  "delta": -5
+                }
+              ],
+              "legacy": "unresolved_resentment",
+              "outcome": "A family debt with no agreed balance"
+            },
+            {
+              "id": "private",
+              "label": "Leave this disagreement out of the next generation's story",
+              "result": "I kept this disagreement with {supporter} private. It remained part of my own history, without asking our children to choose sides.",
+              "stats": {
+                "mental_health": 2
+              },
+              "legacy": "private",
+              "outcome": "A private family chapter"
+            }
+          ]
+        },
+        "loss": {
+          "title": "The conversation we cannot finish",
+          "text": "{lost_person} has died before this family disagreement could be settled. The work, affection and arguments do not become a tidy agreement because someone is gone. You can decide how to carry the unfinished story.",
+          "deadline": 2,
+          "default": "remember",
+          "choices": [
+            {
+              "id": "remember",
+              "label": "Remember the care and the disagreement honestly",
+              "result": "After {lost_person} died, I remembered the care alongside the disagreement. I left an honest account for the next generation without pretending we had resolved it.",
+              "stats": {
+                "mental_health": 1
+              },
+              "legacy": "remembered_with_care",
+              "outcome": "An honest unfinished memory"
+            },
+            {
+              "id": "release",
+              "label": "Stop asking the family to settle every old debt",
+              "result": "After {lost_person} died, I stopped asking the family to settle every old debt. I carried the memory without making a new obligation out of it.",
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "respectful_distance",
+              "outcome": "A memory with room to breathe"
+            },
+            {
+              "id": "private",
+              "label": "Keep this unfinished chapter private",
+              "result": "I kept the unfinished conversation with {lost_person} in my own history. I did not ask the next generation to finish it for me.",
+              "legacy": "private",
+              "outcome": "A private unfinished chapter"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sibling_fairness_legacy",
+      "series": "Family Crossroads",
+      "title": "More Than One Version",
+      "category": "family",
+      "cast": "legacy",
+      "origin_story": "sibling_fairness",
+      "allow_deceased_cast": true,
+      "eligibility": {
+        "min_age": 18
+      },
+      "start": "versions",
+      "nodes": {
+        "versions": {
+          "title": "The account you inherited",
+          "text": "Your parent left a record of a disagreement with their sibling, {person}, about care, fairness and the family papers. The saved outcome is part of your family history. You can read more than one account without agreeing to carry the argument yourself.",
+          "deadline": 2,
+          "default": "read",
+          "choices": [
+            {
+              "id": "read",
+              "label": "Read the accounts before choosing what they mean",
+              "result": "I read the accounts of my parent's disagreement with {person}. I wanted to understand what each sibling carried before deciding what belonged in my life.",
+              "stats": {
+                "smarts": 2
+              },
+              "next": "own_table",
+              "delay": 1
+            },
+            {
+              "id": "question",
+              "label": "Question the version our family usually repeats",
+              "result": "I questioned the familiar account of my parent and {person}. I looked for the work and wishes that our version had left out.",
+              "stats": {
+                "smarts": 3,
+                "mental_health": -1
+              },
+              "next": "own_table",
+              "delay": 1
+            },
+            {
+              "id": "decline",
+              "label": "Let their disagreement remain their own",
+              "result": "I let my parent's disagreement with {person} remain their own. Understanding a family history did not oblige me to continue it.",
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "private",
+              "outcome": "A life free to choose its own obligations"
+            }
+          ]
+        },
+        "own_table": {
+          "title": "Your own family table",
+          "text": "A year later, the accounts of your parent and {person} still differ. You can preserve the attempt to share responsibility, make room for separate lives, or put the argument down. The earlier generation's saved choices will remain their own.",
+          "deadline": 2,
+          "default": "room",
+          "choices": [
+            {
+              "id": "adapt",
+              "label": "Carry forward the habit of asking what people can give",
+              "result": "I carried forward the habit of asking what people could give and counting unseen work. I kept the memory of my parent and {person} without repeating every promise they made.",
+              "stats": {
+                "smarts": 2,
+                "mental_health": 2
+              },
+              "legacy": "fairness_reconsidered",
+              "outcome": "A family habit adapted to another life"
+            },
+            {
+              "id": "room",
+              "label": "Keep both accounts and make room for different lives",
+              "result": "I kept both accounts of my parent and {person}. I chose to make room for different lives rather than deciding that one sibling had to disappear from our history.",
+              "stats": {
+                "mental_health": 3
+              },
+              "legacy": "room_for_both",
+              "outcome": "More than one honest version"
+            },
+            {
+              "id": "release",
+              "label": "End the argument in my own generation",
+              "result": "I put down the argument between my parent and {person}. Their choices stayed in our history, but I did not make the same debts the starting point of my life.",
+              "stats": {
+                "mental_health": 4
+              },
+              "legacy": "argument_released",
+              "outcome": "An inherited argument allowed to end"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

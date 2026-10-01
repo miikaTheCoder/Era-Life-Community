@@ -2,6 +2,12 @@
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 mode="${1:-household}"
+story="${ERA_FAMILY_STORY:-household_balance}"
+case "$story" in
+    household_balance|sibling_fairness) ;;
+    *) echo "ERA_FAMILY_STORY must be household_balance or sibling_fairness." >&2; exit 2 ;;
+esac
+export ERA_FAMILY_STORY="$story"
 case "$mode" in
     household|restore|cycle) ;;
     *) echo "Usage: $0 [household|restore|cycle] [test-profile-directory]" >&2; exit 2 ;;
@@ -18,6 +24,12 @@ fi
 mkdir -p "$profile_dir"
 profile_dir="$(cd -- "$profile_dir" && pwd)"
 if [[ "$mode" == cycle ]]; then
+    if [[ "$story" == sibling_fairness ]]; then
+        ERA_YEARS=10 ERA_RUN_LABEL=household bash "$0" household "$profile_dir"
+        ERA_YEARS=6 ERA_RUN_LABEL=restore-story bash "$0" restore "$profile_dir"
+        ERA_YEARS=0 ERA_REQUIRE_CARE_CHOICES=4 ERA_REQUIRE_FAMILY_FINISHED=1 ERA_RUN_LABEL=restore-again bash "$0" restore "$profile_dir"
+        exit 0
+    fi
     ERA_YEARS=1 ERA_RUN_LABEL=household bash "$0" household "$profile_dir"
     for year in 2 3 4 5; do
         ERA_YEARS=1 ERA_RUN_LABEL="restore-$year" bash "$0" restore "$profile_dir"
