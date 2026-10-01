@@ -144,3 +144,19 @@ Then profile the normal cold-load timing under R07. Source is integrated locally
 into `main` and `portrait`; temporary task branches are retired after preserving
 evidence. No public release or push is included. Native Windows/macOS remain
 separate checks.
+
+## Integration check, 2026-10-02
+
+After fast-forward integration, the primary `main` working tree passes all 25
+regressions with the previously existing local Web presentation changes still
+present. This is a working-tree check, not a claim that those Web changes belong
+to the sibling feature commit. Logs are retained at
+`build/sibling-evidence/headless-integration`. Structure, generated code map and
+whitespace checks pass on both permanent checkouts. The Portrait gameplay source
+is unchanged from its full 28-test run and signed APK export.
+
+Original tracked source changes were checked against saved SHA-256 hashes. The
+complete existing roadmap and handoff content was restored around the new R10
+entries. Both temporary task branches and worktrees were removed after ancestry
+checks. Only this task's document-preservation stashes were dropped. Original
+document backups remain under `build/recovery/pre-sibling-integration-20261002`.
