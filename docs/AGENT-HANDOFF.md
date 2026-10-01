@@ -275,6 +275,27 @@ lives on the Portrait branch:
 and [Android](https://github.com/miikaTheCoder/Era-Life-Community/blob/portrait/docs/ANDROID.md).
 Read the dated updates: older paragraphs describe superseded mobile builds.
 
+## R10: sibling stories, 2026-10-02
+
+Shared implementation `3ff2e9a` and Portrait port `fd3488c` add **What We Call
+Fair** and **More Than One Version**, two stories with ten chapters and thirty
+responses. The sibling is an existing adult child of the same saved parent from
+the completed care arc. Trust can lead to refusal, repair or distance; a later
+controlled child can reinterpret a completed public memory. No save migration
+is required. Content is `project/data/sibling_stories.json`; LifeStoryEngine
+owns the bounded admission extension.
+
+Full isolated suites pass: 24 desktop and 28 Portrait regressions. Desktop
+full-catalog discovery, visible personal payment, sixteen simulation years and
+repeated cold Continue preserve cast, money, choices and diary. Retain cold-load
+timeout failures under R07. Portrait previews at 420x900 and 360x640 pass body swipes and visible
+touch choices. Cold diagnostic Continue preserves state with a longer observation
+window; the normal 90-second timing failures remain open. The signed ARM64 APK uses the existing test certificate and matches all four
+content files; it is retained at `build/sibling-evidence/package` in the primary
+checkout. Gameplay is integrated locally into `main` and `portrait`; no push or
+public release is included. Read [Sibling Stories](SIBLING-STORIES.md) for exact checks, retained
+logs, eligibility and next action. An exact APK on a phone remains unverified.
+
 ## Leave the next task a usable handoff
 
 Desktop browser work originated on `browser-play`, based on desktop `b399a33`,

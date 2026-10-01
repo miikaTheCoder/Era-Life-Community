@@ -66,6 +66,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Focus gaps repaired; isolated first-click miss unconfirmed; profiling open | Use stable routes from R01–R03 |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
+| R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
 
 Record shared items' verification separately for desktop and Portrait. A
 Portrait-only blocker need not stop desktop R04 or R05, and public release
@@ -191,6 +192,30 @@ startup dependencies; choices and history remain readable and reachable at
 420×900 and 360×640. Check touch scrolling, Android Back, interrupted/resumed play,
 and the exact APK on a phone. Record desktop-preview and device results separately.
 
+## R10: What We Call Fair
+
+Add a sibling continuation to Living Households, followed by a memory the next
+controlled generation can respond to. Use the same parent as the completed care
+arc and an existing adult sibling. Different contributions, broken trust, parental
+wishes and family papers should lead to shared responsibility, repaired trust,
+respectful distance or an inherited disagreement. A business is optional.
+
+**Implemented 2026-10-02:** shared content `3ff2e9a`, Portrait port `fd3488c`.
+Two stories, ten chapters and thirty responses use the completed care story's
+same parent and an existing adult sibling. Paid help, refusal, repair, distance,
+private memory and the next generation's interpretation preserve existing save
+contracts. Full suites pass: 24 desktop and 28 Portrait regressions. Desktop
+full-catalog discovery, visible payment, sixteen simulation years and repeated
+cold Continue preserve choices, cast, money and diary. Portrait previews pass at 420x900 and 360x640, including story swipes and
+visible touch choices. Diagnostic cold Continue preserves saved state; the normal
+load timing criterion has not passed. Existing cold hydration sometimes exceeds
+90 seconds on both targets; R07 remains open. The signed ARM64 APK passes signature and content checks; the exact APK is not
+phone-tested.
+Task isolation: `codex/sibling-story` and `codex/sibling-story-portrait`, integrated
+locally into `main` and `portrait` and retired after preserving evidence. Next: check the exact signed APK on
+Honor, then profile cold hydration under R07. See
+[Sibling Stories](docs/SIBLING-STORIES.md) for eligibility and evidence.
+
 ## Later: make continued development easier
 
 ### R07: Improve performance against reproducible measurements
@@ -279,6 +304,8 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-28 | Browser integration and branch retirement | Completed browser `cd6ca7d` into desktop `main` | All 23 regressions, Web export/checksums, native Household three-year save and repeat cold Continue passed. Browser narrative entry, age/save/reload/Continue and another year passed through the supplied preview server. Retained one native hydration timeout that passed on repeat and an intermittent plain-static-host reload stall. The browser checkout and evidence are archived; only `main` and `portrait` remain as development branches. Portrait received shared documentation only. Next: reproduce the loading timing failures under R07 before public browser hosting. See [Web integration evidence](docs/WEB.md#integration-into-main-2026-09-28). |
 
 | 2026-09-28 | Portrait phone repair and session check | `portrait` at `0eb9293`; desktop `main` unchanged | R02 passed five Character, Android Back, Menu, Back cycles on Honor. God Mode Begin Life reached playable life once. Household creation reached Ada, Bea and Cora; Ada aged from 25 to 29 and saved. Native Continue crashed in earlier APKs at about 65,000 memory mappings. The reduced-copy APK restored Ada at age 29 in 2004 with $10,000 and the 2001 to 2004 journal after a full process stop. Portrait focused regressions and 420x900 graphical checks passed. Next: verify household cast after restore, make a meaningful choice on Honor, repeat the full cold session, and repeat God Mode entry. |
+
+| 2026-10-02 | R10 sibling stories | Desktop content `3ff2e9a`; Portrait shared port `fd3488c` and touch harness `6ff438c`, integrated locally into `main` and `portrait` | Two stories, ten chapters and thirty responses; 24 desktop and 28 Portrait regressions pass. Desktop full-catalog sixteen-year arc and repeated cold Continue preserve state. Portrait 420x900 and 360x640 swipes/taps and diagnostic cold restores preserve the same cast, choices, money and diary. Signed ARM64 APK built with matching local test certificate and all four content hashes. Exact phone check unavailable; normal 90-second hydration timing fails on Portrait and intermittently on desktop. Next: exact Honor APK session, then R07 timing profile. See [evidence](docs/SIBLING-STORIES.md). |
 
 For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROADMAP.md;
 inspect the target checkout; take an open item selected with the user, reproduce it,
