@@ -14,17 +14,17 @@ It does not schedule recurring work or expand the roadmap indefinitely.
    All 27 combined regressions and an additional exact cold restore, visible
    payment and one-year save pass. See [content evidence](PARTNER-STORIES.md)
    and [council record](COUNCIL-PARTNER-STORIES.md).
-3. **Portrait shared port next.** Apply only these approved shared changes to
-   the existing Portrait checkout, preserving lazy startup, mobile shell,
-   touch controls and branch-specific serialization/harnesses. Verify native
-   previews at 420x900 and 360x640, full target regressions and separate-process
-   save/Continue. Preserve the normal hydration timing gate. Consult all three
-   council members on the completed port. Actual phone verification stays open.
-4. **Mobile Web configuration repair in progress.** Read-only R09 discovery
+3. **Portrait shared port ready for council.** Candidate `a25cda8` preserves
+   startup, shell, touch controls and branch-specific serialization. All 30
+   regressions, six story processes at actual 420x900 and 360x640 windows, and
+   three older-save cold restores pass the unchanged hydration gate. A reproduced
+   freed-popup cast has a bounded fix. The signed APK is built but untested on
+   Honor. Port evidence remains in the Portrait checkout pending review.
+4. **Mobile Web configuration repair ready for council.** Read-only R09 discovery
    found the exported Godot virtual-keyboard path disabled. A one-option source
    shell repair passes the real JavaScript configuration/gate check, which fails
-   before the fix. Fresh export and adjacent Godot checks wait until Portrait
-   timing work finishes, followed by council review. See
+   before the fix. A fresh Web export, all 15 artifact checksums, delivered-shell
+   configuration checks and three adjacent Godot regressions pass. See
    [keyboard evidence](WEB-KEYBOARD.md). Existing layout work is preserved.
    Native contract tests do not establish browser touch, keyboard or storage.
 

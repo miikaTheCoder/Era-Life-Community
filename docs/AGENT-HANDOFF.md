@@ -367,3 +367,21 @@ presentation, then verify and consult the council. Separately audit existing R09
 Web work for issues verifiable without the phone. Natural pacing, actual Honor
 checks and mobile-browser keyboard/storage behavior remain unverified. No push,
 public release or access to the locked desktop is included.
+
+
+## Platform review candidates, 2026-11-02
+
+Portrait `a25cda8` is frozen for council after 30 target regressions, six story
+processes and three older-save cold restores passed. The bounded mobile-panel
+freed-popup fix is included. Its APK and 1,775-file evidence manifest remain
+in the Portrait checkout under `build/portrait-port-20261102/`; read that
+checkout's `docs/PORTRAIT-PARTNER-PORT.md`. The exact APK is not phone-tested.
+
+Main's R09 keyboard source-shell fix `a41517f` is also ready for review. Fresh
+export, effective source/delivered configuration checks, 15 artifact checksums
+and three adjacent regressions pass. See [keyboard evidence](WEB-KEYBOARD.md)
+and `build/web-keyboard-evidence-20261102/`. The artifact includes the preserved
+local Web layout work, recorded by input hashes and a dirty patch. Council will
+judge the bounded keyboard fix, not certify all R09 behavior. Both candidates
+need independent Security, UI/UX/Design and Technical verdicts. Keep source
+frozen during review. Sync the final platform status to both branches afterward.

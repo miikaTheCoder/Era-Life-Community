@@ -49,11 +49,33 @@ Evidence is retained in `build/web-keyboard-evidence-20261102/`:
 - `after.log`: the same checker passes after the one-option repair. The touch
   fixture reports available; the ordinary desktop fixture remains unavailable.
 
-The existing Web export is still the September artifact at this point, not a
-build of the November source or this repair. Fresh export and adjacent Godot
-regressions are deferred until the concurrent Portrait timing work finishes.
-Council review follows those checks. No R09 completion or council approval is
-claimed here. Existing uncommitted Web work remains preserved.
+After Portrait timing finished, all three adjacent Godot regressions passed:
+`test_web_presentation`, `test_mobile_scroll`, and `test_ui_presentation`.
+Logs: `build/tests/headless-db7b__be/`, also retained as `adjacent-headless/`
+under the evidence directory. The preceding combined 27-test suite remains
+historical evidence for the unchanged gameplay source; it was not rerun for
+this HTML-only configuration repair.
+
+A fresh Web export with Godot `4.4.1.stable.official.49a5bc7b6` passes import and
+export checks. All 15 artifact checksums pass. The configuration checker passes
+against both the source shell and the delivered `index.html`/`index.js` pair.
+The old delivered shell fails the same check, as expected. The generated initial
+configuration still contains the engine default `experimentalVK: false`; the
+source shell's `startGame` override changes the effective setting before engine
+initialization. Checking only the initial JSON would miss that distinction.
+
+The new artifact is retained as `export/`; the previous September artifact is
+preserved as `previous-export/`. `build-inputs.json` captures all 797 project
+source inputs before export and records base `a41517f`. Every captured hash is
+unchanged afterward. This is the combined main working tree including the
+pre-existing uncommitted Web layout work, not a clean-commit-only export.
+`working-tree.patch` records that context. No existing Web source was changed by
+this task. The old checker fixture failure and the real pre-fix failure remain.
+
+Source/delivered checks, negative control, checksums, import/export logs and
+adjacent regression results are retained in the evidence directory. Structure,
+code-map and whitespace checks pass. Council review is next. No R09 completion,
+browser usability or council approval is claimed by these checks.
 
 ## Remaining acceptance
 

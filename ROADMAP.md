@@ -343,3 +343,21 @@ materials payment and saves after one real year. Detailed evidence and limits:
 Next: port shared reliability and story changes to Portrait while preserving its
 startup, serialization and touch adaptations. Actual phone verification and
 interactive natural pacing remain deferred. No push or release is included.
+
+
+### Platform candidates ready for council, 2026-11-02
+
+Portrait candidate `a25cda8` ports the approved reliability and partnership work.
+All 30 regressions, six story processes across actual 420x900 and 360x640 windows,
+and three older-save cold restores pass the unchanged gate. The exact signed
+APK is built and remains untested on Honor. Its report and 1,775-file manifest
+are under `docs/PORTRAIT-PARTNER-PORT.md` and `build/portrait-port-20261102/`
+in the existing Portrait checkout.
+
+On main, R09 keyboard configuration `a41517f` enables the existing Godot touch
+keyboard path. The source and freshly exported shell pass the same checker that
+fails on the original shell. Three adjacent regressions and all 15 export
+checksums pass. Existing Web layout edits are preserved. See
+[keyboard evidence](docs/WEB-KEYBOARD.md). Next: three council reviews with
+separate verdicts for each candidate, then exact device checks when available.
+No phone behavior, full-lifetime pacing, push or release is claimed.
