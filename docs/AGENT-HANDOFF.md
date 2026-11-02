@@ -1,6 +1,6 @@
 # EraLife desktop and Portrait: agent handoff
 
-Last checked: **2026-09-28**. Read [AGENTS.md](../AGENTS.md), then
+Last checked: **2026-11-02**. Read [AGENTS.md](../AGENTS.md), then
 [ROADMAP.md](../ROADMAP.md) for priorities and [Architecture](ARCHITECTURE.md)
 for ownership. This guide is shared by the two permanent branches.
 
@@ -32,11 +32,13 @@ passed before promotion. Retain the concurrent-run hydration timeout described
 in [integration evidence](UPSTREAM-SYNC-2026-09-28.md). The later browser merge
 preserves those fixes and adds the Web export and its platform adaptations.
 
-`portrait` preserves the former Shared Lives phone branch at `d9628e8`, including
-R01's shared port `e538708` and mobile Continue repair `74e8b07`. Desktop R05,
-R07 and the latest upstream gameplay remain separate porting work. The latest
-recorded desktop package is `6d0deea`, older than current `main`; Portrait R01
-has not been repackaged. Do not describe old artifacts as builds of these tips.
+`portrait` retains its mobile startup, shell and serialization. Shared Lives,
+Living Households, sibling stories and partner stories are present. Reviewed
+`a25cda8` adds the shared cold-history repair and a bounded freed-popup fix;
+30 target regressions and the retained native story/cold-save routes pass.
+The exact new signed APK is built but not tested on Honor. See
+[Portrait port evidence](PORTRAIT-PARTNER-PORT.md). Older desktop packages and
+dated test counts below remain historical; do not label them current builds.
 
 Start in the checkout assigned to your task:
 
@@ -61,7 +63,7 @@ Keep gameplay and content in the existing owners and adapt their UI contracts.
 
 | Work | Owner / entry point |
 | --- | --- |
-| Authored stories and recurring cast | `project/data/life_stories.json`, `project/data/shared_lives.json`, desktop `project/data/living_households.json`, `project/systems/narrative/LifeStoryEngine.gd` |
+| Authored stories and recurring cast | `project/data/life_stories.json`, `project/data/shared_lives.json`, `project/data/living_households.json`, `project/data/sibling_stories.json`, `project/data/partner_stories.json`, `project/systems/narrative/LifeStoryEngine.gd` |
 | Story admission and resolution | `ScenarioRuntimeContractEngine.gd`, `PendingSituationsEngine.gd` under `project/systems/narrative/` |
 | Company stakes, management, succession, yearly surplus | `project/systems/economy/FamilyBusinessEngine.gd` |
 | Personal and company money, account restrictions | `project/systems/economy/BankEngine.gd` |
@@ -82,7 +84,8 @@ business model are documented in [SHARED-LIVES.md](SHARED-LIVES.md).
 Desktop R05 adds **Living Households**, a recurring care/work story and an
 inherited family memory, with 11 chapters and 30 responses. See
 [LIVING-HOUSEHOLDS.md](LIVING-HOUSEHOLDS.md) for eligibility, scope and evidence.
-This pack and its engine additions are not on Portrait yet; port them under R06.
+This pack and its engine additions are present on both branches. R06 retains
+its exact-phone follow-up separately from native-preview evidence.
 
 Preserve these contracts when extending the feature:
 
@@ -149,7 +152,7 @@ Desktop graphical checks and Linux export:
 ```sh
 bash scripts/test-shared-lives.sh
 bash scripts/test-shared-lives.sh cycle /tmp/eralife-new-cold-test
-# Desktop R05 only, until the verified Portrait port:
+# Shared care-story route; use ERA_PORTRAIT=1 in the Portrait checkout:
 bash scripts/test-living-households.sh cycle /tmp/eralife-care-cold-test
 bash scripts/test-desktop-modes.sh household
 bash scripts/build.sh linux
@@ -311,9 +314,9 @@ cold Continue restores exact saved state. Retained evidence is in the primary
 checkout at `build/reliability-evidence-20261102/`, with combined suite logs in
 `build/tests/headless-bzdntd2o/`. Existing Web source hashes were preserved.
 
-Portrait receives these documentation updates only. The batching implementation
-has not been ported or measured on Portrait. Private Xvfb checks are automated
-evidence, not interactive visual or phone certification. The locked owner desktop
+The batching implementation was subsequently ported and approved on Portrait
+at `a25cda8`; three older-save samples pass the normal gate. Private Xvfb checks
+are automated evidence, not interactive visual or phone certification. The locked owner desktop
 and unavailable phone were not accessed. R11 is now integrated on desktop;
 see [the development loop](DEVELOPMENT-LOOP.md). No push or release is included.
 
@@ -361,27 +364,39 @@ and `build/partner-evidence/` paths. Combined tests are in
 `build/tests/headless-_y9erp29/`; the integration run is in the archive's
 `integration-check/`. Earlier failed runs and runtime diagnostics remain visible.
 
-Portrait receives documentation only at this step. Next: port the approved
-reliability and story changes, preserving lazy startup, serialization and touch
-presentation, then verify and consult the council. Separately audit existing R09
-Web work for issues verifiable without the phone. Natural pacing, actual Honor
+The approved reliability and story changes are now ported to Portrait at
+`a25cda8`, preserving lazy startup, serialization and touch presentation. The
+separate R09 audit led to the bounded Web keyboard configuration repair. Natural pacing, actual Honor
 checks and mobile-browser keyboard/storage behavior remain unverified. No push,
 public release or access to the locked desktop is included.
 
+## Approved platform results and loop closure, 2026-11-02
 
-## Platform review candidates, 2026-11-02
+All three council members independently passed Portrait `a25cda8` and Web
+`72ed96e`; see [the verdicts](COUNCIL-PLATFORMS.md). The selected bounded loop is
+complete. Source is committed locally on its intended permanent branches, with
+the original uncommitted Web work preserved. This handoff changes documents
+only, so the reviewed gameplay and packaged source remain unchanged.
 
-Portrait `a25cda8` is frozen for council after 30 target regressions, six story
-processes and three older-save cold restores passed. The bounded mobile-panel
-freed-popup fix is included. Its APK and 1,775-file evidence manifest remain
-in the Portrait checkout under `build/portrait-port-20261102/`; read that
-checkout's `docs/PORTRAIT-PARTNER-PORT.md`. The exact APK is not phone-tested.
+Portrait: 30 target regressions, six story processes across both window sizes,
+seven continued real years and three older-save cold restores pass. The bounded
+freed-popup validity fix is included. See [the port report](PORTRAIT-PARTNER-PORT.md).
+Evidence and APK live in the Portrait checkout at `build/portrait-port-20261102/`.
+The APK is `package/EraLife-portrait-android-performance.apk`, SHA-256
+`3fd5aa14b792ccee287921a0c566f29936d3b6d682beee279a82775e9c77006d`.
+Its existing Android Debug certificate and package identity are unchanged; it is
+not a public release or an exact-device pass.
 
-Main's R09 keyboard source-shell fix `a41517f` is also ready for review. Fresh
-export, effective source/delivered configuration checks, 15 artifact checksums
-and three adjacent regressions pass. See [keyboard evidence](WEB-KEYBOARD.md)
-and `build/web-keyboard-evidence-20261102/`. The artifact includes the preserved
-local Web layout work, recorded by input hashes and a dirty patch. Council will
-judge the bounded keyboard fix, not certify all R09 behavior. Both candidates
-need independent Security, UI/UX/Design and Technical verdicts. Keep source
-frozen during review. Sync the final platform status to both branches afterward.
+Web: the one-option keyboard fix passes real source/delivered configuration
+checks, three adjacent regressions, fresh export and 15 artifact checksums.
+See [keyboard evidence](WEB-KEYBOARD.md). The combined working-tree artifact and
+98-file review manifest are in primary `build/web-keyboard-evidence-20261102/`.
+This review does not approve all pre-existing R09 layout work or real keyboard UX.
+
+Next: exact Honor APK session, natural desktop family playtesting, and real
+Honor/Safari keyboard/touch/save checks. Historical notes about a charging phone,
+connected device or running preview server are not current availability claims.
+Optional 360x640 heading polish, gesture-only reachability evidence and profiler
+containment/cancellation cleanup remain in the council record. Keep original
+diagnostics and failed runs visible. No owner desktop/device access, PR, push,
+deployment or release was performed by this loop.

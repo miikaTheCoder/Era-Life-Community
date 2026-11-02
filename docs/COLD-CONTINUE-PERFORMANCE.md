@@ -240,3 +240,14 @@ Portrait receives documentation only in this step. No native Portrait performanc
 phone, interactive visual, public release or deployment result is claimed. The
 next content task starts from the integrated fix. Optional council suggestions
 remain recorded as follow-ups; they were not blocking conditions for this commit.
+
+
+## Subsequent Portrait approval
+
+The shared batching is now on Portrait in approved `a25cda8`. Three sequential
+older-save samples pass the unchanged normal gate and exact-state checks, with
+post-playable completion at 26.838, 26.979 and 26.879 seconds on this host. These
+are post-port measurements without a fresh matched Portrait baseline, and do
+not establish phone timing. See [Portrait evidence](PORTRAIT-PARTNER-PORT.md)
+and [the unanimous platform verdicts](COUNCIL-PLATFORMS.md). No production code
+changed after the reviewed artifact.

@@ -1,5 +1,9 @@
 # Web keyboard configuration
 
+This Web-only implementation and its evidence paths belong to the primary main
+checkout, `/home/nextg/opencode-sandbox/Era-Life-Community`. The Portrait copy of
+this report is shared status documentation, not a Web code port.
+
 R09 follow-up, 2026-11-02. The source shell now passes `experimentalVK: true`
 to Godot's existing `engine.startGame` API. This enables the Web virtual-keyboard
 path on touch-capable browsers. It does not establish that an OS keyboard opens
@@ -74,8 +78,10 @@ this task. The old checker fixture failure and the real pre-fix failure remain.
 
 Source/delivered checks, negative control, checksums, import/export logs and
 adjacent regression results are retained in the evidence directory. Structure,
-code-map and whitespace checks pass. Council review is next. No R09 completion,
-browser usability or council approval is claimed by these checks.
+code-map and whitespace checks pass. All three council members subsequently
+passed exact review head `72ed96e2620b054379f90b99076a454b7827edbb`; see
+[the platform council record](COUNCIL-PLATFORMS.md). This approves the bounded
+configuration fix, not R09 completion or browser usability.
 
 ## Remaining acceptance
 
@@ -91,3 +97,9 @@ relationships and balances after Continue, then repeat after background/resume
 and full browser restart. Repeat on real iOS Safari when available. Phone and
 interactive checks remain unavailable in this loop. Do not infer their success
 from the configuration checker or native `--web-preview` fixtures.
+
+
+Use the checker only with trusted, pinned local exports. It evaluates supplied
+JavaScript; its VM and rejected fetch are not a hostile-code security boundary.
+The council's UX member independently reran the source and delivered checks,
+including the expected failure on the preserved old shell.

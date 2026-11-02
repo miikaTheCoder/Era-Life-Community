@@ -1,6 +1,6 @@
 # EraLife roadmap
 
-Updated **2026-09-28**. This is the shared plan for desktop EraLife and EraLife
+Updated **2026-11-02**. This is the shared plan for desktop EraLife and EraLife
 Portrait. Use [the agent handoff](docs/AGENT-HANDOFF.md) to find the active
 branches, worktrees, commands, and evidence; use [AGENTS.md](AGENTS.md) for code
 ownership and repository rules.
@@ -30,9 +30,10 @@ support them. Proposed content below can change with playtesting and user input.
 | --- | --- |
 | Life Stories & Legacies | Six implemented stories with recurring cast, delayed consequences, and saved history |
 | Shared Lives | Two more stories, 16 chapters, 46 responses, real business reserves, ownership, and succession; implemented on desktop and ported to Portrait |
-| Living Households | Desktop first slice verified: recurring care/work arc plus inherited memory, 11 chapters and 30 responses; Portrait port open |
-| Desktop validation | 23 regressions passed; consecutive Age Up input and live diary/balance refresh repaired; Shared Lives full-catalog readiness and Living Households cold-Continue checks passed; R04 and R05 Linux packages verified |
-| Portrait validation | 23 headless regressions plus final focused checks passed; content flow inspected at 420×900; signed APK built, not retested on the Honor phone |
+| Living Households | Recurring care/work arc plus inherited memory, 11 chapters and 30 responses; implemented on desktop and Portrait |
+| Desktop validation | Latest combined suite: 27 passing regressions; partnership real-year and repeated cold-save routes verified; see feature evidence |
+| Portrait validation | 30 regressions, 420x900 and actual 360x640 story routes, repeated normal-gate cold restores, signed APK built; exact Honor check open |
+| Sibling and partner stories | Four more stories; 14 total across five catalogs on desktop and Portrait, with saved cast and inherited consequences |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
 | Browser target | Integrated into `main`; Web export, narrative entry, save/reload/Continue and continued play verified on the preview server. Intermittent plain-static-host reload stall remains open; see [Web evidence](docs/WEB.md) |
 | Release status | Current desktop work is integrated into `main`; phone work is on `portrait`. Source integration does not publish a release or certify an APK on a device |
@@ -44,14 +45,14 @@ smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 
 ## Work queue
 
-**Active owner-directed loop, 2026-11-02:** desktop reliability `018efd9`
-and partnership content `954645b` have unanimous council approval and are
-integrated locally. All 27 combined desktop/Web regressions pass, followed by
-an exact cold restore, visible materials payment and one-year save. Next: port
-these shared changes to Portrait and audit existing R09 Web work separately.
-Portrait currently has documentation only for these two changes. Interactive
-family playtesting and Honor checks remain deferred. Existing Web edits are
-preserved. See [the development loop](docs/DEVELOPMENT-LOOP.md).
+**Owner-directed loop complete, 2026-11-02:** desktop reliability `018efd9`
+and partnership `954645b`, Portrait port `a25cda8`, and Web keyboard review head
+`72ed96e` all have unanimous council approval within their recorded scopes.
+Desktop combined 27 regressions, Portrait 30 regressions, repeated exact cold
+restores, phone-sized native previews and fresh local artifacts pass. Actual
+Honor/Safari checks and natural-family playtesting remain open. Existing local
+Web edits are preserved. See [the completed loop](docs/DEVELOPMENT-LOOP.md) and
+[platform verdicts](docs/COUNCIL-PLATFORMS.md). No push or release was performed.
 
 R01 is **verified** on desktop and in Portrait preview, with evidence below.
 R04 desktop functional readiness is **verified and packaged** for local Linux
@@ -73,9 +74,9 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Desktop verified and packaged; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
 | R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
 | R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
-| R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop cold-history batching council-approved and integrated; combined checks pass; wider profiling and Portrait open | Verified desktop `018efd9`; preserve remaining device and timing limits |
+| R07 | Measured startup and lifetime performance | Desktop + Portrait | Cold-history batching approved and verified on both; broader profiling and phone timing open | Exact Honor session; retain historical failures and timing limits |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
-| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Council-approved and integrated on desktop; 27 combined regressions and cold integration route pass | Port shared changes to Portrait, then council review; interactive pacing and exact phone check remain open |
+| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop + Portrait | Implemented, verified and council-approved on both | Natural-family pacing and exact Honor APK check remain open |
 | R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
 
 Record shared items' verification separately for desktop and Portrait. A
@@ -289,6 +290,7 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 
 | Date | Item | Task / branch / commit | Outcome and next action |
 | --- | --- | --- | --- |
+| 2026-11-02 | Platform review and loop completion | Portrait `a25cda8`, Web `72ed96e`; council `eralife-platforms-20261102-r1` | Three separate PASS verdicts for each artifact. 30 Portrait regressions, six story processes, three older-save cold restores, signed APK; Web source/delivered checker, three adjacent regressions, fresh export and 15 checksums pass. Remaining phone, natural pacing and optional polish are listed in [completed loop](docs/DEVELOPMENT-LOOP.md). Existing Web changes preserved. No push or release. |
 | 2026-11-02 | R11 partnership stories | Desktop `954645b`; council `eralife-partner-20261102-r2` | All three reviewers PASS after fixes for separation liveness and unusable trait buttons. Integrated unchanged, preserving local Web work. All 27 combined regressions and a private-display exact cold restore, materials payment and one-year save pass. Nine chapters and 26 responses; original thirteen-year route and four cold restores retained. Archived 1,288 files in `build/partner-evidence-20261102/`. Portrait receives documentation only at this step. Next: shared Portrait port and separate Web audit. See [council record](docs/COUNCIL-PARTNER-STORIES.md). |
 | 2026-11-02 | R07 cold Continue reliability | Desktop `018efd9`; council `eralife-cold-continue-20261102-r1` | All three reviewers PASS. Approved batching integrated into main with existing Web edits preserved. All 26 combined regressions and a private-display exact cold restore pass. Original isolated evidence includes 25 regressions and twelve additional real years per sibling/business fixture. Evidence archived in primary `build/reliability-evidence-20261102/`; combined suite `build/tests/headless-bzdntd2o/`. Portrait receives documentation only. Next: R11 content, then separately verified Portrait gameplay port. See [performance evidence](docs/COLD-CONTINUE-PERFORMANCE.md) and [council record](docs/COUNCIL-COLD-CONTINUE.md). |
 | 2026-09-28 | Desktop Web port (user request) | `browser-play`, based on desktop `b399a33` | Web export, normal menu, new narrative life, five years, binary save and browser reload/Continue verified; continued play reached age 7 and a second save was detected after reload. All 23 regressions and native Linux/Windows/macOS/Android exports pass; desktop Household three-year smoke passes. See [Web evidence](docs/WEB.md). No Portrait gameplay port or public hosting is included. |
@@ -340,24 +342,23 @@ materials payment and saves after one real year. Detailed evidence and limits:
 [Partner Stories](docs/PARTNER-STORIES.md) and
 [council record](docs/COUNCIL-PARTNER-STORIES.md).
 
-Next: port shared reliability and story changes to Portrait while preserving its
-startup, serialization and touch adaptations. Actual phone verification and
-interactive natural pacing remain deferred. No push or release is included.
+The shared reliability and story changes are now approved on Portrait at
+`a25cda8`, preserving startup, serialization and touch adaptations. Actual phone
+verification and interactive natural pacing remain deferred. No push or release
+is included.
 
+### Approved platform follow-up, 2026-11-02
 
-### Platform candidates ready for council, 2026-11-02
+All three members separately approved Portrait `a25cda8` and Web `72ed96e` in
+`eralife-platforms-20261102-r1`. The port includes the bounded freed-popup fix,
+30 passing regressions, six story processes and three older-save normal-gate
+restores. The signed APK matches reviewed source and is not phone-tested.
+The Web keyboard repair has source/delivered configuration evidence, three
+adjacent passing regressions, fresh export and 15 verified checksums.
 
-Portrait candidate `a25cda8` ports the approved reliability and partnership work.
-All 30 regressions, six story processes across actual 420x900 and 360x640 windows,
-and three older-save cold restores pass the unchanged gate. The exact signed
-APK is built and remains untested on Honor. Its report and 1,775-file manifest
-are under `docs/PORTRAIT-PARTNER-PORT.md` and `build/portrait-port-20261102/`
-in the existing Portrait checkout.
-
-On main, R09 keyboard configuration `a41517f` enables the existing Godot touch
-keyboard path. The source and freshly exported shell pass the same checker that
-fails on the original shell. Three adjacent regressions and all 15 export
-checksums pass. Existing Web layout edits are preserved. See
-[keyboard evidence](docs/WEB-KEYBOARD.md). Next: three council reviews with
-separate verdicts for each candidate, then exact device checks when available.
-No phone behavior, full-lifetime pacing, push or release is claimed.
+See [Portrait evidence](docs/PORTRAIT-PARTNER-PORT.md),
+[Web evidence](docs/WEB-KEYBOARD.md) and [council record](docs/COUNCIL-PLATFORMS.md).
+Remaining acceptance is exact Honor APK use, natural desktop family pacing,
+and real Honor/Safari keyboard, touch and save/Continue. Optional small-screen
+heading polish and tooling hardening remain recorded. The bounded loop is
+closed without expanding into another content slice or publishing a release.

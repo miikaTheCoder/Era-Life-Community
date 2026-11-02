@@ -109,9 +109,9 @@ quality, natural discovery rates, lifetime pacing or phone usability.
 
 The original isolated implementation evidence is recorded below. Council and
 desktop integration are complete as described at the end of this document.
-Portrait porting remains separate: retain its lazy startup, touch viewer, shell
-and save adaptations, then rerun target tests and phone-sized graphical checks.
-No APK, Web deployment or public release is claimed here.
+The separately verified Portrait port is now council-approved at `a25cda8`;
+see [its evidence and APK provenance](PORTRAIT-PARTNER-PORT.md). No exact-phone
+pass, Web deployment or public release is claimed here.
 
 ### Retained regression evidence
 
@@ -170,8 +170,7 @@ certification. The decoded binary summary is
 `build/partner-evidence/checkpoint-summary.log`.
 
 Deferred: interactive natural-family pacing, a full birth-to-death playthrough,
-Portrait port and phone-sized adaptation, exact Honor testing, mobile Web and
-other platforms. The corrected desktop implementation is council-approved and integrated locally.
+exact Honor testing, mobile Web and other platforms. The corrected desktop implementation is council-approved and integrated locally.
 See the integration record below; no release or Portrait pass is claimed.
 
 Final focused rerun: `build/tests/headless-0ykofa3t/`, **3/3 PASS** (partner,
@@ -215,6 +214,6 @@ gate is retained. Evidence is in
 All 1,288 source evidence files are archived and hash-verified in primary
 `build/partner-evidence-20261102/`, preserving their original `build/` hierarchy.
 Source worktree paths above are historical. The original failures and diagnostics
-remain recorded. Portrait receives this evidence document only until the
-separate shared-code port and verification. No phone, interactive pacing or
-public release claim is added by integration.
+remain recorded. The separate Portrait port is now approved at `a25cda8`; its native checks and
+APK are documented in [Portrait evidence](PORTRAIT-PARTNER-PORT.md). No phone,
+interactive pacing or public release claim is added by either integration.
