@@ -64,9 +64,9 @@ members returned PASS with no blockers. See [the council record](COUNCIL-COLD-CO
 for votes, limits and nonblocking suggestions. The unchanged reviewed commit was
 fast-forwarded into `main`, preserving existing Web source hashes and merging
 local documentation. All 26 combined regressions and an additional private-display exact cold restore passed. Evidence was
-copied and hash-verified under `build/reliability-evidence-20261102/`; source evidence
-and the original task checkout still exist. The gameplay change is not yet ported
-to Portrait.
+copied and hash-verified under `build/reliability-evidence-20261102/`. The completed
+worktree and temporary branch were retired after preserving the commit and evidence.
+The gameplay change is not yet ported to Portrait.
 
 Discovery was read-only. The twelve current stories cover friendship, lending,
 mentorship, care, criminal history, business succession, sibling fairness and
