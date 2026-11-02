@@ -41,7 +41,7 @@ func _legacy_life(state: GameState, full_catalog := false) -> void:
 func _run() -> void:
 	var engine := LifeStoryEngine.new()
 	_check(engine.content_errors.is_empty(), "Living Households catalog failed validation: " + str(engine.content_errors))
-	_check(engine.catalog.size() == 12, "Existing stories were lost")
+	_check(engine.catalog.size() == 14, "Existing stories were lost")
 	_test_responses(engine)
 	_test_complete_routes()
 	_test_cast_and_loss()

@@ -74,7 +74,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop cold-history batching council-approved and integrated; combined checks pass; wider profiling and Portrait open | Verified desktop `018efd9`; preserve remaining device and timing limits |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
-| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Selected; implementation queued after verified reliability integration | [Implementation brief](docs/DEVELOPMENT-LOOP.md); council review after implementation |
+| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Implemented and verified in isolation; council pending | [Implementation brief](docs/DEVELOPMENT-LOOP.md); council review after implementation |
 | R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
 
 Record shared items' verification separately for desktop and Portrait. A
@@ -321,3 +321,21 @@ For a new task, start with: **“Read AGENTS.md, docs/AGENT-HANDOFF.md, and ROAD
 inspect the target checkout; take an open item selected with the user, reproduce it,
 and leave a verified result or a precise handoff.”** The user's current task
 always takes precedence over this suggested queue.
+
+
+### R11 implementation handoff, 2026-11-02
+
+`t3/partner-futures-story` is isolated from desktop base `57c626a`.
+*Room for Two Futures* and *The Plans They Kept* add nine chapters and 26
+responses through LifeStoryEngine, without a new narrative owner or save version.
+The partner has independent ambitions and can decline shared work. Optional
+personal payments never purchase consent or use company reserves. Confirmed
+separation and death preserve the original cast; the child can interpret an
+actual completed public outcome without rewriting it.
+
+Verification and retained profiles: [Partner Stories](docs/PARTNER-STORIES.md).
+Verified: 26 regressions, all 26 responses, thirteen real simulation years and
+four exact cold restores on private Xvfb with the normal hydration gate. Next:
+the parent's three independent council reviews, then integration after review. Portrait port,
+interactive natural pacing and exact phone checks remain separate. Existing R09
+Web changes and both permanent checkouts are untouched by this implementation.

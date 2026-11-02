@@ -1,0 +1,323 @@
+{
+  "schema": "eralife.life_stories",
+  "version": 1,
+  "stories": [
+    {
+      "id": "partner_futures",
+      "title": "Room for Two Futures",
+      "series": "Partner Stories",
+      "category": "relationships",
+      "cast": "partner",
+      "trust_from": "cast",
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 85
+      },
+      "start": "notebook",
+      "death_node": "loss",
+      "separation_node": "separation",
+      "nodes": {
+        "notebook": {
+          "title": "A notebook of small things",
+          "text": "{person} shows you sketches of ordinary things: a chipped cup, a bent gate, the view from a window. They want to make a small book. \"I want time for this, even if it never earns anything.\"",
+          "deadline": 2,
+          "default": "space",
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Ask what kind of support would help",
+              "result": "I listened to {person} describe the book. I offered to look at an early page, without promising to manage the project.",
+              "relationship": 2,
+              "next": "first_attempt",
+              "delay": 2
+            },
+            {
+              "id": "materials",
+              "label": "Offer materials with no conditions",
+              "result": "{person} accepted my help with paper and materials. The money came without a claim on the book or a promise to work together.",
+              "transfer": -150,
+              "next": "first_attempt",
+              "delay": 2
+            },
+            {
+              "id": "space",
+              "label": "Leave the project in their hands",
+              "result": "I made no commitment to join in. {person} kept the notebook and the right to continue without me.",
+              "next": "own_terms",
+              "delay": 2
+            },
+            {
+              "id": "income",
+              "label": "Ask them to make it pay before I help",
+              "result": "I made my help conditional on income. {person} said the book did not need to become another bill to meet.",
+              "relationship": -5,
+              "next": "refusal",
+              "delay": 2
+            }
+          ]
+        },
+        "first_attempt": {
+          "title": "An uneven first page",
+          "text": "The first pages have rubbed-out lines and an awkward fold. {person} likes one drawing enough to keep going. They ask whether you still want to look at a page together, without taking charge.",
+          "deadline": 2,
+          "default": "limited",
+          "choices": [
+            {
+              "id": "join",
+              "label": "Offer one evening, if they still want that",
+              "result": "I offered one evening to look at the pages. {person} kept the decision about whether to share that time.",
+              "next_untrusted": "refusal",
+              "relationship": 2,
+              "next": "shared_close",
+              "delay": 2
+            },
+            {
+              "id": "practical",
+              "label": "Offer practical costs without joining",
+              "result": "{person} accepted help with copying costs. I did not turn that help into a seat at the drawing table.",
+              "transfer": -75,
+              "next": "parallel_close",
+              "delay": 2
+            },
+            {
+              "id": "limited",
+              "label": "Make no further commitment",
+              "result": "I left the next attempt to {person}. My earlier involvement did not oblige either of us to continue together.",
+              "next": "own_terms",
+              "delay": 2
+            }
+          ]
+        },
+        "own_terms": {
+          "title": "A project with its own pace",
+          "text": "{person} has kept a few pages and discarded others. They want the work to stay theirs. Your time together matters, but it need not include every pursuit.",
+          "deadline": 2,
+          "default": "respect",
+          "choices": [
+            {
+              "id": "respect",
+              "label": "Respect separate pursuits",
+              "result": "I accepted that {person} could keep this part of life separate. There was room for my interests too.",
+              "stats": {
+                "mental_health": 2
+              },
+              "next": "parallel_close",
+              "delay": 2
+            },
+            {
+              "id": "ask",
+              "label": "Ask whether a small shared part would suit them",
+              "result": "I asked about sharing a small part of the work, leaving {person} free to refuse.",
+              "next_untrusted": "refusal",
+              "next": "shared_close",
+              "delay": 2
+            },
+            {
+              "id": "condition",
+              "label": "Make my support conditional on more involvement",
+              "result": "I said support should mean more involvement for me. {person} would not exchange control of the book for my approval.",
+              "relationship": -4,
+              "next": "refusal",
+              "delay": 2
+            }
+          ]
+        },
+        "refusal": {
+          "title": "Their answer is no",
+          "text": "{person} declines a joint arrangement. They are continuing the book independently. \"You can care about me without being part of this.\" An apology may matter, but it is not a new agreement.",
+          "deadline": 2,
+          "default": "leave",
+          "choices": [
+            {
+              "id": "account",
+              "label": "Acknowledge the pressure I put on them",
+              "result": "I acknowledged the pressure I had put on {person}. I did not ask them to reward the apology by letting me back into the project.",
+              "relationship": 1,
+              "next": "parallel_close",
+              "delay": 2
+            },
+            {
+              "id": "leave",
+              "label": "Leave the refusal in place",
+              "result": "I left {person}'s refusal in place. They could continue without another negotiation.",
+              "next": "parallel_close",
+              "delay": 2
+            },
+            {
+              "id": "insist",
+              "label": "Keep insisting that support earns a say",
+              "result": "I kept treating support as a claim on {person}'s work. They refused that claim. The disagreement remained; no shared arrangement followed.",
+              "legacy": "unresolved_pressure",
+              "outcome": "A boundary still contested",
+              "relationship": -6
+            }
+          ]
+        },
+        "shared_close": {
+          "title": "A small place beside them",
+          "text": "{person} has chosen to share a small part of the work with you. Some pages remain private. The book still has no earnings target, and neither of you owes the other a permanent role.",
+          "deadline": 2,
+          "default": "release",
+          "choices": [
+            {
+              "id": "renew",
+              "label": "Keep the invitation small and voluntary",
+              "result": "I accepted the small invitation {person} offered. We kept room to change our minds, and the book remained theirs.",
+              "legacy": "shared_by_invitation",
+              "outcome": "Shared by invitation",
+              "stats": {
+                "mental_health": 3
+              }
+            },
+            {
+              "id": "separate",
+              "label": "Choose separate pursuits from here",
+              "result": "I stepped back from the shared part. {person} kept working, and I made room for pursuits of my own.",
+              "legacy": "separate_pursuits",
+              "outcome": "Two pursuits with room to grow",
+              "stats": {
+                "mental_health": 3
+              }
+            },
+            {
+              "id": "release",
+              "label": "Let the invitation lapse",
+              "result": "I made no new commitment. The shared invitation lapsed without giving me a claim on what {person} made next.",
+              "legacy": "invitation_released",
+              "outcome": "An invitation allowed to end"
+            }
+          ]
+        },
+        "parallel_close": {
+          "title": "Two unfinished futures",
+          "text": "{person} is still making pages at their own pace. Some may never leave the notebook. Your part in this story does not have to be a shared project.",
+          "deadline": 2,
+          "default": "room",
+          "choices": [
+            {
+              "id": "room",
+              "label": "Leave room for both lives",
+              "result": "I left room for {person}'s work and for interests of my own. Separate pursuits did not make either life less important.",
+              "legacy": "separate_pursuits",
+              "outcome": "Two pursuits with room to grow",
+              "stats": {
+                "mental_health": 3
+              }
+            },
+            {
+              "id": "name",
+              "label": "Name what I learned about control",
+              "result": "I named the difference between helping and claiming a say. {person}'s independent work did not need my permission.",
+              "legacy": "control_reconsidered",
+              "outcome": "Support without a claim",
+              "stats": {
+                "smarts": 2
+              }
+            },
+            {
+              "id": "private",
+              "label": "Keep my reflection private",
+              "result": "I kept my reflection on {person}'s project private. I did not leave this story as instructions for the next generation.",
+              "legacy": "private",
+              "outcome": "A private reflection"
+            }
+          ]
+        },
+        "separation": {
+          "title": "After the partnership",
+          "text": "Your partnership with {person} has ended elsewhere in your life. The notebook is still theirs. Past help creates no right to their time, their pages, or a renewed relationship.",
+          "deadline": 2,
+          "default": "release",
+          "choices": [
+            {
+              "id": "release",
+              "label": "Let the unfinished arrangement end",
+              "result": "My partnership with {person} had ended. I let the unfinished arrangement end too, without treating earlier help as a debt.",
+              "legacy": "partnership_ended",
+              "outcome": "An ended partnership, not an unpaid debt"
+            },
+            {
+              "id": "learn",
+              "label": "Keep the lesson without seeking a reunion",
+              "result": "I kept what I learned from {person}'s plans. That memory was not a request to resume our partnership.",
+              "legacy": "lesson_after_separation",
+              "outcome": "A lesson beyond the partnership"
+            }
+          ]
+        },
+        "loss": {
+          "title": "The pages left unfinished",
+          "text": "{lost_person} has died. The plans you discussed cannot become a new agreement now. You can remember the person without inventing an ending for their work.",
+          "deadline": 2,
+          "default": "remember",
+          "choices": [
+            {
+              "id": "remember",
+              "label": "Remember the person and the unfinished work",
+              "result": "I remembered {lost_person} and the work they wanted time for. I did not turn the unfinished pages into a duty for someone else.",
+              "legacy": "unfinished_work_remembered",
+              "outcome": "A person remembered beyond the project"
+            },
+            {
+              "id": "private",
+              "label": "Keep the memory private",
+              "result": "I kept my memory of {lost_person}'s unfinished work private. No one else had to finish it for me.",
+              "legacy": "private",
+              "outcome": "A private memory"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "partner_futures_legacy",
+      "title": "The Plans They Kept",
+      "series": "Partner Stories",
+      "category": "family",
+      "cast": "legacy",
+      "origin_story": "partner_futures",
+      "allow_deceased_cast": true,
+      "eligibility": {
+        "min_age": 18
+      },
+      "start": "pages",
+      "nodes": {
+        "pages": {
+          "title": "A life alongside another",
+          "text": "You read the public record of your parent's story with {person}. The outcome below belongs to that life, not to a perfect example of partnership. You can keep the memory without inheriting its arrangement.",
+          "deadline": 2,
+          "default": "release",
+          "choices": [
+            {
+              "id": "adapt",
+              "label": "Adapt the lesson to my own life",
+              "result": "I read my parent's account of {person}'s plans. I kept the lesson of asking what support means, while leaving my own arrangements open.",
+              "legacy": "lesson_adapted",
+              "outcome": "An inherited lesson made personal",
+              "stats": {
+                "smarts": 2
+              }
+            },
+            {
+              "id": "preserve",
+              "label": "Preserve the story without adopting it",
+              "result": "I preserved my parent's account of {person}. Remembering their choices did not require me to build the same life.",
+              "legacy": "memory_without_obligation",
+              "outcome": "A memory, not a template"
+            },
+            {
+              "id": "release",
+              "label": "Put down the obligation",
+              "result": "I put down the idea that my parent's story with {person} was an obligation. Their record remained intact; my choices were still mine.",
+              "legacy": "obligation_released",
+              "outcome": "The next life remains open",
+              "stats": {
+                "mental_health": 2
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -4,8 +4,8 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 mode="${1:-household}"
 story="${ERA_FAMILY_STORY:-household_balance}"
 case "$story" in
-    household_balance|sibling_fairness) ;;
-    *) echo "ERA_FAMILY_STORY must be household_balance or sibling_fairness." >&2; exit 2 ;;
+    household_balance|sibling_fairness|partner_futures) ;;
+    *) echo "ERA_FAMILY_STORY must be household_balance, sibling_fairness or partner_futures." >&2; exit 2 ;;
 esac
 export ERA_FAMILY_STORY="$story"
 case "$mode" in
@@ -24,6 +24,23 @@ fi
 mkdir -p "$profile_dir"
 profile_dir="$(cd -- "$profile_dir" && pwd)"
 if [[ "$mode" == cycle ]]; then
+    if [[ "$story" == partner_futures ]]; then
+        mkdir -p "$profile_dir/checkpoints"
+        ERA_YEARS=20 ERA_PARTNER_STOP=before_payment ERA_RUN_LABEL=before-payment bash "$0" household "$profile_dir"
+        mkdir -p "$profile_dir/checkpoints/before-payment"
+        cp -a "$profile_dir/data" "$profile_dir/checkpoints/before-payment/data"
+        ERA_YEARS=1 ERA_RUN_LABEL=after-payment bash "$0" restore "$profile_dir"
+        mkdir -p "$profile_dir/checkpoints/after-payment"
+        cp -a "$profile_dir/data" "$profile_dir/checkpoints/after-payment/data"
+        ERA_YEARS=1 ERA_REQUIRE_CARE_CHOICES=1 ERA_RUN_LABEL=during-delay bash "$0" restore "$profile_dir"
+        mkdir -p "$profile_dir/checkpoints/during-delay"
+        cp -a "$profile_dir/data" "$profile_dir/checkpoints/during-delay/data"
+        ERA_YEARS=5 ERA_REQUIRE_CARE_CHOICES=1 ERA_RUN_LABEL=completion bash "$0" restore "$profile_dir"
+        mkdir -p "$profile_dir/checkpoints/completion"
+        cp -a "$profile_dir/data" "$profile_dir/checkpoints/completion/data"
+        ERA_YEARS=0 ERA_REQUIRE_CARE_CHOICES=3 ERA_REQUIRE_FAMILY_FINISHED=1 ERA_RUN_LABEL=completed-restore bash "$0" restore "$profile_dir"
+        exit 0
+    fi
     if [[ "$story" == sibling_fairness ]]; then
         ERA_YEARS=10 ERA_RUN_LABEL=household bash "$0" household "$profile_dir"
         ERA_YEARS=6 ERA_RUN_LABEL=restore-story bash "$0" restore "$profile_dir"

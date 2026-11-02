@@ -17,7 +17,7 @@ func _age_and_save() -> void:
 				supporter = person
 		if not _check(supporter != null, "Created adult household member is missing"):
 			return
-		if family_story == CARE:
+		if family_story in [CARE, "partner_futures"]:
 			state.player.partner = supporter
 			supporter.partner = state.player
 		state.player.affection[supporter.id] = 60
@@ -44,13 +44,15 @@ func _age_and_save() -> void:
 			state.bank_engine.credit_bank(state.bank_engine.owner_key_from_actor(state.player), 1000)
 		state.scenario_runtime_contract_engine.life_story_service_signature = ""
 	var stories: LifeStoryEngine = state.scenario_runtime_contract_engine._ensure_life_story_engine()
-	_check(stories.catalog.size() == 12, "Household discovery must retain the full catalog")
+	_check(stories.catalog.size() == 14, "Household discovery must retain the full catalog")
 	var previous_entries: Array = state.life_diary_contract_engine.diary_entries_for_actor(state.player_id).duplicate(true)
 	await _settle_pending(state)
 	for offset in range(years_per_run):
 		if failed or not await _advance_one_year():
 			return
 		await _settle_pending(state)
+		if family_story == "partner_futures" and OS.get_environment("ERA_PARTNER_STOP") == "before_payment" and not _care_record(state).is_empty():
+			break
 	await _capture("household-aged")
 	await _save(previous_entries)
 	var record: Dictionary = _care_record(state)
@@ -72,6 +74,10 @@ func _settle_pending(state: GameState) -> void:
 		var node: Dictionary = definition.nodes[node_id]
 		if id == family_story:
 			var choice := "fund" if node_id == "request" else ("contribute" if node_id == "comparison" else str(node.default))
+			if family_story == "partner_futures":
+				if OS.get_environment("ERA_PARTNER_STOP") == "before_payment":
+					continue
+				choice = {"notebook":"materials", "first_attempt":"practical", "parallel_close":"room"}.get(node_id, str(node.default))
 			await _visible_choice(state, contract, choice)
 		else:
 			var result: Dictionary = state.pending_situations_engine.resolve_pending_contract(str(contract.id), str(node.default), {"viewer_actor_id":state.player_id})
@@ -103,7 +109,8 @@ func _visible_choice(state: GameState, contract: Dictionary, choice: String) -> 
 		return
 	current_scene.call("_on_popup_viewer_contract_selected", view_id)
 	await create_timer(1).timeout
-	_check(viewer.body_label.get_parsed_text().contains(str(record.ensemble.supporter.name)), "Care chapter hid the recurring supporter")
+	_check(viewer.body_label.get_parsed_text().contains(str(record.cast_name)), "Care chapter hid the recurring supporter")
+	_check(viewer.body_label.get_parsed_text().contains("respond through year"), "Chapter deadline hidden")
 	_check(not viewer.body_label.get_parsed_text().contains("{relative}"), "Care chapter showed an unrendered name")
 	await _capture("care-" + str(record.node))
 	var button: Button
@@ -113,6 +120,9 @@ func _visible_choice(state: GameState, contract: Dictionary, choice: String) -> 
 	if not _check(button != null, "Care response is absent: " + label):
 		return
 	_check(current_scene.get_viewport_rect().encloses(button.get_global_rect()), "Care response is outside the screen")
+	var response: Dictionary = node.choices.filter(func(row): return str(row.id) == choice)[0]
+	if int(response.get("transfer", 0)) < 0:
+		_check(button.text.contains(str(stories._amount(abs(int(response.transfer)), record))), "Visible payment omitted price")
 	var old_count: int = record.history.size()
 	var old_balance: int = state.player.bank_balance
 	var other: Person = state.get_npc_by_id(int(record.cast_id), false)
@@ -121,7 +131,6 @@ func _visible_choice(state: GameState, contract: Dictionary, choice: String) -> 
 		return
 	if not _check(await _wait_for(func(): return record.history.size() == old_count + 1), "Visible care response did not commit exactly once"):
 		return
-	var response: Dictionary = node.choices.filter(func(row): return str(row.id) == choice)[0]
 	if int(response.get("transfer", 0)) < 0:
 		var cost := stories._amount(abs(int(response.transfer)), record)
 		_check(state.player.bank_balance == old_balance - cost and other.bank_balance == other_balance + cost, "Visible care payment changed the wrong balance")
@@ -146,6 +155,18 @@ func _verify_shared_checkpoint(payload: Dictionary, state: GameState) -> void:
 	var record := _care_record(state)
 	for member in record.get("ensemble", {}).values():
 		_check(state.get_npc_by_id(int(member.id), false) != null, "Cold Continue lost household cast")
+	if family_story == "partner_futures" and not record.is_empty():
+		_check(JSON.parse_string(JSON.stringify(state.scenario_state.get("life_diary_state_by_npc", {}))) == payload.scenario_state.get("life_diary_state_by_npc", {}), "Cold Continue changed exact partner diary")
+		for actor_id in [state.player_id, int(record.cast_id)]:
+			var actor := state.get_npc_by_id(actor_id, false)
+			var rows: Array = payload.npcs.filter(func(row): return int(row.id) == actor_id)
+			if not _check(actor != null and rows.size() == 1, "Cold Continue lost partner actor"):
+				continue
+			var row: Dictionary = rows[0]
+			_check((actor.partner.id if actor.partner != null else -1) == int(row.get("partner_id", -1)), "Cold Continue changed partner link")
+			_check(JSON.parse_string(JSON.stringify(actor.affection)) == row.affection, "Cold Continue changed directed partner affection")
+			_check(actor.bank_balance == int(row.bank_balance), "Cold Continue changed partner funds")
+		print("PARTNER EXACT RESTORE: year=", state.year, "; node=", record.node, "; status=", record.status, "; due=", record.due_year, "; deadline=", record.deadline_year, "; cast=", record.cast_id)
 	var required := int(OS.get_environment("ERA_REQUIRE_CARE_CHOICES"))
 	_check(record.get("history", []).size() >= required, "Household arc was not discovered and continued through ordinary years")
 	if OS.get_environment("ERA_REQUIRE_FAMILY_FINISHED") == "1":

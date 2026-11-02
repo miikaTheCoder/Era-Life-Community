@@ -58,7 +58,7 @@ func _memory_life(state: GameState, full_catalog := false) -> void:
 func _run() -> void:
 	var engine := LifeStoryEngine.new()
 	_check(engine.content_errors.is_empty(), "Sibling content failed validation: " + str(engine.content_errors))
-	_check(engine.catalog.size() == 12, "The expanded catalog lost existing stories")
+	_check(engine.catalog.size() == 14, "The expanded catalog lost existing stories")
 	_test_sibling_responses(engine)
 	_test_sibling_routes()
 	_test_sibling_cast()

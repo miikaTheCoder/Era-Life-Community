@@ -17,7 +17,7 @@ var family_business_engine: Variant = null
 
 func _init(state = null) -> void:
 	gs = state
-	for path in [CONTENT_PATH, "res://data/shared_lives.json", "res://data/living_households.json", "res://data/sibling_stories.json"]:
+	for path in [CONTENT_PATH, "res://data/shared_lives.json", "res://data/living_households.json", "res://data/sibling_stories.json", "res://data/partner_stories.json"]:
 		var file := FileAccess.open(path, FileAccess.READ)
 		if file == null:
 			content_errors.append("Story content could not be opened: " + path)
@@ -45,8 +45,12 @@ static func validate_catalog(data: Variant) -> Array:
 			errors.append("Invalid story definition.")
 			continue
 		var id: String = str(story.id)
-		if str(story.get("cast", "")) not in ["friend", "relative", "mentor", "parent", "accomplice", "legacy", "business_partners", "business_heir", "household_care", "household_siblings"]:
+		if str(story.get("cast", "")) not in ["friend", "relative", "mentor", "parent", "accomplice", "legacy", "business_partners", "business_heir", "household_care", "household_siblings", "partner"]:
 			errors.append(id + ": unknown cast role.")
+		if story.has("trust_from") and str(story.trust_from) not in ["player", "cast"]:
+			errors.append(id + ": unknown trust selector.")
+		if story.has("separation_node") and str(story.get("cast", "")) != "partner":
+			errors.append(id + ": separation requires partner casting.")
 		if ids.has(id):
 			errors.append("Duplicate story: " + id)
 		ids[id] = true
@@ -103,6 +107,10 @@ static func validate_catalog(data: Variant) -> Array:
 				var death_node := str(story.death_node)
 				if not story.nodes.has(death_node) or not _acyclic(story.nodes, death_node, {}, visited):
 					errors.append(id + ": invalid bereavement chapter.")
+			if story.has("separation_node"):
+				var separation_node := str(story.separation_node)
+				if not story.nodes.has(separation_node) or not _acyclic(story.nodes, separation_node, {}, visited):
+					errors.append(id + ": invalid separation chapter.")
 			if visited.size() != story.nodes.size():
 				errors.append(id + ": a chapter cannot be reached from the start.")
 	return errors
@@ -171,6 +179,9 @@ func service_year() -> Dictionary:
 		var definition: Dictionary = _definition(str(id))
 		if definition.is_empty():
 			continue # Keep unknown content in saves for a later compatible pack.
+		if definition.has("separation_node") and _partnership_loading():
+			active += 1
+			continue
 		var cast: Person = _person(int(instance.cast_id))
 		if cast == null:
 			active += 1 # A temporarily unloaded participant must not be replaced.
@@ -198,6 +209,13 @@ func service_year() -> Dictionary:
 			else:
 				_interrupt(actor, instance)
 				continue
+		if definition.has("separation_node") and not instance.has("lost_person"):
+			var partnership := _partnership_state(actor, cast)
+			if partnership == "unavailable" and not instance.has("separated"):
+				active += 1
+				continue
+			if partnership == "separated" and not instance.has("separated"):
+				_separate(instance, definition)
 		active += 1
 		if int(gs.year) < int(instance.due_year):
 			continue
@@ -259,6 +277,13 @@ func _eligible(actor: Person, definition: Dictionary) -> bool:
 
 func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 	var role: String = str(definition.cast)
+	if role == "partner":
+		if actor.partner == null:
+			return {}
+		var partner := _person(int(actor.partner.id))
+		if partner != null and partner.id != actor.id and partner.alive and partner.age >= 18 and _partnership_state(actor, partner) == "together":
+			return {"person": partner, "context": "This project belongs to %s. Optional help comes from your personal bank, never company reserves." % _name(partner)}
+		return {}
 	if role in ["business_partners", "business_heir"]:
 		return _business_cast(actor, role)
 	if role == "household_care":
@@ -302,7 +327,7 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 						continue
 					var person: Person = _person(int(record.cast_id))
 					if person != null and (person.alive or bool(definition.get("allow_deceased_cast", false))) and person.id != actor.id:
-						return {"person": person, "origin": str(record.story_id), "legacy": str(record.legacy)}
+						return {"person": person, "origin": str(record.story_id), "legacy": str(record.legacy), "context": "Recorded outcome: %s." % str(record.outcome) if record.has("outcome") else ""}
 	candidates.sort_custom(func(a, b): return int(a) < int(b))
 	for candidate in candidates.slice(0, 32):
 		var person: Person = _person(int(candidate))
@@ -320,6 +345,40 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 			continue
 		return {"person": person}
 	return {}
+
+# A null link alone is not proof of breakup: resident restoration rebuilds links.
+# Require the relationship owner's former-partner record or a resident new pair.
+func _partnership_loading() -> bool:
+	return not gs.resident_runtime_bootstrap_complete or bool(gs.scenario_state.get("background_hydration_active", false)) or bool(gs.scenario_state.get("loading_runtime", {}).get("active", false))
+
+func _partnership_state(actor: Person, cast: Person) -> String:
+	if _partnership_loading():
+		return "unavailable"
+	if _person(actor.id) == null or _person(cast.id) == null:
+		return "unavailable"
+	if actor.partner != null and cast.partner != null and actor.partner.id == cast.id and cast.partner.id == actor.id:
+		return "together"
+	if cast.id in actor.ex_partners or actor.id in cast.ex_partners:
+		return "separated"
+	for pair in [[actor, cast], [cast, actor]]:
+		var person: Person = pair[0]
+		if person.partner == null or person.partner.id == pair[1].id:
+			continue
+		var other := _person(person.partner.id)
+		if other != null and other.partner != null and other.partner.id == person.id:
+			return "separated"
+	return "unavailable"
+
+func _separate(instance: Dictionary, definition: Dictionary) -> void:
+	var runtime = gs.scenario_runtime_contract_engine
+	runtime.active_popup_contracts.erase(_contract_id(instance))
+	runtime._commit_state()
+	instance.separated = true
+	instance.node = str(definition.separation_node)
+	instance.status = "waiting"
+	instance.due_year = int(gs.year)
+	# Let the normal pending service publish the new chapter even in this year.
+	runtime.life_story_service_signature = ""
 
 func _household_cast(actor: Person, siblings_only := false, required_relative_id := -1) -> Dictionary:
 	# Resolve only known family references. A saved ensemble is never recast.
@@ -461,6 +520,16 @@ func resolve_choice(contract: Dictionary, option_id: String, payload: Dictionary
 	var cast: Person = _person(int(instance.cast_id))
 	if cast == null or (not cast.alive and not instance.has("lost_person") and not bool(definition.get("allow_deceased_cast", false))) or not actor.alive:
 		return _failure("A participant is unavailable. Advance the year to settle this story.")
+	if definition.has("separation_node") and _partnership_loading():
+		return _failure("The saved partnership is still loading.")
+	if definition.has("separation_node") and not instance.has("lost_person"):
+		var partnership := _partnership_state(actor, cast)
+		if partnership == "unavailable":
+			return _failure("The saved partnership is still loading. Try again when both people are available.")
+		if partnership == "separated" and not instance.has("separated") and not instance.has("lost_person"):
+			_separate(instance, definition)
+			return _failure("This partnership has ended. Return to pending situations for the next chapter.")
+	var cast_trust: int = int(cast.affection.get(actor.id, 50))
 	if int(gs.year) > int(instance.deadline_year) and option_id != str(node.default):
 		return _failure("Time has passed for this choice. Advance the year to see the outcome.")
 	for participant in instance.get("ensemble", {}).values():
@@ -510,7 +579,8 @@ func resolve_choice(contract: Dictionary, option_id: String, payload: Dictionary
 	instance.history.append({"year": int(gs.year), "node": instance.node, "choice": option_id, "text": text, "automatic": automatic})
 	instance.legacy = str(choice.get("legacy", instance.legacy))
 	var next: String = str(choice.get("next", ""))
-	if choice.has("next_untrusted") and int(actor.affection.get(int(instance.cast_id), 50)) < 45:
+	var trust: int = cast_trust if str(definition.get("trust_from", "player")) == "cast" else int(actor.affection.get(int(instance.cast_id), 50))
+	if choice.has("next_untrusted") and trust < 45:
 		next = str(choice.next_untrusted)
 	if next == "":
 		instance.status = "finished"

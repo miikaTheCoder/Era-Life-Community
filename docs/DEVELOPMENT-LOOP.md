@@ -11,7 +11,7 @@ It does not schedule recurring work or expand the roadmap indefinitely.
    and verify repeated separate-process restores and longer-play save fidelity.
    Preserve cast, story decisions, relationships, diary, ownership and money.
    Do not obtain a timing pass by extending a timeout or omitting simulation work.
-2. **Content second, discovery complete, implementation queued:** the selected
+2. **Content second, implemented and verified in isolation, council pending:** the selected
    slice is *Room for Two Futures*, an existing partner's independent aspiration,
    plus one inherited memory. See the implementation brief below. Implement after
    the reliability work reaches its review gate or a precise external blocker.
@@ -133,8 +133,12 @@ specific serialization, startup and touch harnesses. The actual historical basel
 is 24 committed desktop tests, 25 in the combined tree with local Web changes,
 and 28 Portrait tests. These are recorded results, not new checks in this loop.
 
-Next: implement this brief in an isolated task based on the integrated desktop
-fix. No story code has been changed or content council approval claimed.
+R11 implementation is in `t3/partner-futures-story`, based on integrated desktop
+`57c626a`. The complete authored slice and focused regression are implemented.
+[Partner Stories](PARTNER-STORIES.md) records behavior and verification evidence.
+All 26 regressions and the thirteen-real-year private-display route passed,
+including four exact cold restores with the normal hydration gate. Next: freeze
+the implementation commit and have the parent run all three council reviews. Content council approval and integration are not yet claimed.
 
 ## Deferred verification
 

@@ -336,3 +336,23 @@ checks actually run and their log locations, artifact path, unresolved failures,
 and whether the exact APK was tested on a device. Put detailed feature evidence
 in its owning document and link it here. A new task should be able to distinguish
 implemented code, verified behavior, and remaining work without reading chat history.
+
+
+## R11 isolated content candidate, 2026-11-02
+
+`t3/partner-futures-story` implements *Room for Two Futures* and *The Plans
+They Kept* from desktop base `57c626a`. See [Partner Stories](PARTNER-STORIES.md)
+for eligibility, nine chapters/26 responses, trust and separation contracts,
+full-catalog and save evidence, exact logs and limitations. All 26 regressions
+and thirteen real simulation years with four exact private-display cold restores
+passed. The original partner
+stays cast through absence, breakup, remarriage and death. Independent pursuits
+are a valid complete ending; optional $150/$75 Modern Era personal support never
+purchases joint consent or spends company reserves.
+
+The parent owns the three council reviews and integration. This isolated task
+has not edited main's unrelated Web changes or the Portrait checkout, published
+anything, or accessed the owner's desktop or phone. Keep the final committed tree
+frozen for review and preserve ignored `build/partner-evidence/` and the recorded
+regression profiles before retiring it. Port shared gameplay only after review;
+retain Portrait's startup, serialization and touch adaptations and verify them.

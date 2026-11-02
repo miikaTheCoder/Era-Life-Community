@@ -181,3 +181,18 @@ correct. The log contains missing emoji-font and `can_process` diagnostics.
 
 Local phone evidence, including screenshots, the test save, Android exit info,
 and native crash trace, is retained under `/tmp/eralife-phone-stories/`.
+
+
+## R11 partner extension, desktop review candidate
+
+[Partner Stories](PARTNER-STORIES.md) adds two stories, nine chapters and 26
+responses after the existing twelve-story catalog. The original six-story series
+and its counts above remain unchanged. Partner casting requires a living adult
+reciprocal indexed partner. Optional `trust_from: cast` reads their affection at
+decision entry; omitted selectors keep player-side post-effect semantics.
+`separation_node` is a validated opt-in interruption for partner stories. Missing
+links pause instead of implying breakup; authoritative former-partner or new
+reciprocal-pair evidence interrupts without changing relationship status.
+Legacy casting now includes a recorded public outcome in context when available.
+Existing version 1 records without that field remain valid. See the linked guide
+for payment amounts, saved identity, verification and pending Portrait work.
