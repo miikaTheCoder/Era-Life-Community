@@ -181,3 +181,21 @@ limited-involvement route, the invitation-lapse ending, and inherited eligibilit
 using the standard adult-memory age range rather than the main arc's age-85 cap.
 The shared engine is unchanged from the passing full suite. All 26 authored
 responses pass; eight full ordinary contract routes now cover the main endings.
+
+
+### Council corrections, 2026-11-02
+
+Round 1 requested two fixes: established-separation liveness after a third person
+leaves residency, and unusable generic trait responses in the completed story
+view. The coordinator reproduced both, corrected resolution and projection
+behavior, and added focused regression and visible-button checks. Old cached
+story views now rebuild without trait options; ordinary situations retain them.
+The fresh-invitation wording also avoids implying earlier shared involvement.
+
+The corrected full suite passes 26/26 in `build/tests/headless-v_m7kwu1/`.
+Three additional sequential private-display restores pass, including visible
+notebook, practical-help and independent-ending choices and an exact final
+2012 restore. See [the council correction record](COUNCIL-PARTNER-STORIES.md)
+for pre-fix failures, complete test paths, screenshot inspection and limitations.
+The original thirteen-year cycle remains separate historical evidence. Fresh
+council review of the corrected commit is pending; it is not integrated.

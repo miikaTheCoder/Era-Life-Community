@@ -524,7 +524,7 @@ func resolve_choice(contract: Dictionary, option_id: String, payload: Dictionary
 		return _failure("The saved partnership is still loading.")
 	if definition.has("separation_node") and not instance.has("lost_person"):
 		var partnership := _partnership_state(actor, cast)
-		if partnership == "unavailable":
+		if partnership == "unavailable" and not instance.has("separated"):
 			return _failure("The saved partnership is still loading. Try again when both people are available.")
 		if partnership == "separated" and not instance.has("separated") and not instance.has("lost_person"):
 			_separate(instance, definition)

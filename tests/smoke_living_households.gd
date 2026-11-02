@@ -107,12 +107,16 @@ func _visible_choice(state: GameState, contract: Dictionary, choice: String) -> 
 			view_id = str(id)
 	if not _check(view_id != "", "Care chapter missing from the visible list"):
 		return
+	var shown_options: Array = viewer.active_contracts[view_id].get("response_options", [])
+	_check(shown_options.map(func(row): return str(row.id)) == contract.response_options.map(func(row): return str(row.id)), "Story view exposed a response outside the authored contract")
 	current_scene.call("_on_popup_viewer_contract_selected", view_id)
 	await create_timer(1).timeout
 	_check(viewer.body_label.get_parsed_text().contains(str(record.cast_name)), "Care chapter hid the recurring supporter")
 	_check(viewer.body_label.get_parsed_text().contains("respond through year"), "Chapter deadline hidden")
 	_check(not viewer.body_label.get_parsed_text().contains("{relative}"), "Care chapter showed an unrendered name")
 	await _capture("care-" + str(record.node))
+	var visible_responses := viewer.options_box.get_children().filter(func(control): return control is Button and control.is_visible_in_tree())
+	_check(visible_responses.size() == node.choices.size(), "Story rendered extra or missing response buttons")
 	var button: Button
 	for control in viewer.options_box.get_children():
 		if control is Button and control.text.begins_with(label):

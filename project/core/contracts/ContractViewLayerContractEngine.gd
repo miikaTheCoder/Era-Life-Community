@@ -339,6 +339,12 @@ func build_view_contract(
 		)
 	)
 
+	# Life Stories resolve only their authored options. Invalidate older cached
+	# views that may contain generic trait actions before reusing projections.
+	var source_owned_choices: bool = str(source_contract.get("request", "")) == "life_story"
+	if source_owned_choices:
+		semantic_revision += ":authored_choices_v1"
+
 	var existing_raw: Variant = view_contracts.get(
 		view_id,
 		{}
@@ -452,6 +458,7 @@ func build_view_contract(
 
 	if (
 		gs != null
+		and not source_owned_choices
 		and "traits_contract_engine" in gs
 		and gs.traits_contract_engine != null
 	):

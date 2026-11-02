@@ -151,3 +151,10 @@ the implementation commit and have the parent run all three council reviews. Con
 Stop this queue when the achievable items are complete or only external checks
 remain. Report blockers and exact next actions instead of repeating unproductive
 attempts or claiming the deferred checks passed.
+
+
+R11 council follow-up, 2026-11-02: the coordinator fixed both round-1 blockers
+(confirmed-separation liveness and unusable trait buttons), reproduced them with
+regressions, and passed the full 26-test suite plus three private-display cold
+restores. See [the correction record](COUNCIL-PARTNER-STORIES.md). All three
+members must review the corrected commit; no renewed approval is claimed yet.

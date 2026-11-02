@@ -4,6 +4,12 @@ const PARTNER := "partner_futures"
 const MEMORY := "partner_futures_legacy"
 var partner_responses := 0
 
+class ExtraTraitOption extends TraitsContractEngine:
+	func trait_action_options_for_actor(_actor: Person, _source: Dictionary, options: Array, _context: Dictionary = {}) -> Array:
+		var expanded := options.duplicate(true)
+		expanded.append({"id":"fixture_trait", "label":"An extra trait response"})
+		return expanded
+
 func _couple() -> GameState:
 	var state := _household_fixture()
 	state.player.job = ""
@@ -41,6 +47,9 @@ func _run() -> void:
 	_test_partner_trust()
 	_test_partner_money()
 	_test_partner_interruptions()
+	_test_established_separation()
+	_test_story_choice_views()
+	_test_partner_rejected_actions()
 	_test_partner_memory()
 	_test_partner_binary()
 	print("PARTNER STORIES TESTS: ", "FAIL" if failed else "PASS", "; responses=", partner_responses)
@@ -60,6 +69,7 @@ func _test_partner_responses(engine: LifeStoryEngine) -> void:
 				_partner_node(state, record, node_id)
 				var pending := _pending(state, definition.id)
 				_check(not pending.is_empty() and not str(pending.get("overview", "")).contains("{person}"), "Partner chapter not rendered")
+				_check_authored_view(state, pending)
 				_check(_resolve(state, definition.id, choice.id).get("success", false), "Partner response failed: " + node_id + "/" + choice.id)
 				var after := _snapshot(state, record)
 				_check(not state.scenario_runtime_contract_engine.resolve_popup_contract(pending.id, choice.id, {"viewer_actor_id":state.player_id}).get("success", true), "Duplicate partner click accepted")
@@ -346,3 +356,80 @@ func _test_partner_binary() -> void:
 	_advance_to_due(restored, PARTNER)
 	_check(_resolve(restored, PARTNER, "join").get("success", false), "Old optional fields prevented continuation")
 	_check(JSON.parse_string(JSON.stringify(_record_for(restored, "future_pack"))) == JSON.parse_string('{"status":"waiting", "opaque":[1,2,3]}'), "Unknown record changed")
+
+
+func _check_authored_view(state: GameState, source: Dictionary) -> void:
+	state.traits_contract_engine = ExtraTraitOption.new(state)
+	var builder := ContractViewLayerContractEngine.new(state)
+	var view := builder.build_view_contract(source, state.player)
+	_check(view.get("response_options", []) == source.response_options, "Completed Life Story view added responses its source cannot resolve")
+	var cached := builder.build_view_contract(source, state.player)
+	_check(cached.get("resident_view_contract_cache_hit", false) and cached.response_options == source.response_options, "Authored-only view lost its valid cache")
+	# Simulate a persisted view from the old generic trait-enrichment policy.
+	var old_view := view.duplicate(true)
+	old_view.response_options.append({"id":"fixture_trait", "label":"An extra trait response"})
+	old_view.projection_semantic_revision = builder._view_projection_semantic_revision(source, state.player_id, str(view.perspective))
+	builder.view_contracts[str(view.view_contract_id)] = old_view
+	var rebuilt := builder.build_view_contract(source, state.player)
+	_check(rebuilt.response_options == source.response_options and not rebuilt.get("resident_view_contract_cache_hit", false), "Old cached trait responses survived Life Story rebuild")
+
+func _test_story_choice_views() -> void:
+	var state := _couple()
+	_start_care(state)
+	var source := _pending(state, CARE)
+	_check_authored_view(state, source)
+	var generic := source.duplicate(true)
+	generic.id = "generic-trait-fixture"
+	generic.request = "ordinary_situation"
+	var builder := ContractViewLayerContractEngine.new(state)
+	var view := builder.build_view_contract(generic, state.player)
+	_check(view.response_options.size() == generic.response_options.size() + 1 and view.response_options[-1].id == "fixture_trait", "Non-story view lost supported trait responses")
+
+func _test_established_separation() -> void:
+	for mode in ["manual", "expired"]:
+		var state := _couple()
+		var record := _start_partner(state)
+		var cast := state.player.partner
+		var other := state.get_npc_by_id(104, false)
+		cast.partner = null
+		state.player.partner = other
+		other.partner = state.player
+		_check(not state.player.ex_partners.has(cast.id) and not cast.ex_partners.has(state.player_id), "Separation fixture accidentally has permanent ex-partner evidence")
+		_check(not _resolve(state, PARTNER, "materials").get("success", true), "Stale payment bypassed confirmed new partnership")
+		_check(record.get("separated", false) and record.history.is_empty() and state.player.bank_balance == 10000, "Separation did not preserve choice/money boundary")
+		# Use normal servicing, without the test helper clearing its signature.
+		state.scenario_runtime_contract_engine.service_life_stories()
+		var pending := _pending(state, PARTNER)
+		_check(not pending.is_empty() and record.node == "separation", "Stale-choice recovery did not publish separation in the same year")
+		state.npcs.erase(other)
+		state._rebuild_npc_index()
+		_check(state.get_npc_by_id(other.id, false) == null, "New partner was not unloaded")
+		if mode == "manual":
+			state.scenario_state.background_hydration_active = true
+			_check(not _resolve(state, PARTNER, "release").get("success", true), "Established separation bypassed hydration guard")
+			state.scenario_state.background_hydration_active = false
+			state.npcs.erase(cast)
+			state._rebuild_npc_index()
+			_check(not _resolve(state, PARTNER, "release").get("success", true), "Established separation bypassed original cast residency")
+			state.npcs.append(cast)
+			state._rebuild_npc_index()
+			_check(_resolve(state, PARTNER, "release").get("success", false), "Confirmed separation became unresolvable after the third person unloaded")
+		else:
+			state.year = int(record.deadline_year) + 1
+			state.scenario_runtime_contract_engine.service_life_stories()
+			state.scenario_runtime_contract_engine.service_life_stories()
+		_check(record.status == "finished" and record.history.size() == 1, "Established separation did not finish exactly once: " + mode)
+		if not record.history.is_empty():
+			_check(record.history[0].choice == "release" and record.history[0].automatic == (mode == "expired"), "Separation completed through the wrong response mode")
+		_check(record.cast_id == cast.id and state.player.bank_balance == 10000 and cast.bank_balance == 10000, "Separation completion changed cast or spent money")
+
+func _test_partner_rejected_actions() -> void:
+	for invalid in ["viewer", "option", "expired"]:
+		var state := _couple()
+		var record := _start_partner(state)
+		var source := _pending(state, PARTNER)
+		if invalid == "expired":
+			state.year = int(record.deadline_year) + 1
+		var before := _snapshot(state, record)
+		var result: Dictionary = state.pending_situations_engine.resolve_pending_contract(str(source.id), "invented" if invalid == "option" else "materials", {"viewer_actor_id":103 if invalid == "viewer" else state.player_id})
+		_check(not result.get("success", true) and _snapshot(state, record) == before, "Rejected partner action changed state: " + invalid)

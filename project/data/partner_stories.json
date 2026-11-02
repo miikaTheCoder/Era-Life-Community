@@ -58,7 +58,7 @@
         },
         "first_attempt": {
           "title": "An uneven first page",
-          "text": "The first pages have rubbed-out lines and an awkward fold. {person} likes one drawing enough to keep going. They ask whether you still want to look at a page together, without taking charge.",
+          "text": "The first pages have rubbed-out lines and an awkward fold. {person} likes one drawing enough to keep going. They ask whether you would like to look at a page together, without taking charge.",
           "deadline": 2,
           "default": "limited",
           "choices": [

@@ -74,7 +74,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop cold-history batching council-approved and integrated; combined checks pass; wider profiling and Portrait open | Verified desktop `018efd9`; preserve remaining device and timing limits |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
-| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Implemented and verified in isolation; council pending | [Implementation brief](docs/DEVELOPMENT-LOOP.md); council review after implementation |
+| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Round-1 council fixes verified in isolation; fresh review pending | [Implementation brief](docs/DEVELOPMENT-LOOP.md); council review after implementation |
 | R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
 
 Record shared items' verification separately for desktop and Portrait. A

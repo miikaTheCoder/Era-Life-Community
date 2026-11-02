@@ -356,3 +356,10 @@ anything, or accessed the owner's desktop or phone. Keep the final committed tre
 frozen for review and preserve ignored `build/partner-evidence/` and the recorded
 regression profiles before retiring it. Port shared gameplay only after review;
 retain Portrait's startup, serialization and touch adaptations and verify them.
+
+
+R11 council follow-up, 2026-11-02: the coordinator fixed both round-1 blockers
+(confirmed-separation liveness and unusable trait buttons), reproduced them with
+regressions, and passed the full 26-test suite plus three private-display cold
+restores. See [the correction record](COUNCIL-PARTNER-STORIES.md). All three
+members must review the corrected commit; no renewed approval is claimed yet.
