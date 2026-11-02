@@ -44,6 +44,14 @@ smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 
 ## Work queue
 
+**Active owner-directed loop, 2026-11-02:** R07 desktop cold-history batching
+is council-approved and integrated at `018efd9`. All 26 combined desktop/Web
+regressions and an isolated cold restore pass. Next is R11, one partnership story
+slice with an inherited memory, followed by its council review. Desktop interactive
+playtesting and Honor checks remain deferred. Portrait has documentation updates
+only; the reliability gameplay port remains open. Existing R09 edits are preserved.
+See [the current development loop](docs/DEVELOPMENT-LOOP.md) for scope and limits.
+
 R01 is **verified** on desktop and in Portrait preview, with evidence below.
 R04 desktop functional readiness is **verified and packaged** for local Linux
 playtesting. R05 is **verified** on desktop, with full routes and cold-Continue
@@ -64,8 +72,9 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R04 | Playtest and package the Shared Lives milestone | Desktop first; Portrait separately | Desktop verified and packaged; Portrait open | Desktop: R01 desktop checks. Portrait: R01 Portrait checks, R02, R03 |
 | R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
 | R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
-| R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop cold-history batching verified offscreen; council review pending; wider profiling and Portrait open | Use stable routes from R01–R03 |
+| R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop cold-history batching council-approved and integrated; combined checks pass; wider profiling and Portrait open | Verified desktop `018efd9`; preserve remaining device and timing limits |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
+| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Selected; implementation queued after verified reliability integration | [Implementation brief](docs/DEVELOPMENT-LOOP.md); council review after implementation |
 | R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
 
 Record shared items' verification separately for desktop and Portrait. A
@@ -279,7 +288,7 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 
 | Date | Item | Task / branch / commit | Outcome and next action |
 | --- | --- | --- | --- |
-| 2026-11-02 | R07 cold Continue reliability | `t3/cold-continue-save-reliability`, based on `5423b0c` | Isolated desktop history hydration batching reduces the measured median tail from 88.071 to 22.169 seconds. Same fixture, three sequential separate-process samples per version; normal 90-second gate retained. All 25 headless tests pass; sibling and business fixtures each complete twelve more real years with repeated exact cold restores and no duplicate settlement. See [performance evidence](docs/COLD-CONTINUE-PERFORMANCE.md). Next: parent-owned council review of this isolated commit, then integrate separately. No Portrait port, owner-desktop access or device certification. |
+| 2026-11-02 | R07 cold Continue reliability | Desktop `018efd9`; council `eralife-cold-continue-20261102-r1` | All three reviewers PASS. Approved batching integrated into main with existing Web edits preserved. All 26 combined regressions and a private-display exact cold restore pass. Original isolated evidence includes 25 regressions and twelve additional real years per sibling/business fixture. Evidence archived in primary `build/reliability-evidence-20261102/`; combined suite `build/tests/headless-bzdntd2o/`. Portrait receives documentation only. Next: R11 content, then separately verified Portrait gameplay port. See [performance evidence](docs/COLD-CONTINUE-PERFORMANCE.md) and [council record](docs/COUNCIL-COLD-CONTINUE.md). |
 | 2026-09-28 | Desktop Web port (user request) | `browser-play`, based on desktop `b399a33` | Web export, normal menu, new narrative life, five years, binary save and browser reload/Continue verified; continued play reached age 7 and a second save was detected after reload. All 23 regressions and native Linux/Windows/macOS/Android exports pass; desktop Household three-year smoke passes. See [Web evidence](docs/WEB.md). No Portrait gameplay port or public hosting is included. |
 | 2026-09-28 | R07 Web startup follow-up (user request) | `browser-play` | Cold Linux probe localized most pre-first-frame time to loading the large main scene; packaged Linux launch measured about 7.2 seconds on this host. Enabled a versioned Web PWA cache for engine and pack. A fresh plain static origin reached the normal intro without a manual refresh after fixing the default shell's service-worker activation race; repeat reload requested neither large file again. Final Web export and 23 regressions passed. See [Web startup evidence](docs/WEB.md). First-visit CPU cost and older Mac performance remain unmeasured; next: profile on representative slower hardware before attempting a large scene split. |
 | 2026-09-26 | Baseline | Desktop `32ad0fb`; Portrait `ebaf71c` | Shared Lives implemented and ported, with the documented validation limits. Next shared implementation item: reproduce R01 on desktop. |

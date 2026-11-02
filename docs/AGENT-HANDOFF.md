@@ -296,23 +296,26 @@ checkout. Gameplay is integrated locally into `main` and `portrait`; no push or
 public release is included. Read [Sibling Stories](SIBLING-STORIES.md) for exact checks, retained
 logs, eligibility and next action. An exact APK on a phone remains unverified.
 
-## R07 cold Continue investigation, 2026-11-02
+## R07 cold Continue integration, 2026-11-02
 
-Isolated desktop branch `t3/cold-continue-save-reliability`, based on `5423b0c`.
-History normalization was processing one saved world event per guarded renderer
-frame. A bounded batch retains every entry, the normalizer, actor checks and the
-normal 90-second gate. Three sequential offscreen samples reduce median hydration
-from 88.071 to 22.169 seconds; history-stage median falls from 68.841 to 3.095.
-See [performance evidence](COLD-CONTINUE-PERFORMANCE.md) for precise boundaries,
-failed diagnostic runs, save checks and remaining verification. All 25 headless
-regressions pass. Sibling and business fixtures each completed twelve additional
-real years, repeated cold saves and final exact restores. Same-year settlement
-checks pass; the copied Portrait fixture also restores on desktop.
+Desktop `018efd9` batches saved world-history normalization while retaining every
+entry, actor guards and the unchanged normal 90-second harness gate. All three
+council members returned PASS for that exact commit. See [the council record](COUNCIL-COLD-CONTINUE.md)
+and [performance evidence](COLD-CONTINUE-PERFORMANCE.md) for scope and limitations.
+The isolated work passed 25 regressions and sibling/business fixtures each completed
+twelve additional real years with exact cold restores and no duplicate settlement.
 
-The parent owns council review and integration. No source is ported to Portrait,
-and the primary checkout's unrelated Web changes are untouched. Private Xvfb
-checks do not establish interactive visual quality or phone behavior. The owner's
-locked desktop and unavailable phone have not been accessed.
+After fast-forward integration, all 26 tests in the combined main working tree
+pass, including existing uncommitted Web presentation work. A further private-display
+cold Continue restores exact saved state. Retained evidence is in the primary
+checkout at `build/reliability-evidence-20261102/`, with combined suite logs in
+`build/tests/headless-bzdntd2o/`. Existing Web source hashes were preserved.
+
+Portrait receives these documentation updates only. The batching implementation
+has not been ported or measured on Portrait. Private Xvfb checks are automated
+evidence, not interactive visual or phone certification. The locked owner desktop
+and unavailable phone were not accessed. R11, *Room for Two Futures*, is next;
+see [the development loop](DEVELOPMENT-LOOP.md). No push or release is included.
 
 ## Leave the next task a usable handoff
 

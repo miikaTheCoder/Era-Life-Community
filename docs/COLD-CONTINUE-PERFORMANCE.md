@@ -212,3 +212,31 @@ by Git. Source, tests, runner and this report are committed together for review.
   freeze this isolated commit for council review, address blocking findings, and
   then integrate intentionally. Shared roadmap synchronization and a separately
   verified Portrait port remain follow-up work.
+
+
+## Council and integration, 2026-11-02
+
+All three independent council members passed exact commit `018efd9`; see
+[the council record](COUNCIL-COLD-CONTINUE.md). The parent fast-forwarded this
+unchanged production commit into `main`, merged local documentation, and verified
+that unrelated Web source hashes remained unchanged. A new combined full suite
+passed all 26 regressions, including the pre-existing Web presentation test.
+Logs: primary `build/tests/headless-bzdntd2o/`. Structure, regenerated code map,
+code-map check and whitespace checks pass.
+
+A further separate-process private-Xvfb sample on the combined main tree passed
+the unchanged hydration timing gate and exact save comparisons. Its output is in
+primary `build/reliability-evidence-20261102/integration-cold-restore/`. This is an
+integration check, not another controlled before/after benchmark. The reviewed
+25-test isolated suite and original failures remain distinct from this new result.
+
+Before retiring the isolated checkout, the parent copied and hash-verified all
+1,475 retained evidence files into primary `build/reliability-evidence-20261102/`.
+The original `build/cold-continue/` and `build/tests/headless-q1r24r0s/` relative
+paths are preserved below that archive, with `SHA256-MANIFEST.json` beside them.
+Local-change backups are in `build/recovery/reliability-integration-20261102-wpgqxkk_/`.
+
+Portrait receives documentation only in this step. No native Portrait performance,
+phone, interactive visual, public release or deployment result is claimed. The
+next content task starts from the integrated fix. Optional council suggestions
+remain recorded as follow-ups; they were not blocking conditions for this commit.
