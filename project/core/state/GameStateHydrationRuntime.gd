@@ -1194,19 +1194,21 @@ func _hydrate_checkpoint_non_npc_entity_state(
 				)
 			)
 
-			if world_feed_cursor < gs.world_feed.size():
-				gs.world_feed [
-					world_feed_cursor
-				] = gs.normalize_world_feed_entry(
-					gs.world_feed [
-						world_feed_cursor
-					]
+			# A history batch is one bounded hydration unit. The actor guard can
+			# exhaust the outer slice before this work starts, so give the batch
+			# its own 1 ms work deadline. Full guard cost remains in the slice
+			# report, and actor verification still surrounds every batch.
+			var feed_started_usec := Time.get_ticks_usec()
+			var feed_batch_end := mini(world_feed_cursor + 32, gs.world_feed.size())
+			while world_feed_cursor < feed_batch_end:
+				gs.world_feed[world_feed_cursor] = gs.normalize_world_feed_entry(
+					gs.world_feed[world_feed_cursor]
 				)
-
-				active_hydration_session [
-					"checkpoint_world_feed_cursor"
-				] = world_feed_cursor + 1
-
+				world_feed_cursor += 1
+				if Time.get_ticks_usec() - feed_started_usec >= 1000:
+					break
+			active_hydration_session["checkpoint_world_feed_cursor"] = world_feed_cursor
+			if world_feed_cursor < gs.world_feed.size():
 				return false
 
 		5:
