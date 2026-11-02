@@ -1,5 +1,9 @@
 # Desktop browser export
 
+For mobile-browser coverage, the R09 [audit and device matrix](MOBILE-WEB-AUDIT.md)
+records the Honor 400 Lite/Brave readability failure and initial Web reflow.
+The rebuilt phone check and Safari validation remain open. Native Portrait is separate.
+
 Browser support lives on `main`, alongside the desktop game. The completed
 `browser-play` work was preserved in `cd6ca7d` and merged with the newer desktop
 fixes. It exports the existing game with Godot **4.4.1 stable**. Gameplay, the

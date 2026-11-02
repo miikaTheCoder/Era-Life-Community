@@ -26678,7 +26678,7 @@ func _presentation_density_context(
 		_presentation_physical_viewport_size()
 	)
 
-	return {
+	return WebSupport.augment_density_context({
 		"physical_viewport_width": physical_size.x,
 		"physical_viewport_height": physical_size.y,
 
@@ -26697,7 +26697,7 @@ func _presentation_density_context(
 		"desktop_presentation": not MobileSupport.is_enabled(),
 		"mobile_presentation": MobileSupport.is_enabled(),
 		"ui_is_expression_only": true
-	}
+	})
 
 
 func _resolve_presentation_density_contract(
@@ -178739,6 +178739,7 @@ func _continue_post_spawn_world_prewarm_idle_tick(boot_ticket: int = -1, pass_in
 	)
 func _enter_tree() -> void:
 	MobileSupport.configure(self)
+	WebSupport.configure(self)
 
 	set_anchors_and_offsets_preset(
 		Control.PRESET_FULL_RECT
@@ -178792,7 +178793,7 @@ func _enter_tree() -> void:
 	var density_contract: Dictionary = (
 		UIContractEngine
 		.resolve_presentation_density_bootstrap_contract(
-			density_context
+			WebSupport.augment_density_context(density_context)
 		)
 	)
 

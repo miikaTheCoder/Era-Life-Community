@@ -3,6 +3,8 @@
 # Local Python tooling bytecode.
 __pycache__/
 *.pyc
+# Local project brainstorming, not part of the shared roadmap.
+/docs/LOCAL-ROADMAP-IDEAS.md
 # Never commit Android signing keys or machine-specific SDK configuration.
 *.keystore
 *.jks

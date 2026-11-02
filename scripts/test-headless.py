@@ -74,6 +74,8 @@ def main():
         arguments = ["--script", str(available[name])]
         if name in ("test_mobile", "test_mobile_scroll"):
             arguments += ["--", "--mobile-preview"]
+        if name == "test_web_presentation":
+            arguments += ["--", "--web-preview"]
         if not run(binary, arguments, run_dir / name, args.timeout, require_pass=True):
             failed.append(name)
     print(f"{len(failed)} failed / {len(args.tests or available)} tests", flush=True)

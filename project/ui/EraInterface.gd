@@ -154,6 +154,14 @@ func _style(control: Control) -> void:
 			control.color = Color(Design.CANVAS, control.color.a)
 		if "sheen" in key or "glow" in key or "lightsweep" in key:
 			control.self_modulate.a = 0.0
+	if WebSupport.is_narrow(host):
+		if control is Label or control is BaseButton or control is LineEdit:
+			control.add_theme_font_size_override("font_size", maxi(16, control.get_theme_font_size("font_size")))
+		if control is BaseButton or control is LineEdit or control is SpinBox:
+			control.custom_minimum_size.y = maxf(48.0, control.custom_minimum_size.y)
+		if control is OptionButton:
+			control.get_popup().add_theme_font_size_override("font_size", 16)
+			control.get_popup().add_theme_constant_override("v_separation", 16)
 	control.end_bulk_theme_override()
 
 func _style_button(button: Button) -> void:

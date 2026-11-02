@@ -333,6 +333,15 @@ Retain the first desktop hydration timeout and intermittent plain-static-host
 reload stall described in the Web guide. Use the supplied preview server;
 public hosting and Portrait gameplay ports remain separate work.
 
+R09's 2026-09-30 [mobile Web audit](MOBILE-WEB-AUDIT.md) records real Honor
+400 Lite/Brave access and unreadable desktop-width menu/form screenshots.
+The initial Web reflow on `main` passes 24 regressions, Web export, native desktop
+God Mode entry/year/save and narrow desktop-browser visual checks. Reconnect the
+charging Honor and forward port 8072 for the rebuilt touch/keyboard check.
+That phone retest, full mobile save/Continue and Safari remain open. This is Web
+presentation work, not a native Portrait port. Existing local changes are retained;
+no push was performed.
+
 Keep this guide aligned on both active branches when their locations, porting
 workflow, or status changes. Record the target branch and commit, what changed,
 checks actually run and their log locations, artifact path, unresolved failures,

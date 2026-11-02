@@ -298,6 +298,11 @@ static func _resolve_presentation_density_contract_pure(
 	# 1440-wide stage. High-resolution displays still get proportional scaling.
 	if desktop_presentation:
 		ui_scale = clampf(minf(usable_width / 1920.0, usable_height / 1080.0), 1.0, 2.0)
+	# Browser backing buffers include device pixel ratio. Keep UI units in CSS
+	# pixels so a high-DPI phone does not receive a desktop-width logical canvas.
+	var web_css_width: float = float(context.get("web_css_viewport_width", 0.0))
+	if web_css_width > 0.0:
+		ui_scale = usable_width / web_css_width
 
 	if not desktop_presentation and not mobile_presentation:
 		ui_scale = (

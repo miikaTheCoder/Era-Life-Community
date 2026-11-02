@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-374 scripts; 927,346 source lines.
+375 scripts; 927,417 source lines.
 
 ## Largest files
 
@@ -20,7 +20,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Lines | Functions |
 | --- | ---: | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | 227,998 | 3107 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | 227,999 | 3107 |
 | [GameState.gd](../project/core/state/GameState.gd) | 23,381 | 337 |
 | [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,662 | 147 |
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
@@ -173,6 +173,12 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | --- | --- | ---: |
 | [MobileScrollGestures.gd](../project/platform/mobile/MobileScrollGestures.gd) | - | 14 |
 | [MobileSupport.gd](../project/platform/mobile/MobileSupport.gd) | MobileSupport | 9 |
+
+## project/platform/web
+
+| Script | Global class | Functions |
+| --- | --- | ---: |
+| [WebSupport.gd](../project/platform/web/WebSupport.gd) | WebSupport | 5 |
 
 ## project/scenes
 
@@ -661,7 +667,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [GodModeViewer.gd](../project/ui/viewers/GodModeViewer.gd) | GodModeViewer | 166 |
+| [GodModeViewer.gd](../project/ui/viewers/GodModeViewer.gd) | GodModeViewer | 167 |
 | [PlayableLifeViewer.gd](../project/ui/viewers/PlayableLifeViewer.gd) | PlayableLifeViewer | 16 |
 | [PopulationLensViewer.gd](../project/ui/viewers/PopulationLensViewer.gd) | PopulationLensViewer | 21 |
 | [PopupViewer.gd](../project/ui/viewers/PopupViewer.gd) | PopupViewer | 33 |

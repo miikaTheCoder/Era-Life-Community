@@ -60,7 +60,7 @@ var last_name_edit: LineEdit = null
 var gender_picker: OptionButton = null
 var birth_year_spin: SpinBox = null
 var birth_year_picker: OptionButton = null
-var birth_year_custom_row: HBoxContainer = null
+var birth_year_custom_row: BoxContainer = null
 var birth_year_custom_edit: LineEdit = null
 var birth_month_picker: OptionButton = null
 var birth_day_spin: SpinBox = null
@@ -70,7 +70,7 @@ var country_picker: OptionButton = null
 var state_picker: OptionButton = null
 var city_picker: OptionButton = null
 var social_class_picker: OptionButton = null
-var royal_rank_row: HBoxContainer = null
+var royal_rank_row: BoxContainer = null
 var royal_rank_picker: OptionButton = null
 var presidential_parents_check: CheckBox = null
 
@@ -1199,6 +1199,7 @@ func _build() -> void:
 	margin.add_child(layout)
 	layout.add_child(scroll)
 	scroll.follow_focus = true
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 
 	scroll_bar = scroll.get_v_scroll_bar()
 	if scroll_bar != null and is_instance_valid(scroll_bar):
@@ -1516,6 +1517,22 @@ func _build() -> void:
 	_refresh_location_pickers()
 	_refresh_preview()
 	MobileSupport.adapt_form(self)
+	resized.connect(_layout_web_form)
+	_layout_web_form()
+
+
+func _layout_web_form() -> void:
+	if not WebSupport.is_enabled() or root == null:
+		return
+	var narrow := WebSupport.is_narrow(self)
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 12 if narrow else 28)
+	for child in root.get_children():
+		if child is BoxContainer and child.has_meta("web_form_row"):
+			child.vertical = narrow
+			if child.get_child(0) is Label:
+				child.get_child(0).custom_minimum_size.x = 0 if narrow else 150
+	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 func _build_subtitle_rich_label() -> void:
 	if subtitle_label != null and is_instance_valid(subtitle_label):
 		return
@@ -1536,7 +1553,8 @@ func _build_subtitle_rich_label() -> void:
 	_update_subtitle_rich_text()
 
 func _build_mode_picker() -> void:
-	var row:= HBoxContainer.new()
+	var row:= BoxContainer.new()
+	row.set_meta("web_form_row", true)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 10)
 	root.add_child(row)
@@ -1723,8 +1741,9 @@ func _add_slider(label_text: String, min_value: float, max_value: float, default
 
 	_update_stat_energy_bar(slider, true)
 	return slider
-func _row(label_text: String) -> HBoxContainer:
-	var row:= HBoxContainer.new()
+func _row(label_text: String) -> BoxContainer:
+	var row:= BoxContainer.new()
+	row.set_meta("web_form_row", true)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 12)
 

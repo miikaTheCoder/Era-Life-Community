@@ -17,7 +17,9 @@ preserved. See [the conversion record](docs/BRANCHES.md#standalone-repository).
 Build lives worth continuing: recurring people with their own decisions, work and
 family choices that affect each other, and consequences that survive into the
 next generation. Ship bounded, playable additions. Develop shared gameplay on
-**desktop first**, then adapt and verify it in **Portrait**.
+**desktop first**, then adapt and verify it in **Portrait**. The Web export is
+another delivery target; mobile browsers need their own usability checks and are
+separate from the native Portrait app.
 
 A roadmap helps the project stay active when each task leaves a tested result and
 a clear next step. This file is a priority queue, not a calendar promise or an
@@ -36,6 +38,7 @@ support them. Proposed content below can change with playtesting and user input.
 | Sibling and partner stories | Four more stories; 14 total across five catalogs on desktop and Portrait, with saved cast and inherited consequences |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
 | Browser target | Integrated into `main`; Web export, narrative entry, save/reload/Continue and continued play verified on the preview server. Intermittent plain-static-host reload stall remains open; see [Web evidence](docs/WEB.md) |
+| Mobile browser | Honor 400 Lite/Brave boot, menu and God Mode form observed; readability failure reproduced. Web reflow built and desktop-browser checked; updated phone test and Safari remain open |
 | Release status | Current desktop work is integrated into `main`; phone work is on `portrait`. Source integration does not publish a release or certify an APK on a device |
 
 These are dated results, not certification of future commits. The exact evidence
@@ -78,6 +81,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
 | R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop + Portrait | Implemented, verified and council-approved on both | Natural-family pacing and exact Honor APK check remain open |
 | R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
+| R09 | Make the Web game playable on mobile browsers | Web: Android and iOS browsers | Phone readability failure reproduced; Web reflow built; Honor retest pending; iOS unavailable | Reconnect Honor and test readable entry, touch scrolling and keyboard; see [audit](docs/MOBILE-WEB-AUDIT.md) |
 
 Record shared items' verification separately for desktop and Portrait. A
 Portrait-only blocker need not stop desktop R04 or R05, and public release
@@ -275,6 +279,36 @@ one working arc using the guide without modifying core gameplay code. Verify old
 saves and built-in stories still work. Defer a visual editor or marketplace expansion
 until the basic authoring workflow has been used successfully.
 
+### R09: Make the Web game playable on mobile browsers
+
+This is separate from the native Portrait app. Start by opening the current Web
+export on a real phone and recording what works before changing the shared desktop
+interface.
+
+**Initial audit 2026-09-30:** Honor 400 Lite with Brave is available to the owner,
+but no ADB device is currently connected. No Apple device is available. The existing
+Web export booted and reached the adventure library in narrow desktop Brave;
+text was unreadable and the mode menu retained three columns. This is desktop
+simulation evidence, not a phone pass. See the [device matrix, findings, and
+next test route](docs/MOBILE-WEB-AUDIT.md). R09 remains unverified.
+
+**Readability follow-up 2026-09-30:** USB forwarding established real Honor/Brave
+access. Owner screenshots confirm the desktop-width menu and small God Mode form.
+Web presentation now accounts for browser CSS pixels and device pixel ratio;
+mode cards and form rows stack at phone widths, controls have 48-pixel targets,
+and touch gesture handling is enabled for Web. All 24 regressions, Web export,
+and native desktop God Mode entry/year/save passed. The rebuilt browser was
+visually checked at 393x700 CSS pixels and returned to desktop rows at 1440x900.
+Honor recheck is pending while the device charges. Full mobile play/save/Continue
+and Safari remain open; this is not a native Portrait port.
+
+**Done when:** a player can enter a life, make story choices, age up, navigate the
+main surfaces, save, reload, and Continue using touch controls. Text and controls
+remain usable at phone widths, and browser storage preserves the save on the same
+device and origin. Verify at least one current Android browser and one iOS browser;
+record any unsupported browser or device separately. Check the published HTTPS
+host as well as the local preview when deployment is available.
+
 ## Keeping this roadmap alive
 
 At the end of each roadmap task, update its status and the log below with a commit,
@@ -318,6 +352,12 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 | 2026-09-28 | Browser integration and branch retirement | Completed browser `cd6ca7d` into desktop `main` | All 23 regressions, Web export/checksums, native Household three-year save and repeat cold Continue passed. Browser narrative entry, age/save/reload/Continue and another year passed through the supplied preview server. Retained one native hydration timeout that passed on repeat and an intermittent plain-static-host reload stall. The browser checkout and evidence are archived; only `main` and `portrait` remain as development branches. Portrait received shared documentation only. Next: reproduce the loading timing failures under R07 before public browser hosting. See [Web integration evidence](docs/WEB.md#integration-into-main-2026-09-28). |
 
 | 2026-09-28 | Portrait phone repair and session check | `portrait` at `0eb9293`; desktop `main` unchanged | R02 passed five Character, Android Back, Menu, Back cycles on Honor. God Mode Begin Life reached playable life once. Household creation reached Ada, Bea and Cora; Ada aged from 25 to 29 and saved. Native Continue crashed in earlier APKs at about 65,000 memory mappings. The reduced-copy APK restored Ada at age 29 in 2004 with $10,000 and the 2001 to 2004 journal after a full process stop. Portrait focused regressions and 420x900 graphical checks passed. Next: verify household cast after restore, make a meaningful choice on Honor, repeat the full cold session, and repeat God Mode entry. |
+
+| 2026-09-28 | R09 planning | Desktop `main`; documentation only | Added mobile-browser playability as a separate Web target from native Portrait. No phone-browser checks run. Next: audit the current Web export on real Android and iOS browsers, then scope touch and layout fixes from observed gaps. |
+
+| 2026-09-30 | R09 initial audit | Desktop/browser `main` at `c60a48a`; documentation only; existing local changes preserved | Established Honor 400 Lite/Brave target and lack of Apple access. Existing export checksums passed; narrow desktop Brave boot and adventure-library entry passed, but text was unreadable. T3 preview unavailable; connected Brave extension used. No phone, touch, save/Continue or Safari pass claimed. Next: connect Honor, record browser/OS versions, and repeat on the loopback preview through ADB reverse. See [audit](docs/MOBILE-WEB-AUDIT.md). |
+
+| 2026-09-30 | R09 Web readability | Desktop/browser `main` at `c60a48a` with local changes; no push | Honor/Brave connected and owner screenshots reproduced small menu/form text. Added CSS-pixel density, vertical form rows, larger targets and Web touch scrolling. 24/24 regressions, Web export, native desktop God Mode entry/year/save, graphical fixture and rebuilt browser reflow passed. Next: reconnect charging Honor, forward port 8072 and verify touch scrolling, keyboard and later full save/Continue. Safari remains unavailable. See [audit](docs/MOBILE-WEB-AUDIT.md). |
 
 | 2026-10-02 | R10 sibling stories | Desktop content `3ff2e9a`; Portrait shared port `fd3488c` and touch harness `6ff438c`, integrated locally into `main` and `portrait` | Two stories, ten chapters and thirty responses; 24 desktop and 28 Portrait regressions pass. Desktop full-catalog sixteen-year arc and repeated cold Continue preserve state. Portrait 420x900 and 360x640 swipes/taps and diagnostic cold restores preserve the same cast, choices, money and diary. Signed ARM64 APK built with matching local test certificate and all four content hashes. Exact phone check unavailable; normal 90-second hydration timing fails on Portrait and intermittently on desktop. Next: exact Honor APK session, then R07 timing profile. See [evidence](docs/SIBLING-STORIES.md). |
 
