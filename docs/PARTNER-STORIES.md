@@ -107,11 +107,11 @@ The normal 90-second hydration gate is unchanged. These checks do not reduce the
 population or omit simulation phases. They do not certify interactive visual
 quality, natural discovery rates, lifetime pacing or phone usability.
 
-Verification results and exact retained profile paths are recorded below before
-handoff. Parent coordination owns council reviews and later integration. Portrait
-porting remains separate: retain its lazy startup, touch viewer, shell and save
-adaptations, then rerun shared tests and phone-sized graphical checks. No APK,
-Web deployment, release, primary-workspace edit or Portrait port is part of R11.
+The original isolated implementation evidence is recorded below. Council and
+desktop integration are complete as described at the end of this document.
+Portrait porting remains separate: retain its lazy startup, touch viewer, shell
+and save adaptations, then rerun target tests and phone-sized graphical checks.
+No APK, Web deployment or public release is claimed here.
 
 ### Retained regression evidence
 
@@ -171,8 +171,8 @@ certification. The decoded binary summary is
 
 Deferred: interactive natural-family pacing, a full birth-to-death playthrough,
 Portrait port and phone-sized adaptation, exact Honor testing, mobile Web and
-other platforms. Council review is pending with the parent. The clean committed
-implementation is a review candidate, not integrated or released content.
+other platforms. The corrected desktop implementation is council-approved and integrated locally.
+See the integration record below; no release or Portrait pass is claimed.
 
 Final focused rerun: `build/tests/headless-0ykofa3t/`, **3/3 PASS** (partner,
 original Life Stories, sibling stories). This follows the full suite and cold
@@ -198,4 +198,23 @@ notebook, practical-help and independent-ending choices and an exact final
 2012 restore. See [the council correction record](COUNCIL-PARTNER-STORIES.md)
 for pre-fix failures, complete test paths, screenshot inspection and limitations.
 The original thirteen-year cycle remains separate historical evidence. Fresh
-council review of the corrected commit is pending; it is not integrated.
+reviews from all three council members now pass exact corrected commit `954645b`.
+
+
+### Approved desktop integration
+
+All three council members passed `954645b`; see
+[the full council record](COUNCIL-PARTNER-STORIES.md). The unchanged reviewed
+commit is on main. All 27 combined regressions pass in
+`build/tests/headless-_y9erp29/`, including the existing local Web test. A further
+private-Xvfb integration route restores exact saved state, makes the visible
+materials payment, advances one real year and saves. The unchanged hydration
+gate is retained. Evidence is in
+`build/partner-evidence-20261102/integration-check/`.
+
+All 1,288 source evidence files are archived and hash-verified in primary
+`build/partner-evidence-20261102/`, preserving their original `build/` hierarchy.
+Source worktree paths above are historical. The original failures and diagnostics
+remain recorded. Portrait receives this evidence document only until the
+separate shared-code port and verification. No phone, interactive pacing or
+public release claim is added by integration.

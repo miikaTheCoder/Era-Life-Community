@@ -49,7 +49,8 @@ optional future coverage suggestion, not a demonstrated compatibility defect.
 
 ## Correction evidence
 
-All paths below are relative to the isolated story checkout until archived.
+The source-relative paths below are retained under the primary checkout archive
+`build/partner-evidence-20261102/`. Earlier failures remain included.
 
 - `build/tests/headless-b7d8_l6k/`: initial new regression failed for both
   blockers. Its cached-view setup used the source ID rather than the view ID;
@@ -88,8 +89,47 @@ The graphical route has no company; company separation remains regression
 evidence. These checks do not certify phone behavior, interactive pacing,
 native Portrait, every interruption via a desktop UI, or a full lifetime.
 
-## Next review
+## Round 2, 2026-11-02
 
-The corrected commit requires fresh reviews from all three members because
-shared resolution/presentation and content changed. No unanimous approval,
-integration or Portrait port is claimed by this correction record.
+Consultation `eralife-partner-20261102-r2` reviewed exact corrected head
+`954645ba8ee027d58929400c75e332a2e3c98b11`, against base `57c626a` and the
+round-1 candidate `572988e`. All three used Codex, xhigh reasoning and priority
+service. The frozen checkout was clean.
+
+**APPROVED: The council gives its blessing.**
+
+- Security, GPT-6 Astra: **PASS**. Authorization, payment and privacy guards
+  remain intact; recorded separation and source-owned view caches are corrected.
+- UI/UX/Design, GPT-6.1 Sol: **PASS**. Corrected screenshots show exactly four,
+  three and three authored buttons, readable terms and the fresh invitation.
+- Technical, GPT-6 Astra: **PASS**. Manual and expired separation completion
+  work after the third person unloads; old-cache rebuilding and ordinary trait
+  behavior have meaningful regression coverage.
+
+All inspected source and retained evidence without rerunning Godot. The UX
+reviewer verified all 133 manifest entries; the other reviewers independently
+checked relevant logs, screenshots and hashes. No blocking objections remain.
+Optional follow-ups are explicit old inherited-context rendering cases and
+corrupt separation-marker validation. Neither is a demonstrated normal-save
+failure or an integration condition.
+
+## Local integration
+
+The parent fast-forwarded the unchanged reviewed commit into main, preserving
+the unrelated Web edits. All 27 combined regression logs pass, including the
+Web presentation test, in `build/tests/headless-_y9erp29/`. Structure, regenerated
+code map/check and whitespace checks pass. An additional sequential private-Xvfb
+run restores the copied pre-payment checkpoint exactly, resolves the visible
+materials choice, advances one real year and saves with the normal hydration
+gate. Evidence: `build/partner-evidence-20261102/integration-check/`.
+
+The parent copied and hash-verified all 1,288 retained files before retiring the
+isolated checkout. `SHA256-MANIFEST.json` records the archive, with the original
+`build/tests/` and `build/partner-evidence/` paths preserved below it. Backup of
+local changes: `build/recovery/partner-integration-20261102-ql69q6a3/`.
+
+This approves the bounded desktop feature, not natural-player pacing, a full
+lifetime, Portrait, mobile Web or an exact phone APK. The logs retain known
+snapshot/projection/watchdog diagnostics and resource-exit warnings. Company
+isolation is regression evidence; the graphical route has no company. Next:
+the separately verified Portrait port. No public push or release is included.

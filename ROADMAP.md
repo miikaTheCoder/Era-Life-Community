@@ -44,13 +44,14 @@ smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 
 ## Work queue
 
-**Active owner-directed loop, 2026-11-02:** R07 desktop cold-history batching
-is council-approved and integrated at `018efd9`. All 26 combined desktop/Web
-regressions and an isolated cold restore pass. Next is R11, one partnership story
-slice with an inherited memory, followed by its council review. Desktop interactive
-playtesting and Honor checks remain deferred. Portrait has documentation updates
-only; the reliability gameplay port remains open. Existing R09 edits are preserved.
-See [the current development loop](docs/DEVELOPMENT-LOOP.md) for scope and limits.
+**Active owner-directed loop, 2026-11-02:** desktop reliability `018efd9`
+and partnership content `954645b` have unanimous council approval and are
+integrated locally. All 27 combined desktop/Web regressions pass, followed by
+an exact cold restore, visible materials payment and one-year save. Next: port
+these shared changes to Portrait and audit existing R09 Web work separately.
+Portrait currently has documentation only for these two changes. Interactive
+family playtesting and Honor checks remain deferred. Existing Web edits are
+preserved. See [the development loop](docs/DEVELOPMENT-LOOP.md).
 
 R01 is **verified** on desktop and in Portrait preview, with evidence below.
 R04 desktop functional readiness is **verified and packaged** for local Linux
@@ -74,7 +75,7 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Desktop cold-history batching council-approved and integrated; combined checks pass; wider profiling and Portrait open | Verified desktop `018efd9`; preserve remaining device and timing limits |
 | R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
-| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Round-1 council fixes verified in isolation; fresh review pending | [Implementation brief](docs/DEVELOPMENT-LOOP.md); council review after implementation |
+| R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop first, then Portrait | Council-approved and integrated on desktop; 27 combined regressions and cold integration route pass | Port shared changes to Portrait, then council review; interactive pacing and exact phone check remain open |
 | R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
 
 Record shared items' verification separately for desktop and Portrait. A
@@ -288,6 +289,7 @@ rerunning gameplay; a gameplay change follows the checks in `AGENTS.md`.
 
 | Date | Item | Task / branch / commit | Outcome and next action |
 | --- | --- | --- | --- |
+| 2026-11-02 | R11 partnership stories | Desktop `954645b`; council `eralife-partner-20261102-r2` | All three reviewers PASS after fixes for separation liveness and unusable trait buttons. Integrated unchanged, preserving local Web work. All 27 combined regressions and a private-display exact cold restore, materials payment and one-year save pass. Nine chapters and 26 responses; original thirteen-year route and four cold restores retained. Archived 1,288 files in `build/partner-evidence-20261102/`. Portrait receives documentation only at this step. Next: shared Portrait port and separate Web audit. See [council record](docs/COUNCIL-PARTNER-STORIES.md). |
 | 2026-11-02 | R07 cold Continue reliability | Desktop `018efd9`; council `eralife-cold-continue-20261102-r1` | All three reviewers PASS. Approved batching integrated into main with existing Web edits preserved. All 26 combined regressions and a private-display exact cold restore pass. Original isolated evidence includes 25 regressions and twelve additional real years per sibling/business fixture. Evidence archived in primary `build/reliability-evidence-20261102/`; combined suite `build/tests/headless-bzdntd2o/`. Portrait receives documentation only. Next: R11 content, then separately verified Portrait gameplay port. See [performance evidence](docs/COLD-CONTINUE-PERFORMANCE.md) and [council record](docs/COUNCIL-COLD-CONTINUE.md). |
 | 2026-09-28 | Desktop Web port (user request) | `browser-play`, based on desktop `b399a33` | Web export, normal menu, new narrative life, five years, binary save and browser reload/Continue verified; continued play reached age 7 and a second save was detected after reload. All 23 regressions and native Linux/Windows/macOS/Android exports pass; desktop Household three-year smoke passes. See [Web evidence](docs/WEB.md). No Portrait gameplay port or public hosting is included. |
 | 2026-09-28 | R07 Web startup follow-up (user request) | `browser-play` | Cold Linux probe localized most pre-first-frame time to loading the large main scene; packaged Linux launch measured about 7.2 seconds on this host. Enabled a versioned Web PWA cache for engine and pack. A fresh plain static origin reached the normal intro without a manual refresh after fixing the default shell's service-worker activation race; repeat reload requested neither large file again. Final Web export and 23 regressions passed. See [Web startup evidence](docs/WEB.md). First-visit CPU cost and older Mac performance remain unmeasured; next: profile on representative slower hardware before attempting a large scene split. |
@@ -323,19 +325,21 @@ and leave a verified result or a precise handoff.”** The user's current task
 always takes precedence over this suggested queue.
 
 
-### R11 implementation handoff, 2026-11-02
+### R11 desktop integration, 2026-11-02
 
-`t3/partner-futures-story` is isolated from desktop base `57c626a`.
 *Room for Two Futures* and *The Plans They Kept* add nine chapters and 26
-responses through LifeStoryEngine, without a new narrative owner or save version.
-The partner has independent ambitions and can decline shared work. Optional
-personal payments never purchase consent or use company reserves. Confirmed
-separation and death preserve the original cast; the child can interpret an
-actual completed public outcome without rewriting it.
+responses. The partner can pursue their own work and decline joint involvement.
+Optional personal support never purchases consent or spends company reserves.
+Original cast, confirmed separation, death and public inherited outcomes use
+existing owners and version 1 saves.
 
-Verification and retained profiles: [Partner Stories](docs/PARTNER-STORIES.md).
-Verified: 26 regressions, all 26 responses, thirteen real simulation years and
-four exact cold restores on private Xvfb with the normal hydration gate. Next:
-the parent's three independent council reviews, then integration after review. Portrait port,
-interactive natural pacing and exact phone checks remain separate. Existing R09
-Web changes and both permanent checkouts are untouched by this implementation.
+All three council members approved corrected commit `954645b`, integrated into
+main unchanged. All 27 combined regressions pass, including local Web work, and
+a private-display integration run restores exact state, resolves the visible
+materials payment and saves after one real year. Detailed evidence and limits:
+[Partner Stories](docs/PARTNER-STORIES.md) and
+[council record](docs/COUNCIL-PARTNER-STORIES.md).
+
+Next: port shared reliability and story changes to Portrait while preserving its
+startup, serialization and touch adaptations. Actual phone verification and
+interactive natural pacing remain deferred. No push or release is included.

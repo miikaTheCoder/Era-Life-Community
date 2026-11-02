@@ -314,7 +314,7 @@ checkout at `build/reliability-evidence-20261102/`, with combined suite logs in
 Portrait receives these documentation updates only. The batching implementation
 has not been ported or measured on Portrait. Private Xvfb checks are automated
 evidence, not interactive visual or phone certification. The locked owner desktop
-and unavailable phone were not accessed. R11, *Room for Two Futures*, is next;
+and unavailable phone were not accessed. R11 is now integrated on desktop;
 see [the development loop](DEVELOPMENT-LOOP.md). No push or release is included.
 
 ## Leave the next task a usable handoff
@@ -338,28 +338,32 @@ in its owning document and link it here. A new task should be able to distinguis
 implemented code, verified behavior, and remaining work without reading chat history.
 
 
-## R11 isolated content candidate, 2026-11-02
+## R11 desktop integration, 2026-11-02
 
-`t3/partner-futures-story` implements *Room for Two Futures* and *The Plans
-They Kept* from desktop base `57c626a`. See [Partner Stories](PARTNER-STORIES.md)
-for eligibility, nine chapters/26 responses, trust and separation contracts,
-full-catalog and save evidence, exact logs and limitations. All 26 regressions
-and thirteen real simulation years with four exact private-display cold restores
-passed. The original partner
-stays cast through absence, breakup, remarriage and death. Independent pursuits
-are a valid complete ending; optional $150/$75 Modern Era personal support never
-purchases joint consent or spends company reserves.
+*Room for Two Futures* and *The Plans They Kept* are integrated into desktop
+main at reviewed commit `954645b`. All three council members returned PASS in
+round 2 after the coordinator fixed confirmed-separation liveness and unusable
+generic trait responses. See [Partner Stories](PARTNER-STORIES.md) and
+[the council record](COUNCIL-PARTNER-STORIES.md).
 
-The parent owns the three council reviews and integration. This isolated task
-has not edited main's unrelated Web changes or the Portrait checkout, published
-anything, or accessed the owner's desktop or phone. Keep the final committed tree
-frozen for review and preserve ignored `build/partner-evidence/` and the recorded
-regression profiles before retiring it. Port shared gameplay only after review;
-retain Portrait's startup, serialization and touch adaptations and verify them.
+The slice has nine chapters and 26 responses, with independent partner outcomes,
+optional personal support, original-cast retention and a public inherited memory.
+The isolated full suite passed 26 tests, and its original real-simulation route
+covered thirteen years and four exact cold restores. The integrated main tree
+passes all 27 tests including existing local Web work. A further private-display
+run restores exact state, pays for materials through the visible choice, advances
+one real year and saves. It retains the normal 90-second hydration gate.
 
+Source hashes for unrelated Web work are preserved. All 1,288 retained story
+evidence files were copied and hash-verified under primary
+`build/partner-evidence-20261102/`, preserving source-relative `build/tests/`
+and `build/partner-evidence/` paths. Combined tests are in
+`build/tests/headless-_y9erp29/`; the integration run is in the archive's
+`integration-check/`. Earlier failed runs and runtime diagnostics remain visible.
 
-R11 council follow-up, 2026-11-02: the coordinator fixed both round-1 blockers
-(confirmed-separation liveness and unusable trait buttons), reproduced them with
-regressions, and passed the full 26-test suite plus three private-display cold
-restores. See [the correction record](COUNCIL-PARTNER-STORIES.md). All three
-members must review the corrected commit; no renewed approval is claimed yet.
+Portrait receives documentation only at this step. Next: port the approved
+reliability and story changes, preserving lazy startup, serialization and touch
+presentation, then verify and consult the council. Separately audit existing R09
+Web work for issues verifiable without the phone. Natural pacing, actual Honor
+checks and mobile-browser keyboard/storage behavior remain unverified. No push,
+public release or access to the locked desktop is included.
