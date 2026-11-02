@@ -20,11 +20,13 @@ It does not schedule recurring work or expand the roadmap indefinitely.
    previews at 420x900 and 360x640, full target regressions and separate-process
    save/Continue. Preserve the normal hydration timing gate. Consult all three
    council members on the completed port. Actual phone verification stays open.
-4. **Mobile Web separately.** Audit the existing unfinished R09 changes without
-   altering them during discovery. Address only independently reproducible
-   issues that can be verified without the owner's phone or desktop. If none
-   is established, retain the phone retest as the next action. Native contract
-   tests do not establish browser touch, keyboard or storage behavior.
+4. **Mobile Web configuration repair in progress.** Read-only R09 discovery
+   found the exported Godot virtual-keyboard path disabled. A one-option source
+   shell repair passes the real JavaScript configuration/gate check, which fails
+   before the fix. Fresh export and adjacent Godot checks wait until Portrait
+   timing work finishes, followed by council review. See
+   [keyboard evidence](WEB-KEYBOARD.md). Existing layout work is preserved.
+   Native contract tests do not establish browser touch, keyboard or storage.
 
 ## Coordination and evidence
 

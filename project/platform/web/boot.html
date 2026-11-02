@@ -208,6 +208,7 @@ const engine = new Engine(GODOT_CONFIG);
 		sessionStorage.removeItem('eralife-isolation-retry');
 		setStatusMode('progress');
 		engine.startGame({
+			'experimentalVK': true,
 			'onProgress': function (current, total) {
 				if (current > 0 && total > 0) {
 					statusProgress.value = current;
