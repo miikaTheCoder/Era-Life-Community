@@ -4,8 +4,8 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 mode="${1:-household}"
 story="${ERA_FAMILY_STORY:-household_balance}"
 case "$story" in
-    household_balance|sibling_fairness|partner_futures) ;;
-    *) echo "ERA_FAMILY_STORY must be household_balance, sibling_fairness or partner_futures." >&2; exit 2 ;;
+    household_balance|sibling_fairness|partner_futures|child_ambitions|adult_friendship) ;;
+    *) echo "ERA_FAMILY_STORY must name a supported family story." >&2; exit 2 ;;
 esac
 export ERA_FAMILY_STORY="$story"
 case "$mode" in
@@ -24,6 +24,12 @@ fi
 mkdir -p "$profile_dir"
 profile_dir="$(cd -- "$profile_dir" && pwd)"
 if [[ "$mode" == cycle ]]; then
+    if [[ "$story" == child_ambitions || "$story" == adult_friendship ]]; then
+        ERA_YEARS=1 ERA_RUN_LABEL=entry bash "$0" household "$profile_dir"
+        ERA_YEARS=4 ERA_REQUIRE_CARE_CHOICES=1 ERA_RUN_LABEL=continued bash "$0" restore "$profile_dir"
+        ERA_YEARS=0 ERA_REQUIRE_CARE_CHOICES=2 ERA_REQUIRE_FAMILY_FINISHED=1 ERA_RUN_LABEL=completed-restore bash "$0" restore "$profile_dir"
+        exit 0
+    fi
     if [[ "$story" == partner_futures ]]; then
         mkdir -p "$profile_dir/checkpoints"
         ERA_YEARS=20 ERA_PARTNER_STOP=before_payment ERA_RUN_LABEL=before-payment bash "$0" household "$profile_dir"

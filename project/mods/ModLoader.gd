@@ -7,6 +7,9 @@ const MOD_PROVIDER_SCHEMA:= "eralife.mod_provider_contract"
 const MOD_PROVIDER_VERSION:= 1
 const MOD_FOLDER:= "user://mods"
 const MOD_PACK_FOLDER:= "user://eralife_packs/mods"
+const STORY_PACK_FOLDER := "user://mods/stories"
+const STORY_PACK_MAX_BYTES := 262144
+const STORY_PACK_MAX_FILES := 32
 
 const ALLOWED_CONFLICT_POLICIES:= [
 	"highest_priority",
@@ -1763,6 +1766,88 @@ func _engine_from_game_state(engine_property: String):
 func ensure_mod_folders() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(MOD_FOLDER))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(MOD_PACK_FOLDER))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(STORY_PACK_FOLDER))
+
+# This extension surface never loads scripts, resources, paths or migrations from
+# a pack. Bad community content is isolated from the built-in story catalog.
+static func validate_story_pack(data: Variant, reserved_ids: Array = []) -> Array:
+	# Keep optional narrative code outside ModLoader's eager startup dependency graph.
+	var errors: Array = load("res://systems/narrative/LifeStoryEngine.gd").validate_catalog(data)
+	if not errors.is_empty():
+		return errors
+	var pattern := RegEx.new()
+	pattern.compile("^[a-z][a-z0-9_]{2,47}$")
+	if not data.get("pack_id") is String or pattern.search(str(data.pack_id)) == null:
+		return ["pack_id must contain 3 to 48 lowercase letters, digits or underscores, starting with a letter."]
+	for key in data:
+		if key not in ["schema", "version", "pack_id", "stories"]:
+			errors.append("Unsupported pack field: " + str(key))
+	var ids := reserved_ids.duplicate()
+	ids.append_array(data.stories.map(func(story): return str(story.id)))
+	var seen := reserved_ids.duplicate()
+	for story in data.stories:
+		var id := str(story.id)
+		if not id.begins_with(str(data.pack_id) + ".") or pattern.search(id.trim_prefix(str(data.pack_id) + ".")) == null:
+			errors.append(id + ": use pack_id.story_name for the story ID.")
+		if id in seen:
+			errors.append(id + ": story ID already belongs to another catalog; overrides are not supported.")
+		seen.append(id)
+		for key in story:
+			if key not in ["id", "title", "category", "series", "cast", "eligibility", "start", "nodes", "trust_from", "origin_story", "allow_deceased_cast", "death_node", "separation_node", "connections", "era_context"]:
+				errors.append(id + ": unsupported story field " + str(key))
+		for dependency in [str(story.get("origin_story", "")), str(story.get("eligibility", {}).get("completed_story", ""))]:
+			if dependency != "" and (dependency not in ids or dependency == id):
+				errors.append(id + ": missing or self-referential prerequisite " + dependency)
+		for connection in story.get("connections", []):
+			if str(connection.story) not in ids or str(connection.story) == id:
+				errors.append(id + ": missing connection story " + str(connection.story))
+		if int(story.get("admission_priority", 0)) != 0:
+			errors.append(id + ": community packs cannot change admission priority.")
+		if str(story.cast) in ["business_partners", "business_heir", "household_care", "household_siblings", "accomplice"]:
+			errors.append(id + ": this cast needs specialized gameplay and is not supported by data-only community packs.")
+		for chapter in story.nodes.values():
+			for choice in chapter.choices:
+				if choice.has("business") or choice.has("relationships"):
+					errors.append(id + ": community packs use relationship and transfer, not ensemble or business effects.")
+	return errors
+
+static func read_story_pack(path: String, reserved_ids: Array = []) -> Dictionary:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"errors": ["Cannot open story pack: " + path], "stories": []}
+	if file.get_length() > STORY_PACK_MAX_BYTES:
+		return {"errors": ["Story pack exceeds the 256 KiB limit: " + path], "stories": []}
+	var parser := JSON.new()
+	if parser.parse(file.get_as_text()) != OK:
+		return {"errors": ["Invalid JSON at line %d: %s" % [parser.get_error_line() + 1, parser.get_error_message()]], "stories": []}
+	var errors := validate_story_pack(parser.data, reserved_ids)
+	return {"errors": errors, "stories": parser.data.stories if errors.is_empty() else []}
+
+static func load_story_packs(base_catalog: Array, folder := STORY_PACK_FOLDER) -> Dictionary:
+	var report := {"stories": [], "loaded": [], "errors": []}
+	var directory := DirAccess.open(folder)
+	if directory == null:
+		return report
+	var ids := base_catalog.map(func(story): return str(story.id))
+	var filenames := directory.get_files()
+	filenames.sort()
+	var count := 0
+	for filename in filenames:
+		if not filename.ends_with(".json"):
+			continue
+		count += 1
+		if count > STORY_PACK_MAX_FILES:
+			report.errors.append("Only the first 32 JSON story packs are loaded.")
+			break
+		var result := read_story_pack(folder.path_join(filename), ids)
+		if not result.errors.is_empty():
+			for error in result.errors:
+				report.errors.append(filename + ": " + str(error))
+			continue
+		report.stories.append_array(result.stories)
+		ids.append_array(result.stories.map(func(story): return str(story.id)))
+		report.loaded.append(filename)
+	return report
 
 func _mod_files_in_folder(folder_path: String) -> Array:
 	var out: Array = []

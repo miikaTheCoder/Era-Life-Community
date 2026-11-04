@@ -1,6 +1,6 @@
 # EraLife desktop and Portrait: agent handoff
 
-Last checked: **2026-11-02**. Read [AGENTS.md](../AGENTS.md), then
+Last checked: **2026-11-04**. Read [AGENTS.md](../AGENTS.md), then
 [ROADMAP.md](../ROADMAP.md) for priorities and [Architecture](ARCHITECTURE.md)
 for ownership. This guide is shared by the two permanent branches.
 
@@ -409,3 +409,23 @@ Optional 360x640 heading polish, gesture-only reachability evidence and profiler
 containment/cancellation cleanup remain in the council record. Keep original
 diagnostics and failed runs visible. No owner desktop/device access, PR, push,
 deployment or release was performed by this loop.
+
+## Connected Lives loop, 2026-11-04
+
+The owner requested five additions followed by council review. Desktop `main`
+contains implementation work based on `7d90ed3`: child ambitions and their memory,
+adult friendship and its memory, saved recollections between existing stories,
+a Family chronicle and journal recap, and data-only community story packs.
+See [the current loop](CONNECTED-LIVES-LOOP.md) and [authoring guide](STORY-PACKS.md).
+The four new stories contain 18 chapters and 50 responses; desktop now has 18
+stories while Portrait retains 14. Story state remains version 1.
+
+Verification and council are in progress. The first full desktop suite passed
+29 regressions. Preserve failed discovery evidence: the first test found that
+longer existing arcs could exhaust a child's 16 to 30 age window. The child arc
+now has bounded admission priority without changing caps or cooldowns.
+
+Portrait has existing uncommitted `.gitignore`, roadmap and handoff changes and
+an untracked mobile Web audit. Preserve that work. No native gameplay port or
+phone acceptance is part of this desktop implementation. No push or publication
+is requested by the feature loop.

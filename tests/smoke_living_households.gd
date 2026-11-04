@@ -38,13 +38,41 @@ func _age_and_save() -> void:
 		state.player.parents.append(parent.id)
 		state.player.affection[parent.id] = 60
 		state.npcs.append(parent)
+		if family_story == "child_ambitions":
+			state.player.age = 42
+			var child := Person.new()
+			child.id = state.next_id
+			state.next_id += 1
+			child.first_name = "Sam"
+			child.last_name = "Desktop"
+			child.age = 18
+			child.parents = [state.player_id]
+			child.realm_id = state.player.realm_id
+			child.affection[state.player_id] = 60
+			state.player.children.append(child.id)
+			state.npcs.append(child)
+		if family_story == "adult_friendship":
+			# Seed an explicit earlier-life fixture; all adult years and choices below
+			# use ordinary admission and real simulation. Unit routes play the pact too.
+			state.player.age = 35
+			supporter.age = 35
+			state.player.parents = []
+			state.player.children = []
+			state.player.coworkers = []
+			state.player.friends = [supporter.id]
+			state.player.partner = null
+			var stories: LifeStoryEngine = state.scenario_runtime_contract_engine._ensure_life_story_engine()
+			stories._actor_state(state.player_id).stories.childhood_pact = {
+				"story_id":"childhood_pact", "story_title":"The Promise at the Gate", "actor_id":state.player_id,
+				"cast_id":supporter.id, "cast_name":"Cora Desktop", "status":"finished", "legacy":"kept_word",
+				"started_year":state.year - 20, "finished_year":state.year - 12, "outcome":"A promise kept", "history":[]}
 		state._rebuild_npc_index()
 		state.bank_engine.ensure_bank_account_for_actor(state.player, {"import_legacy_balance":true})
 		if state.player.bank_balance < 1000:
 			state.bank_engine.credit_bank(state.bank_engine.owner_key_from_actor(state.player), 1000)
 		state.scenario_runtime_contract_engine.life_story_service_signature = ""
 	var stories: LifeStoryEngine = state.scenario_runtime_contract_engine._ensure_life_story_engine()
-	_check(stories.catalog.size() == 14, "Household discovery must retain the full catalog")
+	_check(stories.catalog.size() == 18, "Household discovery must retain the full catalog")
 	var previous_entries: Array = state.life_diary_contract_engine.diary_entries_for_actor(state.player_id).duplicate(true)
 	await _settle_pending(state)
 	for offset in range(years_per_run):
@@ -54,9 +82,25 @@ func _age_and_save() -> void:
 		if family_story == "partner_futures" and OS.get_environment("ERA_PARTNER_STOP") == "before_payment" and not _care_record(state).is_empty():
 			break
 	await _capture("household-aged")
+	if family_story in ["child_ambitions", "adult_friendship"]:
+		await _check_connected_chronicle(state)
 	await _save(previous_entries)
 	var record: Dictionary = _care_record(state)
 	print("LIVING HOUSEHOLDS GRAPHICAL: save PASS; age=", state.player.age, "; history=", record.get("history", []).size())
+
+func _check_connected_chronicle(state: GameState) -> void:
+	var shell = current_scene.get_node("EraShell")
+	print("CONNECTED RECAP: text=", shell.recap.text, "; visible=", shell.recap.visible, "; rect=", shell.recap.get_global_rect(), "; color=", shell.recap.modulate)
+	_check(shell.recap.is_visible_in_tree() and shell.recap.size.y >= 16 and not shell.recap.text.is_empty(), "Connected recap is not visibly laid out")
+	if not await _click(shell.chronicle_button):
+		return
+	var panel: AcceptDialog = shell.chronicle_panel
+	if not _check(panel != null and panel.visible, "Chronicle button did not open the timeline"):
+		return
+	_check(panel.body.get_parsed_text().contains(str(_care_record(state).get("cast_name", ""))), "Live chronicle omitted saved cast")
+	await _capture("family-chronicle")
+	await _click_at(Vector2(panel.position) + panel.get_ok_button().get_global_rect().get_center())
+	_check(await _wait_for(func(): return not panel.visible, 5), "Chronicle return control did not close the window")
 
 func _care_record(state: GameState) -> Dictionary:
 	return state.scenario_state.get("life_stories", {}).get("actors", {}).get(str(state.player_id), {}).get("stories", {}).get(family_story, {})
@@ -78,6 +122,10 @@ func _settle_pending(state: GameState) -> void:
 				if OS.get_environment("ERA_PARTNER_STOP") == "before_payment":
 					continue
 				choice = {"notebook":"materials", "first_attempt":"practical", "parallel_close":"room"}.get(node_id, str(node.default))
+			if family_story == "child_ambitions":
+				choice = {"proposal":"materials", "trial":"encourage"}.get(node_id, str(node.default))
+			if family_story == "adult_friendship":
+				choice = {"reunion":"meet", "commitment":"help", "reciprocity":"accept"}.get(node_id, str(node.default))
 			await _visible_choice(state, contract, choice)
 		else:
 			var result: Dictionary = state.pending_situations_engine.resolve_pending_contract(str(contract.id), str(node.default), {"viewer_actor_id":state.player_id})

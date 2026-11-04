@@ -14,10 +14,11 @@ var gs
 var catalog: Array = []
 var content_errors: Array = []
 var family_business_engine: Variant = null
+var pack_report: Dictionary = {}
 
 func _init(state = null) -> void:
 	gs = state
-	for path in [CONTENT_PATH, "res://data/shared_lives.json", "res://data/living_households.json", "res://data/sibling_stories.json", "res://data/partner_stories.json"]:
+	for path in [CONTENT_PATH, "res://data/shared_lives.json", "res://data/living_households.json", "res://data/sibling_stories.json", "res://data/partner_stories.json", "res://data/connected_lives.json"]:
 		var file := FileAccess.open(path, FileAccess.READ)
 		if file == null:
 			content_errors.append("Story content could not be opened: " + path)
@@ -27,6 +28,8 @@ func _init(state = null) -> void:
 		content_errors.append_array(errors)
 		if errors.is_empty():
 			catalog.append_array(parsed.stories)
+	pack_report = ModLoader.load_story_packs(catalog)
+	catalog.append_array(pack_report.get("stories", []))
 
 func businesses():
 	if family_business_engine == null:
@@ -34,7 +37,9 @@ func businesses():
 	return family_business_engine
 
 static func validate_catalog(data: Variant) -> Array:
-	var errors: Array = []
+	var errors := _validate_content_types(data)
+	if not errors.is_empty():
+		return errors
 	if not data is Dictionary or data.get("schema", "") != "eralife.life_stories" or int(data.get("version", 0)) != 1:
 		return ["Unsupported Life Stories content schema."]
 	if not data.get("stories") is Array or data.stories.is_empty():
@@ -45,8 +50,12 @@ static func validate_catalog(data: Variant) -> Array:
 			errors.append("Invalid story definition.")
 			continue
 		var id: String = str(story.id)
-		if str(story.get("cast", "")) not in ["friend", "relative", "mentor", "parent", "accomplice", "legacy", "business_partners", "business_heir", "household_care", "household_siblings", "partner"]:
+		if str(story.get("cast", "")) not in ["friend", "relative", "mentor", "parent", "accomplice", "legacy", "business_partners", "business_heir", "household_care", "household_siblings", "partner", "child", "parent_memory", "story_cast"]:
 			errors.append(id + ": unknown cast role.")
+		if str(story.cast) == "story_cast" and str(story.get("eligibility", {}).get("completed_story", "")) == "":
+			errors.append(id + ": story_cast requires eligibility.completed_story.")
+		if str(story.cast) == "parent_memory" and str(story.get("origin_story", "")) == "":
+			errors.append(id + ": parent_memory requires origin_story.")
 		if story.has("trust_from") and str(story.trust_from) not in ["player", "cast"]:
 			errors.append(id + ": unknown trust selector.")
 		if story.has("separation_node") and str(story.get("cast", "")) != "partner":
@@ -91,7 +100,7 @@ static func validate_catalog(data: Variant) -> Array:
 				for relation in choice.get("relationships", []):
 					if not relation is Dictionary or str(relation.get("from", "player")) not in roles or str(relation.get("to", "")) not in roles:
 						errors.append(id + ": unknown relationship role.")
-				if next != "" and int(choice.get("delay", 1)) < 1:
+				if not _destinations(choice).is_empty() and int(choice.get("delay", 1)) < 1:
 					errors.append(id + ": follow-ups must occur in a later year.")
 				for stat in choice.get("stats", {}):
 					if stat not in STAT_KEYS:
@@ -114,6 +123,93 @@ static func validate_catalog(data: Variant) -> Array:
 			if visited.size() != story.nodes.size():
 				errors.append(id + ": a chapter cannot be reached from the start.")
 	return errors
+
+# Validate container and scalar types before the semantic validator dereferences
+# authored content. JSON packs are data only and share this validator with built-ins.
+static func _validate_content_types(data: Variant) -> Array:
+	if not data is Dictionary or not data.get("stories") is Array:
+		return ["Catalog must be an object with a stories array."]
+	if not _content_integer(data.get("version", 0), 1, 1):
+		return ["Catalog version must be 1."]
+	if data.stories.size() > 32:
+		return ["A catalog may contain at most 32 stories."]
+	for story in data.stories:
+		if not story is Dictionary:
+			return ["Each story must be an object."]
+		var where := str(story.get("id", "Story"))
+		for key in ["id", "title", "cast", "category", "start"]:
+			if not story.get(key) is String or str(story[key]).strip_edges().is_empty():
+				return [where + ": " + key + " must be nonempty text."]
+		for key in ["series", "origin_story", "death_node", "separation_node", "trust_from"]:
+			if story.has(key) and not story[key] is String:
+				return [where + ": " + key + " must be text."]
+		if story.has("allow_deceased_cast") and not story.allow_deceased_cast is bool:
+			return [where + ": allow_deceased_cast must be boolean."]
+		if not _content_integer(story.get("admission_priority", 0), 0, 100):
+			return [where + ": admission_priority must be an integer from 0 to 100."]
+		if not story.get("nodes") is Dictionary or story.nodes.is_empty() or story.nodes.size() > 64:
+			return [where + ": nodes must contain 1 to 64 chapters."]
+		if not story.get("eligibility", {}) is Dictionary or not story.get("era_context", {}) is Dictionary:
+			return [where + ": eligibility and era_context must be objects."]
+		var gate: Dictionary = story.get("eligibility", {})
+		for key in ["min_age", "max_age"]:
+			if gate.has(key) and not _content_integer(gate[key], 0, 150):
+				return [where + ": " + key + " must be an age from 0 to 150."]
+		if int(gate.get("min_age", 8)) > int(gate.get("max_age", 150)):
+			return [where + ": minimum age exceeds maximum age."]
+		if gate.has("completed_story") and not gate.completed_story is String:
+			return [where + ": completed_story must be an ID."]
+		for key in ["employed", "crime_history"]:
+			if gate.has(key) and not gate[key] is bool:
+				return [where + ": " + key + " must be boolean."]
+		for value in story.get("era_context", {}).values():
+			if not value is String:
+				return [where + ": era context must be text."]
+		if not story.get("connections", []) is Array or story.get("connections", []).size() > 8:
+			return [where + ": connections must be an array of at most 8 recollections."]
+		for connection in story.get("connections", []):
+			if not connection is Dictionary or not connection.get("story") is String or not connection.get("texts") is Dictionary:
+				return [where + ": each connection needs a story ID and texts keyed by outcome."]
+			for value in connection.texts.values():
+				if not value is String:
+					return [where + ": connection text must be a string."]
+		for node_id in story.nodes:
+			var chapter: Variant = story.nodes[node_id]
+			var location := where + "/" + str(node_id)
+			if not chapter is Dictionary or not chapter.get("choices") is Array or chapter.choices.is_empty() or chapter.choices.size() > 16:
+				return [location + ": choices must contain 1 to 16 responses."]
+			for key in ["title", "text", "default"]:
+				if not chapter.get(key) is String:
+					return [location + ": " + key + " must be text."]
+			if not _content_integer(chapter.get("deadline", 2), 1, 50):
+				return [location + ": deadline must be an integer from 1 to 50."]
+			for choice in chapter.choices:
+				if not choice is Dictionary:
+					return [location + ": each response must be an object."]
+				for key in ["id", "label", "result"]:
+					if not choice.get(key) is String:
+						return [location + ": response " + key + " must be text."]
+				for key in ["next", "next_untrusted", "legacy", "outcome"]:
+					if choice.has(key) and not choice[key] is String:
+						return [location + ": " + key + " must be text."]
+				for key in ["transfer", "cash", "relationship", "delay"]:
+					if choice.has(key) and not _content_integer(choice[key], -100000, 100000):
+						return [location + ": " + key + " must be a bounded integer."]
+				if not choice.get("stats", {}) is Dictionary or not choice.get("business", {}) is Dictionary or not choice.get("relationships", []) is Array:
+					return [location + ": invalid stats, business or relationships container."]
+				for value in choice.get("stats", {}).values():
+					if not _content_integer(value, -100, 100):
+						return [location + ": stat changes must be integers from -100 to 100."]
+				var business: Dictionary = choice.get("business", {})
+				if not _content_integer(business.get("amount", 0), 0, 100000):
+					return [location + ": business amount must be a bounded nonnegative integer."]
+				for relation in choice.get("relationships", []):
+					if not relation is Dictionary or not _content_integer(relation.get("delta", 0), -100, 100):
+						return [location + ": relationship effects need an object with an integer delta."]
+	return []
+
+static func _content_integer(value: Variant, minimum: int, maximum: int) -> bool:
+	return (value is int or value is float) and is_finite(float(value)) and float(value) == floor(float(value)) and float(value) >= minimum and float(value) <= maximum
 
 static func _acyclic(nodes: Dictionary, id: String, path: Dictionary, visited: Dictionary) -> bool:
 	if path.has(id):
@@ -179,6 +275,12 @@ func service_year() -> Dictionary:
 		var definition: Dictionary = _definition(str(id))
 		if definition.is_empty():
 			continue # Keep unknown content in saves for a later compatible pack.
+		if not definition.nodes.has(str(instance.get("node", ""))):
+			var warning := str(id) + ": saved chapter is missing from this version. Reinstall a compatible story pack to continue it."
+			if warning not in pack_report.get("errors", []):
+				pack_report.errors.append(warning)
+			active += 1
+			continue
 		if definition.has("separation_node") and _partnership_loading():
 			active += 1
 			continue
@@ -231,7 +333,21 @@ func service_year() -> Dictionary:
 		if _surface(actor, definition, instance):
 			surfaced += 1
 	if active < MAX_ACTIVE_STORIES and int(gs.year) - int(profile.last_start_year) >= START_COOLDOWN_YEARS:
+		# Short-window built-ins must remain discoverable alongside longer arcs.
+		# Stable insertion retains catalog order for equal priority and old saves.
+		var candidates: Array = []
+		var priorities := {}
 		for definition in catalog:
+			var priority := int(definition.get("admission_priority", 0))
+			if not priorities.has(priority):
+				priorities[priority] = []
+			priorities[priority].append(definition)
+		var ordered: Array = priorities.keys()
+		ordered.sort()
+		ordered.reverse()
+		for priority in ordered:
+			candidates.append_array(priorities[priority])
+		for definition in candidates:
 			if profile.stories.has(definition.id) or not _eligible(actor, definition):
 				continue
 			var casting: Dictionary = _cast(actor, definition)
@@ -248,6 +364,9 @@ func service_year() -> Dictionary:
 				"ensemble": casting.get("ensemble", {}),
 				"context": casting.get("context", "")
 			}
+			instance.story_title = str(definition.title)
+			instance.actor_name = _name(actor)
+			instance.connections = _connections(actor, definition)
 			if casting.has("venture_id"):
 				instance.venture_id = casting.venture_id
 			profile.stories[definition.id] = instance
@@ -277,6 +396,22 @@ func _eligible(actor: Person, definition: Dictionary) -> bool:
 
 func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 	var role: String = str(definition.cast)
+	if role == "story_cast":
+		var origin := str(definition.get("eligibility", {}).get("completed_story", ""))
+		var record: Dictionary = _actor_state(actor.id).stories.get(origin, {})
+		var original := _person(int(record.get("cast_id", -1)))
+		if str(record.get("status", "")) == "finished" and original != null and original.alive and original.id != actor.id and original.age >= 18:
+			return {"person": original, "origin": origin, "legacy": str(record.get("legacy", "unfinished"))}
+		return {}
+	if role == "parent_memory":
+		for parent_id in actor.parents.slice(0, 2):
+			var previous: Dictionary = _state().actors.get(str(int(parent_id)), {}).get("stories", {}).get(str(definition.origin_story), {})
+			if int(previous.get("cast_id", -1)) != actor.id or str(previous.get("status", "")) != "finished" or str(previous.get("legacy", "unfinished")) in ["private", "unfinished"]:
+				continue
+			var parent := _person(int(parent_id))
+			if parent != null and actor.id in parent.children and (parent.alive or bool(definition.get("allow_deceased_cast", false))):
+				return {"person": parent, "origin": str(definition.origin_story), "legacy": str(previous.legacy), "context": "Recorded outcome: %s." % str(previous.get("outcome", "A remembered choice"))}
+		return {}
 	if role == "partner":
 		if actor.partner == null:
 			return {}
@@ -301,6 +436,7 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 		return casting
 	var candidates: Array = []
 	match role:
+		"child": candidates = actor.children.duplicate()
 		"friend": candidates = actor.friends.duplicate()
 		"mentor": candidates = actor.coworkers.duplicate()
 		"parent", "relative":
@@ -333,6 +469,8 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 		var person: Person = _person(int(candidate))
 		if person == null or not person.alive or person.id == actor.id:
 			continue
+		if role == "child" and (person.age < 16 or person.age > 30 or actor.id not in person.parents):
+			continue
 		if role == "friend" and abs(person.age - actor.age) > 5:
 			continue
 		if role in ["relative", "mentor", "accomplice"] and person.age < 18:
@@ -345,6 +483,19 @@ func _cast(actor: Person, definition: Dictionary) -> Dictionary:
 			continue
 		return {"person": person}
 	return {}
+
+func _connections(actor: Person, definition: Dictionary) -> Array:
+	var connections: Array = []
+	var records: Dictionary = _actor_state(actor.id).stories
+	for link in definition.get("connections", []):
+		var previous: Dictionary = records.get(str(link.story), {})
+		var legacy := str(previous.get("legacy", "unfinished"))
+		if str(previous.get("status", "")) != "finished" or legacy in ["private", "unfinished"]:
+			continue
+		var text := str(link.texts.get(legacy, ""))
+		if not text.is_empty():
+			connections.append({"story_id": str(link.story), "legacy": legacy, "text": text})
+	return connections
 
 # A null link alone is not proof of breakup: resident restoration rebuilds links.
 # Require the relationship owner's former-partner record or a resident new pair.
@@ -466,6 +617,8 @@ func _surface(actor: Person, definition: Dictionary, instance: Dictionary) -> bo
 	var details: String = _render(str(node.text), instance)
 	if str(instance.get("context", "")) != "":
 		details += "\n\n" + str(instance.context)
+	for connection in instance.get("connections", []):
+		details += "\n\n" + str(connection.text)
 	var context: String = str(definition.get("era_context", {}).get(str(gs.era.get("name", "Modern Era")), ""))
 	if context != "":
 		details += "\n\n" + context

@@ -1,0 +1,637 @@
+{
+  "schema": "eralife.life_stories",
+  "version": 1,
+  "stories": [
+    {
+      "id": "child_ambitions",
+      "title": "A Future of Their Own",
+      "series": "Connected Lives",
+      "cast": "child",
+      "category": "relationships",
+      "trust_from": "cast",
+      "eligibility": {
+        "min_age": 30,
+        "max_age": 100
+      },
+      "start": "proposal",
+      "death_node": "loss",
+      "connections": [
+        {
+          "story": "partner_futures",
+          "texts": {
+            "separate_pursuits": "You remember making room for separate pursuits with your partner. Your child is asking for room of their own.",
+            "unresolved_pressure": "Your earlier attempt to direct your partner left pressure unresolved. This is another chance to listen before deciding for someone."
+          }
+        },
+        {
+          "story": "household_balance",
+          "texts": {
+            "care_shared": "Sharing the family care taught you that a plan needs willing participants. Your child wants the same consideration.",
+            "care_with_boundaries": "You remember setting limits around family care. Your child is now trying to name a limit of their own."
+          }
+        }
+      ],
+      "nodes": {
+        "proposal": {
+          "title": "A plan you did not choose",
+          "text": "{person} wants to learn to repair musical instruments. You had imagined a more familiar route for them. They have found someone willing to show them the basics, but want to know whether you can accept an uncertain beginning. This is their project; support does not promise a job or qualification.",
+          "deadline": 2,
+          "default": "space",
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Ask what draws them to it",
+              "result": "I asked {person} what they wanted from learning the craft, before describing my own hopes.",
+              "relationship": 3,
+              "next": "trial",
+              "delay": 2
+            },
+            {
+              "id": "materials",
+              "label": "Offer money for practice materials",
+              "result": "I gave {person} money for practice materials without making their future part of the bargain.",
+              "transfer": -200,
+              "next": "trial",
+              "delay": 2
+            },
+            {
+              "id": "negotiate",
+              "label": "Discuss a small first step",
+              "result": "I suggested a limited trial and asked {person} which limits they could accept.",
+              "next": "agreement",
+              "delay": 2
+            },
+            {
+              "id": "pressure",
+              "label": "Insist on the future you imagined",
+              "result": "I told {person} their plan should give way to the future I had imagined.",
+              "relationship": -8,
+              "legacy": "pressure_applied",
+              "next": "distance",
+              "delay": 2
+            },
+            {
+              "id": "space",
+              "label": "Leave the decision with them",
+              "result": "I left {person} to decide how to begin. I made no promise of money or involvement.",
+              "next": "independent",
+              "delay": 2
+            }
+          ]
+        },
+        "agreement": {
+          "title": "Whose conditions?",
+          "text": "{person} has considered your suggestion. They will discuss practical limits, but do not want a trial that secretly commits them to your preferred future.",
+          "deadline": 2,
+          "default": "release",
+          "choices": [
+            {
+              "id": "ask",
+              "label": "Let them propose the limits",
+              "result": "I asked {person} to propose limits they could own. Agreement would need both of us.",
+              "next": "trial",
+              "next_untrusted": "independent",
+              "delay": 2
+            },
+            {
+              "id": "condition",
+              "label": "Make support conditional on giving up later",
+              "result": "I made my help depend on {person} eventually abandoning their own direction.",
+              "relationship": -7,
+              "next": "distance",
+              "delay": 2
+            },
+            {
+              "id": "release",
+              "label": "Withdraw your conditions",
+              "result": "I withdrew my conditions and left {person} to choose their next step.",
+              "next": "independent",
+              "delay": 2
+            }
+          ]
+        },
+        "trial": {
+          "title": "The work itself",
+          "text": "{person} has spent time practicing repairs. Some attempts worked and others did not. They want to decide what to try next without having every setback treated as proof that you were right.",
+          "deadline": 2,
+          "default": "leave",
+          "choices": [
+            {
+              "id": "encourage",
+              "label": "Ask what they learned",
+              "result": "I listened to what {person} had learned. They chose to keep exploring the craft at their own pace.",
+              "legacy": "supported_direction",
+              "outcome": "Supported direction",
+              "relationship": 4
+            },
+            {
+              "id": "adjust",
+              "label": "Discuss changing course without shame",
+              "result": "I made room for {person} to revise their plan without treating that as surrender. They chose a smaller next step.",
+              "legacy": "room_to_reconsider",
+              "outcome": "Room to reconsider",
+              "relationship": 3
+            },
+            {
+              "id": "claim",
+              "label": "Treat their progress as your achievement",
+              "result": "I spoke as though {person}'s effort belonged to me. They asked for more distance.",
+              "relationship": -5,
+              "next": "distance",
+              "delay": 2
+            },
+            {
+              "id": "leave",
+              "label": "Let their next step remain theirs",
+              "result": "I left the next step with {person}. Their work did not need my supervision.",
+              "legacy": "independent_direction",
+              "outcome": "Independent direction",
+              "relationship": 0
+            }
+          ]
+        },
+        "independent": {
+          "title": "News on their terms",
+          "text": "{person} has continued trying the craft independently. They offer a little news, without inviting you to supervise. You can welcome the contact without turning it into a report they owe you.",
+          "deadline": 2,
+          "default": "respect",
+          "choices": [
+            {
+              "id": "welcome",
+              "label": "Welcome the news without taking over",
+              "result": "I welcomed {person}'s news and let them decide how much to share.",
+              "legacy": "independent_connection",
+              "outcome": "Independent connection",
+              "relationship": 3
+            },
+            {
+              "id": "respect",
+              "label": "Respect their separate direction",
+              "result": "I respected {person}'s separate direction without asking for credit or a promise.",
+              "legacy": "independent_direction",
+              "outcome": "Independent direction",
+              "relationship": 0
+            },
+            {
+              "id": "demand",
+              "label": "Demand a say in what comes next",
+              "result": "I demanded a say in {person}'s next step. They withdrew the invitation.",
+              "relationship": -6,
+              "next": "distance",
+              "delay": 2
+            }
+          ]
+        },
+        "distance": {
+          "title": "An answer you cannot choose",
+          "text": "{person} says the pressure has made it harder to share their plans. They are keeping their next steps private. An apology can acknowledge the harm, but cannot require them to reopen the conversation.",
+          "deadline": 2,
+          "default": "boundary",
+          "choices": [
+            {
+              "id": "repair",
+              "label": "Acknowledge the pressure without conditions",
+              "result": "I acknowledged the pressure I had put on {person}, without asking them to forgive me on demand.",
+              "next": "repair",
+              "next_untrusted": "boundary",
+              "delay": 2
+            },
+            {
+              "id": "boundary",
+              "label": "Accept the distance they need",
+              "result": "I accepted the distance {person} needed and stopped asking them to justify their future.",
+              "legacy": "respectful_distance",
+              "outcome": "Respectful distance",
+              "relationship": 0
+            },
+            {
+              "id": "insist",
+              "label": "Keep insisting on your plan",
+              "result": "I kept insisting on my plan. {person} stopped bringing me their hopes.",
+              "legacy": "unresolved_pressure",
+              "outcome": "Unresolved pressure",
+              "relationship": -5
+            }
+          ]
+        },
+        "repair": {
+          "title": "A tentative opening",
+          "text": "{person} offers a small update. They are willing to talk again, provided the conversation stays theirs to end.",
+          "deadline": 2,
+          "default": "leave",
+          "choices": [
+            {
+              "id": "listen",
+              "label": "Listen without taking the opening for granted",
+              "result": "I listened to {person} without treating a small opening as a return to the old arrangement.",
+              "legacy": "trust_rebuilt",
+              "outcome": "Trust rebuilt",
+              "relationship": 4
+            },
+            {
+              "id": "leave",
+              "label": "Let them set the pace",
+              "result": "I let {person} set the pace of our contact.",
+              "legacy": "respectful_distance",
+              "outcome": "Respectful distance",
+              "relationship": 0
+            }
+          ]
+        },
+        "boundary": {
+          "title": "Not ready to return",
+          "text": "{person} heard your acknowledgment but is not ready to discuss their plans. They want the boundary to remain.",
+          "deadline": 2,
+          "default": "respect",
+          "choices": [
+            {
+              "id": "respect",
+              "label": "Respect the boundary",
+              "result": "I respected {person}'s boundary. Acknowledging harm did not entitle me to renewed trust.",
+              "legacy": "respectful_distance",
+              "outcome": "Respectful distance",
+              "relationship": 0
+            },
+            {
+              "id": "private",
+              "label": "Keep your reflection private",
+              "result": "I kept my reflection private rather than making {person}'s distance into a family lesson.",
+              "legacy": "private",
+              "outcome": "Private",
+              "relationship": 0
+            }
+          ]
+        },
+        "loss": {
+          "title": "An unfinished future",
+          "text": "{lost_person} died before this conversation was finished. Their hopes were part of their life, even where yours differed.",
+          "deadline": 2,
+          "default": "private",
+          "choices": [
+            {
+              "id": "remember",
+              "label": "Remember the hopes they shared",
+              "result": "I remembered the hopes {person} had shared, without inventing the future they would have chosen.",
+              "legacy": "hopes_remembered",
+              "outcome": "Hopes remembered",
+              "relationship": 0
+            },
+            {
+              "id": "private",
+              "label": "Keep the memory private",
+              "result": "I kept my unfinished conversation with {person} private.",
+              "legacy": "private",
+              "outcome": "Private",
+              "relationship": 0
+            }
+          ]
+        }
+      },
+      "admission_priority": 10
+    },
+    {
+      "id": "child_ambitions_legacy",
+      "title": "The Space I Was Given",
+      "series": "Connected Lives",
+      "cast": "parent_memory",
+      "category": "relationships",
+      "eligibility": {
+        "min_age": 18
+      },
+      "origin_story": "child_ambitions",
+      "allow_deceased_cast": true,
+      "start": "memory",
+      "nodes": {
+        "memory": {
+          "title": "Your side of the story",
+          "text": "{person} left a record of how they responded when you wanted a future of your own. Their account is one perspective. You can decide what that experience means in the life you are living now.",
+          "deadline": 2,
+          "default": "release",
+          "choices": [
+            {
+              "id": "adapt",
+              "label": "Carry forward what helped",
+              "result": "I chose what to carry forward from {person}'s response to my hopes, leaving room to act differently.",
+              "legacy": "lesson_adapted",
+              "outcome": "Lesson adapted",
+              "relationship": 0
+            },
+            {
+              "id": "name",
+              "label": "Name what you needed then",
+              "result": "I named what I had needed from {person}, without rewriting their record or pretending we remembered it alike.",
+              "legacy": "own_voice",
+              "outcome": "Own voice",
+              "relationship": 0
+            },
+            {
+              "id": "release",
+              "label": "Release the obligation to repeat it",
+              "result": "I let the account remain part of my past without making it a rule for my future.",
+              "legacy": "obligation_released",
+              "outcome": "Obligation released",
+              "relationship": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "adult_friendship",
+      "title": "The Years Between",
+      "series": "Connected Lives",
+      "cast": "story_cast",
+      "category": "relationships",
+      "trust_from": "cast",
+      "eligibility": {
+        "min_age": 25,
+        "max_age": 100,
+        "completed_story": "childhood_pact"
+      },
+      "start": "reunion",
+      "death_node": "loss",
+      "connections": [
+        {
+          "story": "childhood_pact",
+          "texts": {
+            "kept_word": "Your earlier promise became something you kept. The friendship now needs a shape that fits adult life.",
+            "broken_word": "You remember a promise you did not keep. Meeting again does not erase it.",
+            "turned_away": "You remember turning away. A new invitation does not oblige either of you to pretend that did not happen.",
+            "repaired_trust": "You once began repairing trust with this same friend. It is something to tend, not a debt to collect."
+          }
+        }
+      ],
+      "nodes": {
+        "reunion": {
+          "title": "A familiar voice",
+          "text": "{person}, the friend from your childhood, gets in touch after years of changing routines. They ask whether there is still room for an occasional meeting. Neither of you has the same time you once did.",
+          "deadline": 2,
+          "default": "decline",
+          "choices": [
+            {
+              "id": "meet",
+              "label": "Suggest a meeting that fits both lives",
+              "result": "I suggested a modest meeting with {person}, with room for either of us to say no.",
+              "next": "commitment",
+              "next_untrusted": "repair",
+              "delay": 2
+            },
+            {
+              "id": "honest",
+              "label": "Be honest about limited time",
+              "result": "I told {person} how little time I could offer, without making a larger promise.",
+              "next": "limits",
+              "delay": 2
+            },
+            {
+              "id": "decline",
+              "label": "Let the invitation pass",
+              "result": "I let the invitation from {person} pass without promising renewed contact.",
+              "legacy": "friendship_distance",
+              "outcome": "Friendship distance",
+              "relationship": 0
+            }
+          ]
+        },
+        "commitment": {
+          "title": "When help becomes difficult",
+          "text": "{person} is dealing with a difficult stretch and asks for practical help. You can offer a small personal contribution or talk about what you can realistically do. Money does not buy a closer friendship.",
+          "deadline": 2,
+          "default": "limit",
+          "choices": [
+            {
+              "id": "help",
+              "label": "Contribute toward the immediate difficulty",
+              "result": "I offered {person} a small contribution without attaching a claim on their time.",
+              "transfer": -100,
+              "next": "reciprocity",
+              "delay": 2
+            },
+            {
+              "id": "listen",
+              "label": "Offer a conversation you can keep",
+              "result": "I offered {person} a conversation I could make time for.",
+              "relationship": 3,
+              "next": "reciprocity",
+              "delay": 2
+            },
+            {
+              "id": "limit",
+              "label": "Be clear that you cannot take this on",
+              "result": "I was clear with {person} that I could not take on their difficulty.",
+              "next": "limits",
+              "delay": 2
+            }
+          ]
+        },
+        "limits": {
+          "title": "A different rhythm",
+          "text": "{person} suggests less frequent contact. A friendship can matter without being available for every crisis, but both of you need to know what to expect.",
+          "deadline": 2,
+          "default": "distance",
+          "choices": [
+            {
+              "id": "agree",
+              "label": "Accept an occasional friendship",
+              "result": "I agreed with {person} on occasional contact that fitted our lives.",
+              "legacy": "friendship_with_limits",
+              "outcome": "Friendship with limits",
+              "relationship": 3
+            },
+            {
+              "id": "distance",
+              "label": "Let the friendship rest",
+              "result": "I let the friendship with {person} rest without turning our distance into blame.",
+              "legacy": "friendship_distance",
+              "outcome": "Friendship distance",
+              "relationship": 0
+            },
+            {
+              "id": "promise",
+              "label": "Promise more than you can give",
+              "result": "I made a larger promise to {person} than I knew how to keep.",
+              "relationship": -5,
+              "next": "repair",
+              "delay": 2
+            }
+          ]
+        },
+        "reciprocity": {
+          "title": "Help in the other direction",
+          "text": "When your own year becomes difficult, {person} offers a conversation. You can receive care without turning either person's earlier help into an account to settle.",
+          "deadline": 2,
+          "default": "release",
+          "choices": [
+            {
+              "id": "accept",
+              "label": "Accept their company",
+              "result": "I accepted {person}'s company. Our friendship made room for both of us to need help.",
+              "legacy": "mutual_friendship",
+              "outcome": "Mutual friendship",
+              "relationship": 4
+            },
+            {
+              "id": "release",
+              "label": "Thank them and keep your own space",
+              "result": "I thanked {person} while keeping the space I needed.",
+              "legacy": "friendship_with_limits",
+              "outcome": "Friendship with limits",
+              "relationship": 0
+            },
+            {
+              "id": "debt",
+              "label": "Say they owe you more",
+              "result": "I told {person} they owed me more for my earlier help. They challenged that claim.",
+              "relationship": -6,
+              "next": "repair",
+              "delay": 2
+            }
+          ]
+        },
+        "repair": {
+          "title": "The promise between you",
+          "text": "{person} asks you to acknowledge what made contact difficult. They may hear an apology without wanting the friendship to become close again.",
+          "deadline": 2,
+          "default": "distance",
+          "choices": [
+            {
+              "id": "acknowledge",
+              "label": "Acknowledge your part without demanding closeness",
+              "result": "I acknowledged my part in hurting {person}, without making forgiveness another demand.",
+              "next": "opening",
+              "next_untrusted": "boundary",
+              "delay": 2
+            },
+            {
+              "id": "distance",
+              "label": "Accept that closeness may not return",
+              "result": "I accepted that closeness with {person} might not return.",
+              "legacy": "friendship_distance",
+              "outcome": "Friendship distance",
+              "relationship": 0
+            },
+            {
+              "id": "blame",
+              "label": "Leave the blame with them",
+              "result": "I left the blame with {person}. Our disagreement remained unresolved.",
+              "legacy": "friendship_unresolved",
+              "outcome": "Friendship unresolved",
+              "relationship": -4
+            }
+          ]
+        },
+        "opening": {
+          "title": "A small beginning",
+          "text": "{person} is willing to try occasional contact again. Neither of you needs to call it a return to the friendship you had as children.",
+          "deadline": 2,
+          "default": "accept",
+          "choices": [
+            {
+              "id": "accept",
+              "label": "Begin with what you can both offer",
+              "result": "I began again with {person} on terms we could both offer.",
+              "legacy": "friendship_repaired",
+              "outcome": "Friendship repaired",
+              "relationship": 3
+            },
+            {
+              "id": "private",
+              "label": "Keep this repair between you",
+              "result": "I kept the repair with {person} between us, without turning it into a family account.",
+              "legacy": "private",
+              "outcome": "Private",
+              "relationship": 0
+            }
+          ]
+        },
+        "boundary": {
+          "title": "An answer to respect",
+          "text": "{person} does not want to renew contact. You can respect that answer without asking them to reassure you.",
+          "deadline": 2,
+          "default": "respect",
+          "choices": [
+            {
+              "id": "respect",
+              "label": "Respect their decision",
+              "result": "I respected {person}'s decision not to renew contact.",
+              "legacy": "friendship_distance",
+              "outcome": "Friendship distance",
+              "relationship": 0
+            },
+            {
+              "id": "private",
+              "label": "Keep your reflection private",
+              "result": "I kept my reflection about {person} private.",
+              "legacy": "private",
+              "outcome": "Private",
+              "relationship": 0
+            }
+          ]
+        },
+        "loss": {
+          "title": "The years you shared",
+          "text": "{lost_person} died before you could finish this conversation. You can remember the friendship without inventing a final reconciliation.",
+          "deadline": 2,
+          "default": "private",
+          "choices": [
+            {
+              "id": "remember",
+              "label": "Remember the whole friendship",
+              "result": "I remembered the years I shared with {person}, including what remained unsettled.",
+              "legacy": "friendship_remembered",
+              "outcome": "Friendship remembered",
+              "relationship": 0
+            },
+            {
+              "id": "private",
+              "label": "Keep the memory private",
+              "result": "I kept my memories of {person} private.",
+              "legacy": "private",
+              "outcome": "Private",
+              "relationship": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "adult_friendship_legacy",
+      "title": "Someone Who Knew Them",
+      "series": "Connected Lives",
+      "cast": "legacy",
+      "category": "relationships",
+      "eligibility": {
+        "min_age": 18
+      },
+      "origin_story": "adult_friendship",
+      "allow_deceased_cast": true,
+      "start": "memory",
+      "nodes": {
+        "memory": {
+          "title": "Beyond the family",
+          "text": "Your parent left an account of their adult friendship with {person}. It shows a part of their life outside the household, including the boundaries and promises they remembered.",
+          "deadline": 2,
+          "default": "release",
+          "choices": [
+            {
+              "id": "learn",
+              "label": "Learn from the friendship without inheriting its promises",
+              "result": "I learned from my parent's friendship with {person}, without treating their promises as mine.",
+              "legacy": "friendship_lesson",
+              "outcome": "Friendship lesson",
+              "relationship": 0
+            },
+            {
+              "id": "release",
+              "label": "Let the friendship belong to their life",
+              "result": "I let the friendship with {person} remain part of my parent's life.",
+              "legacy": "obligation_released",
+              "outcome": "Obligation released",
+              "relationship": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

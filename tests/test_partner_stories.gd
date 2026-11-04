@@ -40,7 +40,7 @@ func _run() -> void:
 	for path in ["life_stories", "shared_lives", "living_households", "sibling_stories", "partner_stories"]:
 		for definition in JSON.parse_string(FileAccess.get_file_as_string("res://data/" + path + ".json")).stories:
 			_check(str(definition.id) in ids, "Full catalog lost " + str(definition.id))
-	_check(ids.size() == 14 and ids[-2] == PARTNER and ids[-1] == MEMORY, "Partner pack changed old priority")
+	_check(ids.size() == 18 and ids[12] == PARTNER and ids[13] == MEMORY, "Partner pack changed old priority")
 	_test_partner_responses(engine)
 	_test_partner_routes()
 	_test_partner_admission()
@@ -140,7 +140,7 @@ func _test_partner_admission() -> void:
 		state.crime_world_engine = null
 		_tick(state)
 		_check(not _record_for(state, PARTNER).is_empty(), "Childless unmarried unemployed poor couple excluded")
-		_check(state.scenario_runtime_contract_engine.life_story_engine.catalog.size() == 14, "Minimal couple discovery filtered catalog")
+		_check(state.scenario_runtime_contract_engine.life_story_engine.catalog.size() == 18, "Minimal couple discovery filtered catalog")
 
 func _test_partner_trust() -> void:
 	for trust in [44, 45, 46]:

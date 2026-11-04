@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-375 scripts; 927,417 source lines.
+377 scripts; 927,847 source lines.
 
 ## Largest files
 
@@ -163,7 +163,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [ModBundleContractEngine.gd](../project/mods/ModBundleContractEngine.gd) | ModBundleContractEngine | 45 |
 | [ModContractEngine.gd](../project/mods/ModContractEngine.gd) | ModContractEngine | 64 |
 | [ModHubContractEngine.gd](../project/mods/ModHubContractEngine.gd) | ModHubContractEngine | 20 |
-| [ModLoader.gd](../project/mods/ModLoader.gd) | ModLoader | 42 |
+| [ModLoader.gd](../project/mods/ModLoader.gd) | ModLoader | 45 |
 | [ModMarketplaceContractEngine.gd](../project/mods/ModMarketplaceContractEngine.gd) | ModMarketplaceContractEngine | 23 |
 | [ModMenuContractEngine.gd](../project/mods/ModMenuContractEngine.gd) | ModMenuContractEngine | 25 |
 
@@ -344,9 +344,10 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [ChooseAdventureScenarioEngine.gd](../project/systems/narrative/ChooseAdventureScenarioEngine.gd) | ChooseAdventureScenarioEngine | 29 |
 | [DynamicWorldEventEngine.gd](../project/systems/narrative/DynamicWorldEventEngine.gd) | DynamicWorldEventEngine | 12 |
 | [EmergentNPCStoryEngine.gd](../project/systems/narrative/EmergentNPCStoryEngine.gd) | EmergentNPCStoryEngine | 5 |
+| [FamilyChronicleContractEngine.gd](../project/systems/narrative/FamilyChronicleContractEngine.gd) | FamilyChronicleContractEngine | 3 |
 | [GoalPlanningEngine.gd](../project/systems/narrative/GoalPlanningEngine.gd) | GoalPlanningEngine | 7 |
 | [LifeDiaryContractEngine.gd](../project/systems/narrative/LifeDiaryContractEngine.gd) | LifeDiaryContractEngine | 72 |
-| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 31 |
+| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 34 |
 | [NarrativeEngine.gd](../project/systems/narrative/NarrativeEngine.gd) | NarrativeEngine | 35 |
 | [NarrativeGovernor.gd](../project/systems/narrative/NarrativeGovernor.gd) | NarrativeGovernor | 4 |
 | [OpportunityEngine.gd](../project/systems/narrative/OpportunityEngine.gd) | OpportunityEngine | 4 |
@@ -524,7 +525,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | --- | --- | ---: |
 | [EraBranchMark.gd](../project/ui/EraBranchMark.gd) | - | 2 |
 | [EraInterface.gd](../project/ui/EraInterface.gd) | - | 11 |
-| [EraShell.gd](../project/ui/EraShell.gd) | - | 12 |
+| [EraShell.gd](../project/ui/EraShell.gd) | - | 14 |
 | [EraTheme.gd](../project/ui/EraTheme.gd) | - | 3 |
 
 ## project/ui/common
@@ -626,6 +627,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | Script | Global class | Functions |
 | --- | --- | ---: |
 | [ChooseYourOwnAdventureScenarioPanel.gd](../project/ui/panels/narrative/ChooseYourOwnAdventureScenarioPanel.gd) | ChooseYourOwnAdventureScenarioPanel | 19 |
+| [FamilyChroniclePanel.gd](../project/ui/panels/narrative/FamilyChroniclePanel.gd) | - | 2 |
 | [ScenarioPanel.gd](../project/ui/panels/narrative/ScenarioPanel.gd) | ScenarioPanel | 41 |
 
 ## project/ui/panels/network

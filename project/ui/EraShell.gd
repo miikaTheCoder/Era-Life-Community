@@ -23,6 +23,12 @@ var stats_toggle: Button
 var stats_open := false
 var last_panel := ""
 var was_narrow := false
+var chronicle_button: Button
+var chronicle_panel: AcceptDialog
+var recap: Label
+var recap_key := ""
+var recap_check_at := 0
+var chronicle_owner := ""
 
 static func label(text: String, size: int = 16, color: Color = Design.TEXT, display := false) -> Label:
 	var node := Label.new()
@@ -198,6 +204,15 @@ func _build_live(root: Control) -> void:
 	chapter.custom_minimum_size.y = 54
 	root.add_child(chapter)
 	root.move_child(chapter, 2)
+	recap = label("", 15, Design.MUTED)
+	recap.name = "EraStoryRecap"
+	recap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	recap.max_lines_visible = 3
+	recap.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Wrapped labels with ellipsis otherwise report a one-pixel minimum to VBox.
+	recap.custom_minimum_size.y = 54
+	root.add_child(recap)
+	root.move_child(recap, 3)
 	footer = HBoxContainer.new()
 	footer.name = "EraProgression"
 	footer.custom_minimum_size.y = 64
@@ -205,6 +220,36 @@ func _build_live(root: Control) -> void:
 	year_label = label("", 15, Design.MUTED)
 	year_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(year_label)
+	chronicle_button = Button.new()
+	chronicle_button.name = "FamilyChronicleButton"
+	chronicle_button.text = "Family chronicle"
+	chronicle_button.tooltip_text = "Read your choices and inherited family outcomes"
+	chronicle_button.custom_minimum_size.y = 44
+	chronicle_button.pressed.connect(_open_chronicle)
+	footer.add_child(chronicle_button)
+
+func _open_chronicle() -> void:
+	var state = host.get("gs")
+	if state == null or state.player == null:
+		return
+	if not is_instance_valid(chronicle_panel):
+		chronicle_panel = load("res://ui/panels/narrative/FamilyChroniclePanel.gd").new()
+		host.add_child(chronicle_panel)
+	var contract := _chronicle_contract(state)
+	chronicle_owner = "%d:%d" % [state.get_instance_id(), state.player.id]
+	recap_key = FamilyChronicleContractEngine.signature(state)
+	chronicle_panel.call("present", contract, host.get_viewport_rect().size)
+	if is_instance_valid(recap):
+		recap.text = str(contract.recap)
+
+func _chronicle_contract(state) -> Dictionary:
+	var catalog: Array = []
+	if state.scenario_runtime_contract_engine != null and state.scenario_runtime_contract_engine.life_story_engine != null:
+		catalog = state.scenario_runtime_contract_engine.life_story_engine.catalog
+	var contract := FamilyChronicleContractEngine.build(state, catalog)
+	if state.scenario_runtime_contract_engine != null and state.scenario_runtime_contract_engine.life_story_engine != null:
+		contract.pack_errors = state.scenario_runtime_contract_engine.life_story_engine.pack_report.get("errors", [])
+	return contract
 
 func _process(_delta: float) -> void:
 	var root := host.get_node_or_null("UIContainer") as Control
@@ -212,7 +257,11 @@ func _process(_delta: float) -> void:
 		return
 	var gs = host.get("gs")
 	if gs == null or gs.player == null or not root.visible:
+		if is_instance_valid(chronicle_panel):
+			chronicle_panel.hide()
 		return
+	if is_instance_valid(chronicle_panel) and chronicle_owner != "%d:%d" % [gs.get_instance_id(), gs.player.id]:
+		chronicle_panel.hide()
 	if not is_instance_valid(navigation):
 		_build_live(root)
 	var narrow := host.get_viewport_rect().size.x < 1000
@@ -255,6 +304,14 @@ func _process(_delta: float) -> void:
 	year_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	year_label.clip_text = true
 	chapter.text = "Life journal" if last_panel == "life" else last_panel.capitalize()
+	recap.visible = last_panel == "life"
+	chronicle_button.visible = last_panel == "life"
+	if Time.get_ticks_msec() >= recap_check_at:
+		recap_check_at = Time.get_ticks_msec() + 500
+		var key := FamilyChronicleContractEngine.signature(gs)
+		if recap_key != key:
+			recap_key = key
+			recap.text = str(_chronicle_contract(gs).recap)
 
 func _layout_tools() -> void:
 	var stack_index := 0

@@ -1,6 +1,6 @@
 # EraLife roadmap
 
-Updated **2026-11-02**. This is the shared plan for desktop EraLife and EraLife
+Updated **2026-11-04**. This is the shared plan for desktop EraLife and EraLife
 Portrait. Use [the agent handoff](docs/AGENT-HANDOFF.md) to find the active
 branches, worktrees, commands, and evidence; use [AGENTS.md](AGENTS.md) for code
 ownership and repository rules.
@@ -36,6 +36,7 @@ support them. Proposed content below can change with playtesting and user input.
 | Desktop validation | Latest combined suite: 27 passing regressions; partnership real-year and repeated cold-save routes verified; see feature evidence |
 | Portrait validation | 30 regressions, 420x900 and actual 360x640 story routes, repeated normal-gate cold restores, signed APK built; exact Honor check open |
 | Sibling and partner stories | Four more stories; 14 total across five catalogs on desktop and Portrait, with saved cast and inherited consequences |
+| Connected Lives | Four additional desktop stories, 18 chapters and 50 responses; connections, chronicle and community packs implemented. Verification and council loop in progress; Portrait still has the previous 14 stories |
 | Agent continuity | Shared handoff guide and entry links available on both active branches |
 | Browser target | Integrated into `main`; Web export, narrative entry, save/reload/Continue and continued play verified on the preview server. Intermittent plain-static-host reload stall remains open; see [Web evidence](docs/WEB.md) |
 | Mobile browser | Honor 400 Lite/Brave boot, menu and God Mode form observed; readability failure reproduced. Web reflow built and desktop-browser checked; updated phone test and Safari remain open |
@@ -47,6 +48,13 @@ and limitations live in [Shared Lives](docs/SHARED-LIVES.md) and the
 smoke skips general drawer navigation; it does not clear the Menu/Back issue.
 
 ## Work queue
+
+**In progress, 2026-11-04:** the owner requested a finite feature loop on `main`
+for child ambitions, connections between stories, a family chronicle, adult
+friendships, and R08 data-only story packs, followed by the three-member council.
+See [the feature loop](docs/CONNECTED-LIVES-LOOP.md) for scope and acceptance.
+Desktop implementation and verification come first. Portrait adaptation and
+device acceptance will be recorded separately; no release is implied.
 
 **Owner-directed loop complete, 2026-11-02:** desktop reliability `018efd9`
 and partnership `954645b`, Portrait port `a25cda8`, and Web keyboard review head
@@ -78,7 +86,11 @@ before implementation. `Verified` requires the evidence in its completion criter
 | R05 | Living Households: one complete family arc | Desktop | Verified: first family arc and inherited memory | Desktop R04 release-ready checks |
 | R06 | Port Living Households and test it on a phone | Portrait | Ported; graphical arc and cold Continue verified; Honor Household creation and cold Continue verified, cast check open | Verify Bea and Cora after phone restore and a fresh story choice |
 | R07 | Measured startup and lifetime performance | Desktop + Portrait | Cold-history batching approved and verified on both; broader profiling and phone timing open | Exact Honor session; retain historical failures and timing limits |
-| R08 | Community story-pack authoring path | Shared | Proposed | R05 supplies a second ensemble use case |
+| R08 | Community story-pack authoring path | Desktop first | Implemented; verification and council in progress on main | Data-only loader, sample, validation and guide in the Connected Lives loop |
+| R12 | Child ambitions and the child's inherited perspective | Desktop first | Implemented; verification and council in progress on main | Complete routes, save fidelity and natural admission |
+| R13 | Connections between completed stories | Desktop first | Implemented; verification and council in progress on main | Saved public recollections, privacy and compatibility |
+| R14 | Family chronicle and Continue recap | Desktop first | Implemented; verification and council in progress on main | Read-only history, rendered layout and navigation |
+| R15 | Adult friendship continuation | Desktop first | Implemented; verification and council in progress on main | Original cast, complete routes and cold Continue |
 | R11 | Room for Two Futures: partner aspirations and inherited memory | Desktop + Portrait | Implemented, verified and council-approved on both | Natural-family pacing and exact Honor APK check remain open |
 | R10 | Sibling conflict and inherited family memory | Desktop + Portrait | Implemented; desktop and Portrait previews verified; exact phone test open | Exact APK phone test, then R07 restore timing |
 | R09 | Make the Web game playable on mobile browsers | Web: Android and iOS browsers | Phone readability failure reproduced; Web reflow built; Honor retest pending; iOS unavailable | Reconnect Honor and test readable entry, touch scrolling and keyboard; see [audit](docs/MOBILE-WEB-AUDIT.md) |

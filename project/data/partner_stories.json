@@ -267,7 +267,16 @@
             }
           ]
         }
-      }
+      },
+      "connections": [
+        {
+          "story": "household_balance",
+          "texts": {
+            "care_shared": "You remember sharing the work of family care. Listening to what someone can willingly offer matters here too.",
+            "care_with_boundaries": "You remember making room for boundaries in family care. This project also needs room for separate lives."
+          }
+        }
+      ]
     },
     {
       "id": "partner_futures_legacy",

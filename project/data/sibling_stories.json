@@ -523,7 +523,17 @@
             }
           ]
         }
-      }
+      },
+      "connections": [
+        {
+          "story": "household_balance",
+          "texts": {
+            "care_shared": "You remember agreeing to share the care. Your sibling is asking whether the agreement matched the work.",
+            "care_with_boundaries": "You remember setting limits on care. Your sibling wants to talk about who carried what remained.",
+            "care_repaired": "You remember revising the care arrangement after taking too much control. That repair is part of this conversation."
+          }
+        }
+      ]
     },
     {
       "id": "sibling_fairness_legacy",

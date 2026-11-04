@@ -1,0 +1,69 @@
+{
+  "schema": "eralife.life_stories",
+  "version": 1,
+  "pack_id": "community_first_story",
+  "stories": [
+    {
+      "id": "community_first_story.shared_walk",
+      "title": "A Walk Worth Keeping",
+      "series": "Community stories",
+      "cast": "friend",
+      "category": "relationships",
+      "eligibility": {
+        "min_age": 18,
+        "max_age": 100
+      },
+      "start": "invitation",
+      "nodes": {
+        "invitation": {
+          "title": "An ordinary invitation",
+          "text": "{person} suggests taking a walk together. There is no crisis to solve, just a chance to spend some time.",
+          "deadline": 2,
+          "default": "pass",
+          "choices": [
+            {
+              "id": "walk",
+              "label": "Make time for the walk",
+              "result": "I made time for an ordinary walk with {person}.",
+              "relationship": 2,
+              "next": "later",
+              "delay": 2
+            },
+            {
+              "id": "pass",
+              "label": "Let this invitation pass",
+              "result": "I let the invitation from {person} pass without making a promise.",
+              "legacy": "quiet_distance",
+              "outcome": "Quiet distance",
+              "relationship": 0
+            }
+          ]
+        },
+        "later": {
+          "title": "An ordinary memory",
+          "text": "{person} remembers the walk and asks whether you would like to make time again.",
+          "deadline": 2,
+          "default": "leave",
+          "choices": [
+            {
+              "id": "again",
+              "label": "Make another small plan",
+              "result": "I made another small plan with {person}. Ordinary time together mattered.",
+              "legacy": "ordinary_company",
+              "outcome": "Ordinary company",
+              "relationship": 2
+            },
+            {
+              "id": "leave",
+              "label": "Leave it as a good memory",
+              "result": "I left the walk with {person} as a good memory without promising a routine.",
+              "legacy": "good_memory",
+              "outcome": "Good memory",
+              "relationship": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
