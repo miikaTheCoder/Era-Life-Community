@@ -1,6 +1,6 @@
 # EraLife desktop and Portrait: agent handoff
 
-Last checked: **2026-11-04**. Read [AGENTS.md](../AGENTS.md), then
+Last roadmap update: **2026-11-17**. Gameplay evidence below remains dated. Read [AGENTS.md](../AGENTS.md), then
 [ROADMAP.md](../ROADMAP.md) for priorities and [Architecture](ARCHITECTURE.md)
 for ownership. This guide is shared by the two permanent branches.
 
@@ -10,6 +10,19 @@ eight release assets were verified after detachment. History, credits, and the
 license are retained. See [the conversion record](BRANCHES.md#standalone-repository)
 for backups. Browser work was preserved separately during that conversion and
 has since been integrated into `main` from commit `cd6ca7d`.
+
+## Current priority
+
+The [essential roadmap](../ROADMAP.md) now prioritizes failed-save preservation,
+a complete life and inheritance, target-specific phone/browser acceptance, then
+a verified package. R16 is tracked on `codex/essential-roadmap`; implementation
+and verification details belong in [save-write evidence](SAVE-WRITE-SAFETY.md).
+Older milestone notes below are historical, not the active queue.
+
+The original desktop checkout has separate uncommitted Connected Lives corrections
+and approval records. This roadmap task does not include or certify them. Portrait
+also has uncommitted documentation; reconcile the shared plan during its next
+coordinated port without overwriting those changes.
 
 ## Start here
 

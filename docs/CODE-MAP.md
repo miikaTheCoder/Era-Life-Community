@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-377 scripts; 927,847 source lines.
+377 scripts; 927,869 source lines.
 
 ## Largest files
 
@@ -85,7 +85,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [BinarySaveEngine.gd](../project/core/persistence/BinarySaveEngine.gd) | BinarySaveEngine | 12 |
 | [Compression.gd](../project/core/persistence/Compression.gd) | Compression | 7 |
 | [CrossDeviceContinuitySyncLayer.gd](../project/core/persistence/CrossDeviceContinuitySyncLayer.gd) | CrossDeviceContinuitySyncLayer | 14 |
-| [GameStateSerializationRuntime.gd](../project/core/persistence/GameStateSerializationRuntime.gd) | GameStateSerializationRuntime | 48 |
+| [GameStateSerializationRuntime.gd](../project/core/persistence/GameStateSerializationRuntime.gd) | GameStateSerializationRuntime | 49 |
 | [RealityCheckpointContractEngine.gd](../project/core/persistence/RealityCheckpointContractEngine.gd) | RealityCheckpointContractEngine | 13 |
 | [RealitySnapshotContractEngine.gd](../project/core/persistence/RealitySnapshotContractEngine.gd) | RealitySnapshotContractEngine | 16 |
 | [ReplayContractEngine.gd](../project/core/persistence/ReplayContractEngine.gd) | ReplayContractEngine | 17 |
