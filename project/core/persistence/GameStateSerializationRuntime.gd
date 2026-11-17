@@ -64,23 +64,16 @@ func serialize_to_path(path: String = "user://savegame.bin", options: Dictionary
 	elif lower_path.ends_with(".bin"):
 		write_binary = true
 
-	if write_binary:
-		var bytes: PackedByteArray = BinarySaveEngine.encode(payload)
-		var f_bin = FileAccess.open(normalized_path, FileAccess.WRITE)
-		if f_bin == null:
-			return _fail_report("write_failed", "Failed to write save file.", {
-				"path": normalized_path
-			})
-		f_bin.store_buffer(bytes)
-		f_bin.close()
-	else:
-		var f_json = FileAccess.open(normalized_path, FileAccess.WRITE)
-		if f_json == null:
-			return _fail_report("write_failed", "Failed to write save file.", {
-				"path": normalized_path
-			})
-		f_json.store_string(JSON.stringify(payload, "\t"))
-		f_json.close()
+	var bytes: PackedByteArray = BinarySaveEngine.encode(payload) if write_binary else JSON.stringify(payload, "\t").to_utf8_buffer()
+	var write_result: Dictionary = _replace_save_file(normalized_path, bytes)
+	var write_error: Error = write_result.get("error", FAILED)
+	if write_error != OK:
+		return _fail_report("write_failed", "Failed to write save file.", {
+			"path": normalized_path,
+			"file_error": write_error,
+			"recovery_path": write_result.get("recovery_path", ""),
+			"wrote_file": false
+		})
 
 	var summary: Dictionary = _build_save_summary(normalized_path, payload)
 	if not bool(options.get("skip_summary_cache", false)):
@@ -105,6 +98,33 @@ func serialize_to_path(path: String = "user://savegame.bin", options: Dictionary
 
 	EraLog.truth("💾 GAME SAVED → ", normalized_path)
 	return report.duplicate(true)
+
+
+func _replace_save_file(path: String, bytes: PackedByteArray) -> Dictionary:
+	# Keep the destination intact until a complete sibling file can replace it.
+	# A unique name keeps interrupted attempts separate from a later retry.
+	var temporary_path: String = "%s.%s.tmp" % [path, Crypto.new().generate_random_bytes(16).hex_encode()]
+	var file := FileAccess.open(temporary_path, FileAccess.WRITE)
+	if file == null:
+		return {"error": FileAccess.get_open_error()}
+	file.store_buffer(bytes)
+	var write_error: Error = file.get_error()
+	file.flush()
+	if write_error == OK:
+		write_error = file.get_error()
+	if write_error == OK and file.get_length() != bytes.size():
+		write_error = ERR_FILE_CANT_WRITE
+	file.close()
+	if write_error != OK:
+		DirAccess.remove_absolute(temporary_path)
+		return {"error": write_error}
+
+	var replace_error: Error = DirAccess.rename_absolute(temporary_path, path)
+	if replace_error != OK:
+		# Keep the complete new file for recovery. Godot 4.4.1 on Windows
+		# removes an existing destination before attempting its final move.
+		return {"error": replace_error, "recovery_path": temporary_path}
+	return {"error": OK}
 
 
 func serialize_to_payload(

@@ -42,8 +42,8 @@ Both permanent branches include repairs for cold Continue, business bank
 restoration, and Portrait's saved-life button. See [cold-restore validation](docs/COLD-RESTORE.md)
 for tested source commits, preserved fixtures, and device limitations.
 
-See the [roadmap](ROADMAP.md) for current priorities, the proposed next content
-chapter, completion criteria, and work that another task can pick up.
+See the [roadmap](ROADMAP.md) for the essential work queue, completion criteria,
+and the next bounded task. Reliability and a complete life come before more content.
 
 ## Working on the code
 
