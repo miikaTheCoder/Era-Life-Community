@@ -15788,8 +15788,8 @@ func _format_life_diary_header_line_bbcode(line: String) -> String:
 	var text_line := line.strip_edges()
 	if _is_life_diary_year_header_line(text_line):
 		text_line = DiarySceneSupport._life_diary_year_header_text(text_line)
-		return "[font_size=26][color=#ddbd83]%s[/color][/font_size]" % text_line
-	return "[font_size=16][color=#acb5ac]%s[/color][/font_size]" % text_line
+		return "[font_size=26][color=#ddbd83]%s[/color][/font_size]" % text_line.replace("[", "[lb]")
+	return "[font_size=16][color=#acb5ac]%s[/color][/font_size]" % text_line.replace("[", "[lb]")
 
 func _append_formatted_life_diary_line(
 	target_label: RichTextLabel,
@@ -15821,7 +15821,7 @@ func _append_formatted_life_diary_line(
 	else:
 		AppearanceSceneSupport._append_stone_and_element_colored_text_to_rich_label(
 			target_label,
-			text_line,
+			text_line.replace("[", "[lb]"),
 			true
 		)
 func _find_life_diary_focus_line_index(
@@ -193142,15 +193142,8 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 			)
 		)
 	).strip_edges()
-	var ready_text: String = str(
-		life_diary_packet.get(
-			"bbcode_text",
-			life_diary_packet.get(
-				"text",
-				""
-			)
-		)
-	).strip_edges()
+	var ready_bbcode := str(life_diary_packet.get("bbcode_text", "")).strip_edges()
+	var ready_text := str(life_diary_packet.get("text", "")).strip_edges()
 
 	var explicit_clear_requested: bool = bool(
 		life_diary_packet.get(
@@ -193164,6 +193157,7 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 	var packet_contains_diary_truth: bool = (
 		not surface_lines.is_empty()
 		or ready_text != ""
+		or ready_bbcode != ""
 	)
 
 
@@ -193192,26 +193186,11 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 		output_label.bbcode_enabled = true
 		output_label.clear()
 
-		var ready_text_has_bbcode: bool = (
-			ready_text.find("[center]") != -1
-			or ready_text.find("[b]") != -1
-			or ready_text.find("[color=") != -1
-		)
-
-		if ready_text != "" and ready_text_has_bbcode:
-			output_label.append_text(
-				ready_text
-			)
-			if not ready_text.ends_with("\n"):
-				output_label.append_text(
-					"\n"
-				)
-		elif not surface_lines.is_empty():
+		if not surface_lines.is_empty():
 			for raw_line in surface_lines:
-				_append_formatted_life_diary_line(
-					output_label,
-					str(raw_line)
-				)
+				_append_formatted_life_diary_line(output_label, str(raw_line))
+		elif ready_bbcode != "":
+			output_label.append_text(ready_bbcode + "\n")
 		elif ready_text != "":
 			var fallback_lines: PackedStringArray = (
 				ready_text.split(
@@ -193410,17 +193389,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 
 
 
-	var lens_text: String = str(
-		lens_cache.get(
-			"life_diary_text",
-			""
-		)
-	).strip_edges()
-
-	if lens_text == "":
-		lens_text = str(
-			clean_text
-		).strip_edges()
+	var lens_text := _profile_switch_diary_bbcode(lens_cache, clean_text)
 
 	if lens_text == "":
 		var world_year: int = int(
@@ -193440,7 +193409,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 			% [
 				_format_year(world_year),
 				actor_age,
-				actor_name
+				actor_name.replace("[", "[lb]")
 			]
 		)
 
@@ -193613,7 +193582,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 		) != signature:
 
 
-			output_label.text = lens_text
+			_replace_profile_switch_diary(lens_text)
 			output_label.set_meta(
 				"visible_truth_anchor_signature",
 				signature
@@ -197028,18 +196997,9 @@ func _install_switched_actor_life_diary_from_published_packet(
 			)
 		)
 	)
-	var precomposed_lens_text: String = str(
-		press_frame_lens_cache.get(
-			"life_diary_text",
-			diary_packet.get(
-				"text",
-				""
-			)
-		)
-	).strip_edges()
-
-
-
+	var precomposed_lens_text := _profile_switch_diary_bbcode(
+		press_frame_lens_cache, str(diary_packet.get("text", ""))
+	)
 	if precomposed_lens_text == "":
 		precomposed_lens_text = (
 			_relationship_profile_press_frame_lens_text_for_lines(
@@ -197067,7 +197027,7 @@ func _install_switched_actor_life_diary_from_published_packet(
 		and precomposed_lens_text != ""
 	):
 		output_label.bbcode_enabled = true
-		output_label.text = precomposed_lens_text
+		_replace_profile_switch_diary(precomposed_lens_text)
 		output_label.visible = true
 		output_label.mouse_filter = (
 			Control.MOUSE_FILTER_IGNORE
@@ -197627,7 +197587,7 @@ func _consume_continue_lineage_perspective_handoff(
 				)
 
 			output_label.bbcode_enabled = true
-			output_label.text = minimum_life_text
+			_replace_profile_switch_diary(minimum_life_text.replace("[", "[lb]"))
 			output_label.visible = true
 			output_label.scroll_active = true
 			output_label.mouse_filter = (
@@ -203593,6 +203553,21 @@ func _relationship_profile_life_diary_lines_for_shell(
 		"This life was already in motion before I took control."
 	]
 
+func _profile_switch_diary_bbcode(cache: Dictionary, fallback: String) -> String:
+	var text := str(cache.get("life_diary_text", "")).strip_edges()
+	if text.is_empty():
+		return fallback.strip_edges().replace("[", "[lb]")
+	# The scene adds header styling. Simulation packets carry plain journal text.
+	if cache.get("schema", "") == "eralife.relationship_profile.press_frame_lens_cache":
+		return text
+	return text.replace("[", "[lb]")
+
+func _replace_profile_switch_diary(bbcode: String) -> void:
+	# Committed entries append to this packet on the same frame. Keep the last
+	# paragraph complete and discard the previous actor's scrolling spacer.
+	output_label.text = bbcode.trim_suffix("\n") + "\n"
+	output_label.set_meta("life_diary_focus_spacer_paragraph_count", 0)
+
 func _relationship_profile_press_frame_lens_text_for_lines(
 	life_lines: Array,
 	switch_text: String = ""
@@ -203622,7 +203597,7 @@ func _relationship_profile_press_frame_lens_text_for_lines(
 				)
 			)
 		else:
-			out += line
+			out += line.replace("[", "[lb]")
 
 		if not out.ends_with("\n"):
 			out += "\n"
@@ -203635,7 +203610,7 @@ func _relationship_profile_press_frame_lens_text_for_lines(
 		).strip_edges()
 
 		if clean_switch_text != "":
-			out = clean_switch_text
+			out = clean_switch_text.replace("[", "[lb]")
 
 			if not out.ends_with("\n"):
 				out += "\n"

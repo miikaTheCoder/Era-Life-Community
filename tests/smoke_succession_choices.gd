@@ -6,6 +6,9 @@ const LIFE_CHOICES := "Back to life choices"
 const RECONSIDER := "Choose someone else"
 const KIN := "Continue Lineage"
 const KNOWN := "Continue as someone you know"
+const FAMILY_MEMORY := "I remember my mother, Ada Desktop."
+const FRIEND_MEMORY := "I remember my friend, Ada [b]A[/b] Desktop."
+
 
 func _buttons(death_menu := false) -> Array[Button]:
 	var container: Control = current_scene.get("death_transition_buttons" if death_menu else "afterlife_overlay_buttons")
@@ -83,6 +86,50 @@ func _scroll_with_wheel(last: Button) -> bool:
 		await process_frame
 	return _check(list.scroll_vertical > start and list.get_global_rect().encloses(last.get_global_rect()), "Wheel did not reveal the last choice")
 
+# A previous handoff rendered one paragraph as "Age: 8My mother's ...".
+# Compare actual rendered lines as well as the canonical year entry.
+func _has_one_memory(entries: Array, age_at_handoff: int, expected: String) -> bool:
+	var matches := 0
+	for entry in entries:
+		if entry is Array:
+			for index in range(entry.size()):
+				if entry[index] == expected:
+					if not entry.slice(0, index).has("Age: %d" % age_at_handoff):
+						return false
+					matches += 1
+	return matches == 1
+
+func _expect_journal(expected: String, age_at_handoff: int, stage: String) -> bool:
+	var state: GameState = current_scene.get("gs")
+	var entries: Array = state.life_diary_contract_engine.diary_entries_for_actor(state.player_id)
+	var output: RichTextLabel = current_scene.get("output_label")
+	var age_line := "Age: %d" % age_at_handoff
+	var rendered := await _wait_for(func():
+		var text := output.get_parsed_text()
+		var lines := Array(text.split("\n", false)).map(func(line): return str(line).strip_edges())
+		return (
+			output.is_visible_in_tree() and text.count(expected) == 1
+			and lines.has(expected) and lines.has(age_line)
+			and lines.find(age_line) < lines.find(expected)
+		)
+	, 5)
+	var canonical := _has_one_memory(entries, age_at_handoff, expected)
+	await _capture("journal-" + stage)
+	print("SUCCESSION JOURNAL: ", stage, " actor=", state.player_id, " expected=", expected, " canonical=", canonical, " rendered=", rendered)
+	if not canonical or not rendered:
+		print("SUCCESSION JOURNAL ACTUAL: entries=", entries, " rendered=", output.get_parsed_text())
+	return _check(canonical and rendered, "Successor memory must appear once as a distinct journal line after the handoff age: " + stage)
+
+func _advance_one_year() -> bool:
+	if not await super._advance_one_year():
+		return false
+	return await _expect_journal(FAMILY_MEMORY, 8, "aged")
+
+func _restore() -> void:
+	await super._restore()
+	if not failed and await _expect_journal(FAMILY_MEMORY, 8, "restored"):
+		print("SUCCESSION COLD RESTORE: PASS")
+
 func _age_and_save() -> void:
 	var state: GameState = current_scene.get("gs")
 	var founder := state.player
@@ -95,6 +142,7 @@ func _age_and_save() -> void:
 		return
 	founder.friends.clear()
 	if contacts:
+		founder.first_name = "Ada [b]A[/b]"
 		founder.children.clear()
 		for person in state.npcs:
 			person.parents.erase(founder.id)
@@ -185,9 +233,16 @@ func _age_and_save() -> void:
 		return
 	if not _check(candidate.bank_balance == candidate_money, "Continuing without inheritance changed the chosen person's balance"):
 		return
+	if not await _expect_journal(FRIEND_MEMORY if contacts else FAMILY_MEMORY, candidate.age, "handoff"):
+		return
 	await _capture("new-life")
 	if not contacts:
 		await super._age_and_save()
 		if failed:
+			return
+		var path: String = current_scene.get_meta("world_lineage_save_path")
+		var payload := BinarySaveEngine.decode(FileAccess.get_file_as_bytes(path))
+		var entries: Array = payload.get("scenario_state", {}).get("life_diary_state_by_npc", {}).get(str(candidate.id), {}).get("entries", [])
+		if not _check(_has_one_memory(entries, 8, FAMILY_MEMORY), "Binary save lost the successor's journal memory"):
 			return
 	print("SUCCESSION GRAPHICAL: PASS route=", route, " deceased=", founder.id, " successor=", candidate.id)

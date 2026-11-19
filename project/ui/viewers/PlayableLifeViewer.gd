@@ -199,7 +199,7 @@ func _life_diary_packet(surface: Dictionary, life_lines: Array, life_entries: Ar
 		"entries": life_entries.duplicate(true),
 		"signature": str(surface.get("life_diary_signature", "")).strip_edges(),
 		"text": text_block,
-		"bbcode_text": text_block,
+		"bbcode_text": text_block.replace("[", "[lb]"),
 	}
 func _life_diary_text_for_lines(life_lines: Array) -> String:
 	if typeof(life_lines) != TYPE_ARRAY or life_lines.is_empty():

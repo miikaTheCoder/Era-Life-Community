@@ -417,19 +417,7 @@ func _continue_lineage_prepared_switch_packet_for_actor(
 
 	return packet.duplicate(false)
 
-func _store_continue_lineage_perspective_handoff(
-	dead_player: Person,
-	continuing_actor: Person,
-	switch_packet: Dictionary
-) -> Dictionary:
-	if (
-		gs == null
-		or dead_player == null
-		or continuing_actor == null
-		or switch_packet.is_empty()
-	):
-		return {}
-
+func _successor_relationship_to_deceased(successor: Person, dead_player: Person) -> String:
 	var relationship_label: String = ""
 
 	if (
@@ -441,7 +429,7 @@ func _store_continue_lineage_perspective_handoff(
 		relationship_label = str(
 			gs.relationships_hub_contract_engine
 			.continuation_relationship_label_for_pair(
-				continuing_actor,
+				successor,
 				dead_player
 			)
 		).strip_edges()
@@ -454,7 +442,7 @@ func _store_continue_lineage_perspective_handoff(
 	):
 		relationship_label = str(
 			gs.get_relationship_label_between(
-				continuing_actor,
+				successor,
 				dead_player
 			)
 		).strip_edges()
@@ -475,7 +463,7 @@ func _store_continue_lineage_perspective_handoff(
 					dead_player.id
 				),
 				int(
-					continuing_actor.id
+					successor.id
 				)
 			)
 		)
@@ -486,14 +474,31 @@ func _store_continue_lineage_perspective_handoff(
 			else "predecessor"
 		)
 
-	relationship_label = (
-		relationship_label.strip_edges().to_lower()
-	)
+	return relationship_label.strip_edges().to_lower()
 
-	var spirit_text: String = (
-		"My %s's spirit flows through me."
-		% relationship_label
-	)
+func _succession_memory_text(dead_player: Person, relationship: String) -> String:
+	var name := dead_player._display_name().replace("\r", " ").replace("\n", " ").strip_edges()
+	if relationship in ["", "predecessor", "relationship", "unknown", "stranger"]:
+		return "I remember %s." % name if not name.is_empty() else "I remember the person who came before me."
+	if name.is_empty():
+		return "I remember my %s." % relationship
+	return "I remember my %s, %s." % [relationship, name]
+
+func _store_continue_lineage_perspective_handoff(
+	dead_player: Person,
+	continuing_actor: Person,
+	switch_packet: Dictionary
+) -> Dictionary:
+	if (
+		gs == null
+		or dead_player == null
+		or continuing_actor == null
+		or switch_packet.is_empty()
+	):
+		return {}
+
+	var relationship_label := _successor_relationship_to_deceased(continuing_actor, dead_player)
+	var spirit_text := _succession_memory_text(dead_player, relationship_label)
 
 	var global_memory_cursor: int = 0
 
@@ -4403,23 +4408,12 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 
 	var recovered_handoff_from_resident_packet: bool = false
 
+	# Resolve the relationship from the new narrator's perspective. Older prepared
+	# handoffs can contain generic text or a label seen by the deceased.
+	var relationship_label := _successor_relationship_to_deceased(target, dead_player)
+	var spirit_text := _succession_memory_text(dead_player, relationship_label)
+
 	if handoff.is_empty():
-		var relationship_label: String = str(
-			intent.get(
-				"relationship_label",
-				"predecessor"
-			)
-		).strip_edges().to_lower()
-
-		if relationship_label in [
-			"",
-			"relationship",
-			"stranger",
-			"unknown",
-			"relative"
-		]:
-			relationship_label = "predecessor"
-
 		var press_frame_lens_raw: Variant = (
 			switch_packet.get(
 				"press_frame_lens_cache",
@@ -4469,10 +4463,7 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 			"deceased_actor_id": dead_id,
 			"actor_id": target_id,
 			"relationship_to_deceased": relationship_label,
-			"diary_text": (
-				"My %s's spirit flows through me."
-				% relationship_label
-			),
+			"diary_text": spirit_text,
 			"pointer_revision": pointer_revision,
 			"prepared_world_year": int(
 				gs.year
@@ -4524,23 +4515,6 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 		}
 
 		recovered_handoff_from_resident_packet = true
-
-	var spirit_text: String = str(
-		handoff.get(
-			"diary_text",
-			"My predecessor's spirit flows through me."
-		)
-	).strip_edges()
-
-	if spirit_text == "":
-		spirit_text = (
-			"My predecessor's spirit flows through me."
-		)
-
-
-
-
-
 
 	var switch_report: Dictionary = (
 		gs.universal_switch_contract_engine
@@ -4666,12 +4640,7 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 					"narrator": "self",
 					"meta": {
 						"deceased_actor_id": dead_id,
-						"relationship_to_deceased": str(
-							handoff.get(
-								"relationship_to_deceased",
-								"predecessor"
-							)
-						),
+						"relationship_to_deceased": relationship_label,
 						"continuation_kind": selection_kind,
 						"inheritance_transferred": (
 							inheritance_transferred
@@ -4825,6 +4794,8 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 
 
 
+	committed_handoff["diary_text"] = spirit_text
+	committed_handoff["relationship_to_deceased"] = relationship_label
 	committed_handoff [
 		"visible_switch_packet"
 	] = switch_packet.duplicate(

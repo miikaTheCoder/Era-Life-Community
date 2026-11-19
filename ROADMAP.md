@@ -165,10 +165,15 @@ or device verification is included in this task.
 
 ### R17 desktop succession choices
 
-- [ ] M1. Choose a descendant or known person, reconsider before the handoff,
+- [x] M1. Choose a descendant or known person, reconsider before the handoff,
   and return to the death menu when nobody qualifies. Verify that identical
   descriptions select the intended actor and that browsing preserves the estate.
-  Implemented on `codex/succession-choices` from `5c7df19`. Awaiting council.
+  Council round 1 approved `5c7df19..c7da68e` on `codex/succession-choices`.
+  Security 8/10 for guarded handoffs, design 8/10 for recoverable choices,
+  and technical 8/10 for stable identities and eligibility checks. All 31
+  regression stems passed across two runs. Optional follow-ups include clearer
+  namesake context, long-list navigation, restored legacy confirmations, and
+  direct tests of inheritance and late destination publication.
   Godot 4.4.1 reproduced both dead ends and duplicate target selection.
   Desktop pointer, wheel, keyboard and rapid-click checks passed. From a
   seeded Household death, the player continued as either their daughter or
@@ -179,4 +184,8 @@ or device verification is included in this task.
 - [ ] M2. Give the successor a readable first journal entry. The desktop
   playtest showed the age joined to the first sentence. Identify the person
   remembered and preserve the entry through a later year and cold Continue.
-  Planned after M1 review.
+  Implemented on `codex/succession-choices`. Awaiting cumulative council.
+  The daughter remembers her mother by name and the friend remembers a friend.
+  Desktop checks found the exact entry once below the age heading, including
+  a name containing literal brackets. The daughter's entry survived Age Up,
+  binary save, and a fresh process using title-screen Continue.

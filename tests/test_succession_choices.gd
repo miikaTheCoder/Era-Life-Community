@@ -129,6 +129,15 @@ func _test_delayed_funeral() -> void:
 	_check(str(death_prompt.text).contains(state.afterlife_state.get("funeral_text", "")), "Returning lost the funeral")
 	_check(death_prompt.text.contains("Old age"), "Returning lost the cause of death")
 
+func _test_journal_name_fallbacks() -> void:
+	var unnamed := Person.new()
+	_check(afterlife._succession_memory_text(unnamed, "mother") == "I remember my mother.", "Unnamed relative lost the family relationship")
+	_check(afterlife._succession_memory_text(unnamed, "predecessor") == "I remember the person who came before me.", "Unnamed predecessor left an incomplete sentence")
+	unnamed.name = "Ren"
+	_check(afterlife._succession_memory_text(unnamed, "predecessor") == "I remember Ren.", "A legacy display name was lost")
+	unnamed.first_name = "Ren\nAsh"
+	_check(afterlife._succession_memory_text(unnamed, "friend") == "I remember my friend, Ren Ash.", "A multi-line name split the memory")
+
 func _run() -> void:
 	parent.id = 41
 	parent.first_name = "Ren"
@@ -167,6 +176,7 @@ func _run() -> void:
 	_test_stale_and_old_choices(twins[0], twins[1])
 	_test_waiting_cancel(twins[0])
 	_test_delayed_funeral()
+	_test_journal_name_fallbacks()
 	if not failed:
 		print("SUCCESSION CHOICES TESTS: PASS")
 	quit(1 if failed else 0)
