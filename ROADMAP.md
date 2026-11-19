@@ -181,11 +181,19 @@ or device verification is included in this task.
   with the same identity, balance and history. Reproduce both routes with
   `bash scripts/test-succession-choices.sh` after importing the project.
   The ordinary full-lifetime playthrough remains open.
-- [ ] M2. Give the successor a readable first journal entry. The desktop
+- [x] M2. Give the successor a readable first journal entry. The desktop
   playtest showed the age joined to the first sentence. Identify the person
   remembered and preserve the entry through a later year and cold Continue.
-  Implemented on `codex/succession-choices`. Awaiting cumulative council.
+  Final cumulative council round 1 approved both milestones at `662b612`.
+  Security passed at 8/10 for actor-owned history and guarded transfer.
+  Design passed at 8/10 for clear choices and readable journal entries.
+  Technical review passed at 8/10 for eligibility checks and a single
+  persisted memory. All 31 regressions passed across two runs (19 and 12).
+  Ordinary Household and narrative-family games also aged and saved.
   The daughter remembers her mother by name and the friend remembers a friend.
   Desktop checks found the exact entry once below the age heading, including
   a name containing literal brackets. The daughter's entry survived Age Up,
   binary save, and a fresh process using title-screen Continue.
+  Next for R17 is the ordinary full-lifetime route and a verified estate
+  transfer. Additional test coverage can carry a bracketed name through
+  cold Continue and exercise a delayed handoff with a fully ready destination.
