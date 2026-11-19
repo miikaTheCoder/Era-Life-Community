@@ -674,6 +674,9 @@ var afterlife_overlay_card
 var afterlife_overlay_title
 var afterlife_overlay_body
 var afterlife_overlay_buttons
+var afterlife_overlay_content: VBoxContainer
+var afterlife_overlay_close_button: Button
+var afterlife_prompt_revision := 0
 var afterlife_overlay_footer
 var afterlife_reincarnation_identity_box: VBoxContainer
 var afterlife_reincarnation_first_name_input: LineEdit
@@ -15785,8 +15788,8 @@ func _format_life_diary_header_line_bbcode(line: String) -> String:
 	var text_line := line.strip_edges()
 	if _is_life_diary_year_header_line(text_line):
 		text_line = DiarySceneSupport._life_diary_year_header_text(text_line)
-		return "[font_size=26][color=#ddbd83]%s[/color][/font_size]" % text_line
-	return "[font_size=16][color=#acb5ac]%s[/color][/font_size]" % text_line
+		return "[font_size=26][color=#ddbd83]%s[/color][/font_size]" % text_line.replace("[", "[lb]")
+	return "[font_size=16][color=#acb5ac]%s[/color][/font_size]" % text_line.replace("[", "[lb]")
 
 func _append_formatted_life_diary_line(
 	target_label: RichTextLabel,
@@ -15818,7 +15821,7 @@ func _append_formatted_life_diary_line(
 	else:
 		AppearanceSceneSupport._append_stone_and_element_colored_text_to_rich_label(
 			target_label,
-			text_line,
+			text_line.replace("[", "[lb]"),
 			true
 		)
 func _find_life_diary_focus_line_index(
@@ -16909,7 +16912,7 @@ func _current_ui_material_pulse(speed: float = 1.0, phase_offset: float = 0.0) -
 	return (sin(_current_ui_material_phase() * speed + phase_offset) + 1.0) * 0.5
 
 
-func _bring_modal_to_front(node: Node) -> void:
+func _bring_modal_to_front(node: Node, focus_root: bool = true) -> void:
 	if node == null:
 		return
 
@@ -16927,7 +16930,8 @@ func _bring_modal_to_front(node: Node) -> void:
 		control_node.focus_mode = Control.FOCUS_ALL
 		control_node.z_as_relative = false
 		control_node.z_index = AppearanceSceneSupport._safe_modal_z_index(int(control_node.z_index), z_floor)
-		control_node.call_deferred("grab_focus")
+		if focus_root:
+			control_node.call_deferred("grab_focus")
 		return
 
 	if node is CanvasItem:
@@ -36061,9 +36065,13 @@ func _ensure_afterlife_ui() -> void:
 		afterlife_overlay_body.mouse_filter = (
 			Control.MOUSE_FILTER_PASS
 		)
-		body_scroll.add_child(
-			afterlife_overlay_body
-		)
+		body_scroll.follow_focus = true
+		body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		afterlife_overlay_content = VBoxContainer.new()
+		afterlife_overlay_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		afterlife_overlay_content.add_theme_constant_override("separation", 16)
+		body_scroll.add_child(afterlife_overlay_content)
+		afterlife_overlay_content.add_child(afterlife_overlay_body)
 
 		afterlife_reincarnation_identity_box = VBoxContainer.new()
 		afterlife_reincarnation_identity_box.name = "afterlife_reincarnation_identity_box"
@@ -36096,7 +36104,7 @@ func _ensure_afterlife_ui() -> void:
 
 
 
-		var afterlife_overlay_close_button:= Button.new()
+		afterlife_overlay_close_button = Button.new()
 		afterlife_overlay_close_button.text = "Close"
 		afterlife_overlay_close_button.size_flags_horizontal = (
 			Control.SIZE_EXPAND_FILL
@@ -36167,6 +36175,7 @@ func _on_prebuilt_death_transition_option_pressed(
 	)
 
 func _hide_afterlife_ui() -> void:
+	afterlife_prompt_revision += 1
 	if death_transition_popup != null:
 		death_transition_popup.visible = false
 	if afterlife_overlay != null:
@@ -36176,6 +36185,8 @@ func _hide_afterlife_ui() -> void:
 func _show_afterlife_death_prompt(
 	result: Dictionary
 ) -> void:
+	afterlife_prompt_revision += 1
+	var returning_from_overlay: bool = afterlife_overlay != null and afterlife_overlay.visible
 	if afterlife_overlay != null:
 		afterlife_overlay.visible = false
 
@@ -36254,9 +36265,7 @@ func _show_afterlife_death_prompt(
 				)
 			)
 
-	death_transition_body.append_text(
-		death_text
-	)
+	death_transition_body.add_text(death_text)
 
 	var options: Array = ValueSceneSupport._safe_array(
 		result.get(
@@ -36339,13 +36348,13 @@ func _show_afterlife_death_prompt(
 		)
 
 	death_transition_popup.visible = true
-	death_transition_popup.mouse_filter = (
-		Control.MOUSE_FILTER_STOP
-	)
-
-	_bring_modal_to_front(
-		death_transition_popup
-	)
+	death_transition_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	_bring_modal_to_front(death_transition_popup, not returning_from_overlay)
+	if returning_from_overlay:
+		for button in prebuilt_buttons:
+			if button is Button and button.visible and not button.disabled:
+				button.grab_focus()
+				break
 
 
 
@@ -36434,13 +36443,29 @@ func _show_afterlife_overlay(result: Dictionary) -> void:
 		player_stats_overlay.visible = false
 
 	afterlife_overlay.visible = true
-	_bring_modal_to_front(afterlife_overlay)
-	afterlife_overlay_title.text = "THE AFTERLIFE"
-	afterlife_overlay_body.clear()
-	afterlife_overlay_body.append_text(str(result.get("text", "")))
-	_clear_container_children(afterlife_overlay_buttons)
-
+	afterlife_prompt_revision += 1
 	var rtype: String = str(result.get("type", ""))
+	const SUCCESSION_TITLES := {
+		"afterlife_continue_lineage_target": "Continue your family line",
+		"afterlife_continue_known_person_target": "Continue as someone you know",
+		"afterlife_continue_lineage_transfer_toggle": "Your next life",
+		"afterlife_continue_lineage_commit_pending": "Your next life",
+	}
+	var succession := SUCCESSION_TITLES.has(rtype)
+	_bring_modal_to_front(afterlife_overlay, not succession)
+	afterlife_overlay_title.text = SUCCESSION_TITLES.get(rtype, "THE AFTERLIFE")
+	_clear_container_children(afterlife_overlay_buttons)
+	afterlife_overlay_body.clear()
+	afterlife_overlay_body.add_text(str(result.get("text", "")))
+	if succession:
+		if afterlife_overlay_buttons.get_parent() != afterlife_overlay_content:
+			afterlife_overlay_buttons.reparent(afterlife_overlay_content, false)
+	else:
+		var overlay_root: Container = afterlife_overlay_close_button.get_parent()
+		if afterlife_overlay_buttons.get_parent() != overlay_root:
+			afterlife_overlay_buttons.reparent(overlay_root, false)
+			overlay_root.move_child(afterlife_overlay_buttons, afterlife_overlay_close_button.get_index())
+	afterlife_overlay_close_button.visible = not succession
 	var showing_identity_form: bool = rtype == "afterlife_reincarnation_identity_form"
 	if afterlife_reincarnation_identity_box != null:
 		afterlife_reincarnation_identity_box.visible = showing_identity_form
@@ -36475,10 +36500,17 @@ func _show_afterlife_overlay(result: Dictionary) -> void:
 	for opp in result.get("opps", []):
 		var btn:= Button.new()
 		btn.text = str(opp)
+		if succession:
+			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			btn.focus_mode = Control.FOCUS_ALL
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.custom_minimum_size = Vector2(0, 46)
 		btn.pressed.connect(_on_afterlife_action_pressed.bind(str(opp)))
 		afterlife_overlay_buttons.add_child(btn)
+		if succession and afterlife_overlay_buttons.get_child_count() == 1:
+			btn.grab_focus()
+			# Show the instructions above the first focused choice after layout.
+			afterlife_overlay_content.get_parent().set_deferred("scroll_vertical", 0)
 
 	if result.get("opps", []).is_empty() and rtype in ["afterlife_round_waiting_for_year_advance", "afterlife_round_complete"]:
 		var age_btn:= Button.new()
@@ -36637,6 +36669,7 @@ func _on_afterlife_action_pressed(
 
 
 	afterlife_action_queue.append({
+		"prompt_revision": afterlife_prompt_revision,
 		"sequence": afterlife_action_sequence,
 		"actor_id": int(
 			gs.player.id
@@ -36714,7 +36747,8 @@ func _service_afterlife_action_queue() -> void:
 	)
 
 	if (
-		gs == null
+		int(request.get("prompt_revision", -1)) != afterlife_prompt_revision
+		or gs == null
 		or gs.player == null
 		or int(
 			gs.player.id
@@ -193108,15 +193142,8 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 			)
 		)
 	).strip_edges()
-	var ready_text: String = str(
-		life_diary_packet.get(
-			"bbcode_text",
-			life_diary_packet.get(
-				"text",
-				""
-			)
-		)
-	).strip_edges()
+	var ready_bbcode := str(life_diary_packet.get("bbcode_text", "")).strip_edges()
+	var ready_text := str(life_diary_packet.get("text", "")).strip_edges()
 
 	var explicit_clear_requested: bool = bool(
 		life_diary_packet.get(
@@ -193130,6 +193157,7 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 	var packet_contains_diary_truth: bool = (
 		not surface_lines.is_empty()
 		or ready_text != ""
+		or ready_bbcode != ""
 	)
 
 
@@ -193158,26 +193186,11 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 		output_label.bbcode_enabled = true
 		output_label.clear()
 
-		var ready_text_has_bbcode: bool = (
-			ready_text.find("[center]") != -1
-			or ready_text.find("[b]") != -1
-			or ready_text.find("[color=") != -1
-		)
-
-		if ready_text != "" and ready_text_has_bbcode:
-			output_label.append_text(
-				ready_text
-			)
-			if not ready_text.ends_with("\n"):
-				output_label.append_text(
-					"\n"
-				)
-		elif not surface_lines.is_empty():
+		if not surface_lines.is_empty():
 			for raw_line in surface_lines:
-				_append_formatted_life_diary_line(
-					output_label,
-					str(raw_line)
-				)
+				_append_formatted_life_diary_line(output_label, str(raw_line))
+		elif ready_bbcode != "":
+			output_label.append_text(ready_bbcode + "\n")
 		elif ready_text != "":
 			var fallback_lines: PackedStringArray = (
 				ready_text.split(
@@ -193376,17 +193389,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 
 
 
-	var lens_text: String = str(
-		lens_cache.get(
-			"life_diary_text",
-			""
-		)
-	).strip_edges()
-
-	if lens_text == "":
-		lens_text = str(
-			clean_text
-		).strip_edges()
+	var lens_text := _profile_switch_diary_bbcode(lens_cache, clean_text)
 
 	if lens_text == "":
 		var world_year: int = int(
@@ -193406,7 +193409,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 			% [
 				_format_year(world_year),
 				actor_age,
-				actor_name
+				actor_name.replace("[", "[lb]")
 			]
 		)
 
@@ -193579,7 +193582,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 		) != signature:
 
 
-			output_label.text = lens_text
+			_replace_profile_switch_diary(lens_text)
 			output_label.set_meta(
 				"visible_truth_anchor_signature",
 				signature
@@ -196994,18 +196997,9 @@ func _install_switched_actor_life_diary_from_published_packet(
 			)
 		)
 	)
-	var precomposed_lens_text: String = str(
-		press_frame_lens_cache.get(
-			"life_diary_text",
-			diary_packet.get(
-				"text",
-				""
-			)
-		)
-	).strip_edges()
-
-
-
+	var precomposed_lens_text := _profile_switch_diary_bbcode(
+		press_frame_lens_cache, str(diary_packet.get("text", ""))
+	)
 	if precomposed_lens_text == "":
 		precomposed_lens_text = (
 			_relationship_profile_press_frame_lens_text_for_lines(
@@ -197033,7 +197027,7 @@ func _install_switched_actor_life_diary_from_published_packet(
 		and precomposed_lens_text != ""
 	):
 		output_label.bbcode_enabled = true
-		output_label.text = precomposed_lens_text
+		_replace_profile_switch_diary(precomposed_lens_text)
 		output_label.visible = true
 		output_label.mouse_filter = (
 			Control.MOUSE_FILTER_IGNORE
@@ -197593,7 +197587,7 @@ func _consume_continue_lineage_perspective_handoff(
 				)
 
 			output_label.bbcode_enabled = true
-			output_label.text = minimum_life_text
+			_replace_profile_switch_diary(minimum_life_text.replace("[", "[lb]"))
 			output_label.visible = true
 			output_label.scroll_active = true
 			output_label.mouse_filter = (
@@ -203559,6 +203553,21 @@ func _relationship_profile_life_diary_lines_for_shell(
 		"This life was already in motion before I took control."
 	]
 
+func _profile_switch_diary_bbcode(cache: Dictionary, fallback: String) -> String:
+	var text := str(cache.get("life_diary_text", "")).strip_edges()
+	if text.is_empty():
+		return fallback.strip_edges().replace("[", "[lb]")
+	# The scene adds header styling. Simulation packets carry plain journal text.
+	if cache.get("schema", "") == "eralife.relationship_profile.press_frame_lens_cache":
+		return text
+	return text.replace("[", "[lb]")
+
+func _replace_profile_switch_diary(bbcode: String) -> void:
+	# Committed entries append to this packet on the same frame. Keep the last
+	# paragraph complete and discard the previous actor's scrolling spacer.
+	output_label.text = bbcode.trim_suffix("\n") + "\n"
+	output_label.set_meta("life_diary_focus_spacer_paragraph_count", 0)
+
 func _relationship_profile_press_frame_lens_text_for_lines(
 	life_lines: Array,
 	switch_text: String = ""
@@ -203588,7 +203597,7 @@ func _relationship_profile_press_frame_lens_text_for_lines(
 				)
 			)
 		else:
-			out += line
+			out += line.replace("[", "[lb]")
 
 		if not out.ends_with("\n"):
 			out += "\n"
@@ -203601,7 +203610,7 @@ func _relationship_profile_press_frame_lens_text_for_lines(
 		).strip_edges()
 
 		if clean_switch_text != "":
-			out = clean_switch_text
+			out = clean_switch_text.replace("[", "[lb]")
 
 			if not out.ends_with("\n"):
 				out += "\n"

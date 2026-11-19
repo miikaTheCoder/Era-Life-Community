@@ -162,3 +162,38 @@ or device verification is included in this task.
 | Date | Item / task | Verification and next action |
 | --- | --- | --- |
 | 2026-11-17 | Essential roadmap + R16, `codex/essential-roadmap` | Roadmap focused and history preserved. R16: 30 regressions, four real write-failure cases and graphical save/cold Continue pass; see [evidence](docs/SAVE-WRITE-SAFETY.md), including one interrupted display run. Next: council/PR gate, then R17 after separate story corrections land. No merge or release. |
+
+### R17 desktop succession choices
+
+- [x] M1. Choose a descendant or known person, reconsider before the handoff,
+  and return to the death menu when nobody qualifies. Verify that identical
+  descriptions select the intended actor and that browsing preserves the estate.
+  Council round 1 approved `5c7df19..c7da68e` on `codex/succession-choices`.
+  Security 8/10 for guarded handoffs, design 8/10 for recoverable choices,
+  and technical 8/10 for stable identities and eligibility checks. All 31
+  regression stems passed across two runs. Optional follow-ups include clearer
+  namesake context, long-list navigation, restored legacy confirmations, and
+  direct tests of inheritance and late destination publication.
+  Godot 4.4.1 reproduced both dead ends and duplicate target selection.
+  Desktop pointer, wheel, keyboard and rapid-click checks passed. From a
+  seeded Household death, the player continued as either their daughter or
+  their friend. The daughter aged, saved, and restored in a separate process
+  with the same identity, balance and history. Reproduce both routes with
+  `bash scripts/test-succession-choices.sh` after importing the project.
+  The ordinary full-lifetime playthrough remains open.
+- [x] M2. Give the successor a readable first journal entry. The desktop
+  playtest showed the age joined to the first sentence. Identify the person
+  remembered and preserve the entry through a later year and cold Continue.
+  Final cumulative council round 1 approved both milestones at `662b612`.
+  Security passed at 8/10 for actor-owned history and guarded transfer.
+  Design passed at 8/10 for clear choices and readable journal entries.
+  Technical review passed at 8/10 for eligibility checks and a single
+  persisted memory. All 31 regressions passed across two runs (19 and 12).
+  Ordinary Household and narrative-family games also aged and saved.
+  The daughter remembers her mother by name and the friend remembers a friend.
+  Desktop checks found the exact entry once below the age heading, including
+  a name containing literal brackets. The daughter's entry survived Age Up,
+  binary save, and a fresh process using title-screen Continue.
+  Next for R17 is the ordinary full-lifetime route and a verified estate
+  transfer. Additional test coverage can carry a bracketed name through
+  cold Continue and exercise a delayed handoff with a fully ready destination.

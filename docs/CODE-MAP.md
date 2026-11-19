@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-377 scripts; 927,869 source lines.
+377 scripts; 927,677 source lines.
 
 ## Largest files
 
@@ -20,7 +20,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Lines | Functions |
 | --- | ---: | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | 227,999 | 3107 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | 228,008 | 3109 |
 | [GameState.gd](../project/core/state/GameState.gd) | 23,381 | 337 |
 | [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,662 | 147 |
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
@@ -184,7 +184,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | - | 3107 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | - | 3109 |
 | [MobileBoot.gd](../project/scenes/MobileBoot.gd) | - | 2 |
 
 ## project/systems/activities
@@ -458,7 +458,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [AfterlifeInfluenceEngine.gd](../project/systems/supernatural/AfterlifeInfluenceEngine.gd) | AfterlifeInfluenceEngine | 73 |
+| [AfterlifeInfluenceEngine.gd](../project/systems/supernatural/AfterlifeInfluenceEngine.gd) | AfterlifeInfluenceEngine | 83 |
 | [AvatarInfluenceEngine.gd](../project/systems/supernatural/AvatarInfluenceEngine.gd) | AvatarInfluenceEngine | 28 |
 | [BridgeToTerabithiaEngine.gd](../project/systems/supernatural/BridgeToTerabithiaEngine.gd) | BridgeToTerabithiaEngine | 14 |
 | [DragonBallsEngine.gd](../project/systems/supernatural/DragonBallsEngine.gd) | DragonBallsEngine | 110 |
