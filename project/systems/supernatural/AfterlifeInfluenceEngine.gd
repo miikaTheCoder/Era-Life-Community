@@ -1,6 +1,17 @@
 extends Resource
 class_name AfterlifeInfluenceEngine
 
+const BACK_TO_LIFE_CHOICES := "Back to life choices"
+const CHOOSE_SOMEONE_ELSE := "Choose someone else"
+const DEATH_ACTIONS := {
+	"The After Life": {"action": "enter_afterlife_overlay"},
+	"Continue Lineage": {"action": "continue_lineage"},
+	"Continue as someone you know": {"action": "continue_known_person"},
+	"Random Life": {"action": "random_life"},
+	"Custom Life": {"action": "custom_life"},
+	"Rewind One Year": {"action": "rewind_one_year"},
+}
+
 var gs
 var death_entry_enrichment_queue: Array = []
 var death_entry_enrichment_service_active: bool = false
@@ -127,40 +138,6 @@ func enter_afterlife_for_player(
 		"continue_known_destination_prewarm_pending": true,
 		"continue_known_destination_prewarm_complete": false,
 
-		"pending_mode": "death_prompt",
-		"pending_type": "afterlife_death_prompt",
-		"pending_text": (
-			"Cause of death: %s\n\nChoose what happens next."
-			% death_cause
-		),
-		"pending_lookup": {
-			"The After Life": {
-				"action": "enter_afterlife_overlay"
-			},
-			"Continue Lineage": {
-				"action": "continue_lineage"
-			},
-			"Continue as someone you know": {
-				"action": "continue_known_person"
-			},
-			"Random Life": {
-				"action": "random_life"
-			},
-			"Custom Life": {
-				"action": "custom_life"
-			},
-			"Rewind One Year": {
-				"action": "rewind_one_year"
-			}
-		},
-		"pending_options": [
-			"The After Life",
-			"Continue Lineage",
-			"Continue as someone you know",
-			"Random Life",
-			"Custom Life",
-			"Rewind One Year"
-		],
 		"selected_intervention": {},
 		"selected_interventions": [],
 		"round_index": 0,
@@ -194,6 +171,8 @@ func enter_afterlife_for_player(
 		"death_entry_enrichment_requires_ui_idle": false,
 		"ui_is_renderer_only": true
 	}
+
+	_open_death_choices()
 
 	if not gs.lineage_influence_profiles.has(
 		lineage_key
@@ -1600,15 +1579,8 @@ func _service_death_entry_enrichment_quantum() -> void:
 				gs.afterlife_state [
 					"funeral_text"
 				] = funeral_text
-				gs.afterlife_state [
-					"pending_text"
-				] = (
-					"Cause of death: %s\n\n%s\n\nChoose what happens next."
-					% [
-						death_cause,
-						funeral_text
-					]
-				)
+				if gs.afterlife_state.get("pending_mode") == "death_prompt":
+					gs.afterlife_state["pending_text"] = _death_choices_text()
 				gs.afterlife_state [
 					"death_entry_enrichment_stage"
 				] = "funeral_complete"
@@ -3147,6 +3119,53 @@ func _build_funeral_summary(player: Person) -> String:
 
 
 
+func _death_choices_text() -> String:
+	var cause: String = str(gs.afterlife_state.get("death_cause", "Unknown"))
+	var funeral: String = str(gs.afterlife_state.get("funeral_text", ""))
+	var text := "Cause of death: %s" % cause
+	if not funeral.is_empty():
+		text += "\n\n" + funeral
+	return text + "\n\nChoose what happens next."
+
+func _open_death_choices() -> Dictionary:
+	gs.afterlife_state.merge({
+		"pending_mode": "death_prompt",
+		"pending_type": "afterlife_death_prompt",
+		"pending_text": _death_choices_text(),
+		"pending_lookup": DEATH_ACTIONS.duplicate(true),
+		"pending_options": DEATH_ACTIONS.keys(),
+		"death_popup_open": true,
+		"overlay_open": false,
+		"continue_lineage_target_id": -1,
+		"continue_lineage_selection_kind": "lineage",
+		"continue_lineage_transfer_estate": false,
+	}, true)
+	return get_pending_choice_result()
+
+# Older saved selections predate Back and can contain repeated display labels.
+# Rebuild only those offers before exposing or accepting a choice.
+func _upgrade_saved_continuation() -> Dictionary:
+	var state: Dictionary = gs.afterlife_state
+	var options: Variant = state.get("pending_options", [])
+	if not options is Array:
+		options = []
+	match str(state.get("pending_mode", "")):
+		"continue_lineage_target":
+			if not options.has(BACK_TO_LIFE_CHOICES):
+				return build_continue_lineage_result(gs.player)
+		"continue_known_person_target":
+			if not options.has(BACK_TO_LIFE_CHOICES):
+				return build_continue_known_person_result(gs.player)
+		"continue_lineage_transfer_toggle":
+			if not options.has(CHOOSE_SOMEONE_ELSE):
+				var kind := str(state.get("continue_lineage_selection_kind", "lineage"))
+				return _build_continue_lineage_toggle_prompt(int(state.get("continue_lineage_target_id", -1)), kind == "lineage", kind)
+		"continue_lineage_commit_pending":
+			if not options.has(CHOOSE_SOMEONE_ELSE):
+				_publish_waiting_continuation()
+				return get_pending_choice_result()
+	return {}
+
 func has_pending_choice() -> bool:
 	if gs == null:
 		return false
@@ -3154,6 +3173,9 @@ func has_pending_choice() -> bool:
 
 
 func get_pending_choice_result() -> Dictionary:
+	var upgraded := _upgrade_saved_continuation()
+	if not upgraded.is_empty():
+		return upgraded
 	var options: Array = []
 	var raw_options = gs.afterlife_state.get("pending_options", [])
 	if typeof(raw_options) == TYPE_ARRAY:
@@ -3174,6 +3196,10 @@ func choose_pending_option(
 			"success": false,
 			"text": "There is no spiritual choice waiting right now."
 		}
+
+	var upgraded := _upgrade_saved_continuation()
+	if not upgraded.is_empty() and not upgraded.get("opps", []).has(action_label):
+		return upgraded
 
 	var lookup_raw = (
 		gs.afterlife_state.get(
@@ -3213,6 +3239,12 @@ func choose_pending_option(
 	)
 
 	_clear_pending_choice()
+
+	if mode in ["continue_lineage_target", "continue_known_person_target"] and picked.get("action") == "back_to_death_prompt":
+		return _open_death_choices()
+	if mode in ["continue_lineage_transfer_toggle", "continue_lineage_commit_pending"] and picked.get("action") == "back_to_candidates":
+		gs.afterlife_state["continue_lineage_commit_intent"] = {}
+		return _reopen_continuation_selection(str(gs.afterlife_state.get("continue_lineage_selection_kind", "lineage")))
 
 	if mode == "afterlife_exit_choice":
 		var action: String = str(
@@ -3383,7 +3415,8 @@ func choose_pending_option(
 		return _build_continue_lineage_toggle_prompt(
 			descendant_id,
 			true,
-			"lineage"
+			"lineage",
+			bool(picked.get("show_record_number", false))
 		)
 
 	if mode == "continue_known_person_target":
@@ -3404,7 +3437,8 @@ func choose_pending_option(
 		return _build_continue_lineage_toggle_prompt(
 			target_id,
 			false,
-			"known_person"
+			"known_person",
+			bool(picked.get("show_record_number", false))
 		)
 
 	if mode == "continue_lineage_transfer_toggle":
@@ -3643,268 +3677,102 @@ func _continue_lineage_option_label(
 		]
 	)
 
-func build_continue_lineage_result(
-	player: Person
-) -> Dictionary:
-	if player == null:
-		return {
-			"type": "no_descendants",
-			"options": [
-				"random_life",
-				"custom_life",
-				"rewind_one_year"
-			]
-		}
+func _reopen_continuation_selection(kind: String) -> Dictionary:
+	if kind == "known_person":
+		return build_continue_known_person_result(gs.player)
+	return build_continue_lineage_result(gs.player)
 
-	if not gs.afterlife_active:
-		enter_afterlife_for_player(
-			player
-		)
+func _known_continuation_contracts(player: Person) -> Array:
+	if gs.relationships_hub_contract_engine != null:
+		return gs.relationships_hub_contract_engine.continuation_known_person_contracts(player)
+	# A saved display row cannot establish a current relationship by itself.
+	return []
 
-	var dead_player_id: int = int(
-		gs.afterlife_state.get(
-			"ghost_player_id",
-			player.id
-		)
-	)
+func _is_current_continuation_target(dead_player: Person, target: Person, kind: String) -> bool:
+	if dead_player == null or target == null or not target.alive or target.health <= 0 or target.id == dead_player.id:
+		return false
+	if kind == "lineage":
+		return _collect_descendant_ids(dead_player.id).has(target.id)
+	for contract in _known_continuation_contracts(dead_player):
+		if contract is Dictionary and int(contract.get("target_id", -1)) == target.id:
+			return true
+	return false
 
-	var candidates: Array = (
-		_collect_living_descendant_candidates(
-			dead_player_id
-		)
-	)
-
-	if candidates.is_empty():
-		return {
-			"type": "no_descendants",
-			"text": (
-				"There are no living descendants available to continue as."
-			),
-			"opps": [
-				"Random Life",
-				"Custom Life"
-			]
-		}
-
-	var options: Array = []
-	var lookup: Dictionary = {}
-
-	for descendant in candidates:
-		if descendant == null:
-			continue
-
-		var label: String = (
-			_continue_lineage_option_label(
-				dead_player_id,
-				descendant
-			)
-		)
-
-		if label == "":
-			continue
-
-		options.append(
-			label
-		)
-
-		lookup [
-			label
-		] = {
-			"descendant_id": int(
-				descendant.id
-			),
-			"selection_kind": "lineage"
-		}
-
-	gs.afterlife_state [
-		"pending_mode"
-	] = "continue_lineage_target"
-	gs.afterlife_state [
-		"pending_type"
-	] = "afterlife_continue_lineage_target"
-	gs.afterlife_state [
-		"pending_text"
-	] = "Choose the descendant you want to continue as."
-	gs.afterlife_state [
-		"pending_lookup"
-	] = lookup
-	gs.afterlife_state [
-		"pending_options"
-	] = options
-	gs.afterlife_state [
-		"death_popup_open"
-	] = false
-	gs.afterlife_state [
-		"overlay_open"
-	] = true
-
+func _publish_continuation_candidates(kind: String, rows: Array) -> Dictionary:
+	var is_lineage := kind == "lineage"
+	var mode := "continue_lineage_target" if is_lineage else "continue_known_person_target"
+	var text := "Choose the descendant you want to continue as." if is_lineage else "Choose a friend or partner whose life you want to continue."
+	if rows.is_empty():
+		text = "There are no living descendants available." if is_lineage else "There are no living friends or partners available."
+	var counts := {}
+	for row in rows:
+		counts[row.label] = int(counts.get(row.label, 0)) + 1
+	var lookup := {}
+	for row in rows:
+		var label: String = row.label
+		if counts[label] > 1:
+			# Candidate labels start with "Continue as". A stable record number
+			# distinguishes even same-name relatives with the same age and job.
+			label = "Record %d: %s" % [row.id, label]
+			row.choice["show_record_number"] = true
+		lookup[label] = row.choice
+	lookup[BACK_TO_LIFE_CHOICES] = {"action": "back_to_death_prompt"}
+	gs.afterlife_state.merge({
+		"continue_lineage_target_id": -1,
+		"continue_lineage_selection_kind": kind,
+		"continue_lineage_transfer_estate": false,
+		"pending_mode": mode,
+		"pending_type": "afterlife_" + mode,
+		"pending_text": text,
+		"pending_lookup": lookup,
+		"pending_options": lookup.keys(),
+		"death_popup_open": false,
+		"overlay_open": true,
+	}, true)
 	return get_pending_choice_result()
-func build_continue_known_person_result(
-	player: Person
-) -> Dictionary:
-	if (
-		player == null
-		or gs == null
-	):
-		return {
-			"success": false,
-			"type": "afterlife_continue_known_unavailable",
-			"text": (
-				"No known-person continuation contract is available."
-			),
-			"opps": []
-		}
 
+func build_continue_lineage_result(player: Person) -> Dictionary:
+	if player == null or gs == null:
+		return {"type": "no_descendants", "options": ["random_life", "custom_life", "rewind_one_year"]}
 	if not gs.afterlife_active:
-		enter_afterlife_for_player(
-			player
-		)
+		enter_afterlife_for_player(player)
+	var dead_id := int(gs.afterlife_state.get("ghost_player_id", player.id))
+	var rows := []
+	for descendant in _collect_living_descendant_candidates(dead_id):
+		rows.append({
+			"id": descendant.id,
+			"label": _continue_lineage_option_label(dead_id, descendant),
+			"choice": {"descendant_id": descendant.id, "selection_kind": "lineage"},
+		})
+	return _publish_continuation_candidates("lineage", rows)
 
-	var dead_id: int = int(
-		gs.afterlife_state.get(
-			"ghost_player_id",
-			int(
-				player.id
-			)
-		)
-	)
-
-	var dead_player: Person = (
-		gs.get_or_reactivate_npc_by_id(
-			dead_id
-		)
-	)
-
-	var contracts_raw: Variant = (
-		gs.afterlife_state.get(
-			"continue_known_person_candidate_contracts",
-			[]
-		)
-	)
-
-	var contracts: Array = (
-		contracts_raw as Array
-		if typeof(
-			contracts_raw
-		) == TYPE_ARRAY
-		else []
-	)
-
-
-
-
-	if (
-		contracts.is_empty()
-		and dead_player != null
-		and gs.relationships_hub_contract_engine != null
-		and gs.relationships_hub_contract_engine.has_method(
-			"continuation_known_person_contracts"
-		)
-	):
-		contracts = (
-			gs.relationships_hub_contract_engine
-			.continuation_known_person_contracts(
-				dead_player
-			)
-		)
-
-		gs.afterlife_state [
-			"continue_known_person_candidate_contracts"
-		] = contracts.duplicate(
-			true
-		)
-
-	var options: Array = []
-	var lookup: Dictionary = {}
-
-	for raw_contract in contracts:
-		if typeof(
-			raw_contract
-		) != TYPE_DICTIONARY:
+func build_continue_known_person_result(player: Person) -> Dictionary:
+	if player == null or gs == null:
+		return {"success": false, "type": "afterlife_continue_known_unavailable", "text": "There is no life to continue from.", "opps": []}
+	if not gs.afterlife_active:
+		enter_afterlife_for_player(player)
+	var rows := []
+	for contract in _known_continuation_contracts(player):
+		if not contract is Dictionary:
 			continue
-
-		var contract: Dictionary = (
-			raw_contract as Dictionary
-		)
-
-		var target_id: int = int(
-			contract.get(
-				"target_id",
-				-1
-			)
-		)
-
-		if target_id <= 0:
+		var target_id := int(contract.get("target_id", -1))
+		var label := str(contract.get("option_label", "")).strip_edges()
+		var person: Person = gs.get_or_reactivate_npc_by_id(target_id)
+		if person == null or not person.alive or person.health <= 0 or label.is_empty():
 			continue
-
-		var option_label: String = str(
-			contract.get(
-				"option_label",
-				""
-			)
-		).strip_edges()
-
-		if option_label == "":
-			continue
-
-		options.append(
-			option_label
-		)
-
-		lookup [
-			option_label
-		] = {
-			"target_id": target_id,
-			"selection_kind": "known_person",
-			"relationship_label": str(
-				contract.get(
-					"relationship_label",
-					"Relationship"
-				)
-			)
-		}
-
-	gs.afterlife_state [
-		"pending_mode"
-	] = "continue_known_person_target"
-	gs.afterlife_state [
-		"pending_type"
-	] = "afterlife_continue_known_person_target"
-	gs.afterlife_state [
-		"pending_text"
-	] = (
-		"Choose someone you know. "
-		+ "Friends, current romantic partners, "
-		+ "and live fling relationships publish here."
-	)
-	gs.afterlife_state [
-		"pending_lookup"
-	] = lookup
-	gs.afterlife_state [
-		"pending_options"
-	] = options
-	gs.afterlife_state [
-		"death_popup_open"
-	] = false
-	gs.afterlife_state [
-		"overlay_open"
-	] = true
-
-	if options.is_empty():
-		gs.afterlife_state [
-			"pending_text"
-		] = (
-			"Nobody in your current friend or romantic orbit "
-			+ "is available to continue as."
-		)
-
-	return get_pending_choice_result()
+		rows.append({
+			"id": target_id,
+			"label": label,
+			"choice": {"target_id": target_id, "selection_kind": "known_person", "relationship_label": contract.get("relationship_label", "Relationship")},
+		})
+	return _publish_continuation_candidates("known_person", rows)
 
 
 func _build_continue_lineage_toggle_prompt(
 	descendant_id: int,
 	allow_inheritance: bool = true,
-	selection_kind: String = "lineage"
+	selection_kind: String = "lineage",
+	show_record_number: bool = false
 ) -> Dictionary:
 	if (
 		gs == null
@@ -3928,23 +3796,6 @@ func _build_continue_lineage_toggle_prompt(
 
 
 
-	if (
-		descendant == null
-		or not bool(
-			descendant.alive
-		)
-		or float(
-			descendant.health
-		) <= 0.0
-	):
-		if selection_kind == "known_person":
-			return build_continue_known_person_result(
-				gs.player
-			)
-
-		return build_continue_lineage_result(
-			gs.player
-		)
 
 	var dead_id: int = int(
 		gs.afterlife_state.get(
@@ -3958,6 +3809,9 @@ func _build_continue_lineage_toggle_prompt(
 			dead_id
 		)
 	)
+
+	if not _is_current_continuation_target(dead_player, descendant, selection_kind):
+		return _reopen_continuation_selection(selection_kind)
 
 	var relationship_label: String = (
 		_continuation_relationship_label(
@@ -3973,6 +3827,9 @@ func _build_continue_lineage_toggle_prompt(
 			descendant.last_name
 		]
 	).strip_edges()
+
+	if show_record_number:
+		full_name += " (record %d)" % descendant.id
 
 	var job_text: String = (
 		descendant.job
@@ -4017,7 +3874,7 @@ func _build_continue_lineage_toggle_prompt(
 		gs.afterlife_state [
 			"pending_text"
 		] += (
-			"\n\nShould their inheritance come with them?"
+			"\n\nYou can continue their life as it is, or pass your estate to them."
 		)
 
 		gs.afterlife_state [
@@ -4051,6 +3908,9 @@ func _build_continue_lineage_toggle_prompt(
 		] = [
 			"Continue as Them"
 		]
+
+	gs.afterlife_state["pending_options"].append(CHOOSE_SOMEONE_ELSE)
+	gs.afterlife_state["pending_lookup"][CHOOSE_SOMEONE_ELSE] = {"action": "back_to_candidates"}
 
 	return get_pending_choice_result()
 func _continue_lineage_as_descendant(
@@ -4096,21 +3956,10 @@ func _continue_lineage_as_descendant(
 		)
 	).strip_edges().to_lower()
 
-	if (
-		descendant == null
-		or not descendant.alive
-		or float(
-			descendant.health
-		) <= 0.0
-	):
-		if selection_kind == "known_person":
-			return build_continue_known_person_result(
-				dead_player
-			)
+	if not _is_current_continuation_target(dead_player, descendant, selection_kind):
+		return _reopen_continuation_selection(selection_kind)
 
-		return build_continue_lineage_result(
-			dead_player
-		)
+	transfer_estate = transfer_estate and selection_kind == "lineage"
 
 	var relationship_label: String = (
 		_continuation_relationship_label(
@@ -4154,37 +4003,7 @@ func _continue_lineage_as_descendant(
 	] = intent
 
 
-	gs.afterlife_state [
-		"pending_mode"
-	] = "continue_lineage_commit_pending"
-	gs.afterlife_state [
-		"pending_type"
-	] = "afterlife_continue_lineage_commit_pending"
-	gs.afterlife_state [
-		"pending_text"
-	] = (
-		"Choice locked: %s (%s).\n\n"
-		+ "Their already-authored viewpoint is becoming resident "
-		+ "in the background. You do not need to choose again."
-	) % [
-		(
-			"%s %s"
-			% [
-				descendant.first_name,
-				descendant.last_name
-			]
-		).strip_edges(),
-		relationship_label
-	]
-	gs.afterlife_state [
-		"pending_lookup"
-	] = {}
-	gs.afterlife_state [
-		"pending_options"
-	] = []
-
-
-
+	_publish_waiting_continuation()
 
 	_queue_continuation_destination_if_needed(
 		dead_player,
@@ -4203,6 +4022,21 @@ func _continue_lineage_as_descendant(
 		return committed
 
 	return get_pending_choice_result()
+
+func _publish_waiting_continuation() -> void:
+	var state: Dictionary = gs.afterlife_state
+	var person: Person = gs.get_or_reactivate_npc_by_id(int(state.get("continue_lineage_target_id", -1)))
+	var name := "the person you chose"
+	if person != null:
+		name = ("%s %s" % [person.first_name, person.last_name]).strip_edges()
+	state.merge({
+		"pending_mode": "continue_lineage_commit_pending",
+		"pending_type": "afterlife_continue_lineage_commit_pending",
+		"pending_text": "You will continue as %s when their life is ready. You can still choose someone else while you wait." % name,
+		"pending_lookup": {CHOOSE_SOMEONE_ELSE: {"action": "back_to_candidates"}},
+		"pending_options": [CHOOSE_SOMEONE_ELSE],
+	}, true)
+
 func _queue_continuation_destination_if_needed(
 	dead_player: Person,
 	target: Person
@@ -4466,16 +4300,9 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 
 
 
-	if (
-		target == null
-		or not bool(
-			target.alive
-		)
-		or float(
-			target.health
-		) <= 0.0
-	):
-		return {}
+	if not _is_current_continuation_target(dead_player, target, selection_kind):
+		gs.afterlife_state["continue_lineage_commit_intent"] = {}
+		return _reopen_continuation_selection(selection_kind)
 
 	var handoff_registry_raw: Variant = (
 		gs.afterlife_state.get(
@@ -4774,6 +4601,7 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 
 	if (
 		transfer_estate
+		and selection_kind == "lineage"
 		and dead_player != null
 		and not bool(
 			gs.afterlife_state.get(

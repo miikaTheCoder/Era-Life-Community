@@ -674,6 +674,9 @@ var afterlife_overlay_card
 var afterlife_overlay_title
 var afterlife_overlay_body
 var afterlife_overlay_buttons
+var afterlife_overlay_content: VBoxContainer
+var afterlife_overlay_close_button: Button
+var afterlife_prompt_revision := 0
 var afterlife_overlay_footer
 var afterlife_reincarnation_identity_box: VBoxContainer
 var afterlife_reincarnation_first_name_input: LineEdit
@@ -16909,7 +16912,7 @@ func _current_ui_material_pulse(speed: float = 1.0, phase_offset: float = 0.0) -
 	return (sin(_current_ui_material_phase() * speed + phase_offset) + 1.0) * 0.5
 
 
-func _bring_modal_to_front(node: Node) -> void:
+func _bring_modal_to_front(node: Node, focus_root: bool = true) -> void:
 	if node == null:
 		return
 
@@ -16927,7 +16930,8 @@ func _bring_modal_to_front(node: Node) -> void:
 		control_node.focus_mode = Control.FOCUS_ALL
 		control_node.z_as_relative = false
 		control_node.z_index = AppearanceSceneSupport._safe_modal_z_index(int(control_node.z_index), z_floor)
-		control_node.call_deferred("grab_focus")
+		if focus_root:
+			control_node.call_deferred("grab_focus")
 		return
 
 	if node is CanvasItem:
@@ -36061,9 +36065,13 @@ func _ensure_afterlife_ui() -> void:
 		afterlife_overlay_body.mouse_filter = (
 			Control.MOUSE_FILTER_PASS
 		)
-		body_scroll.add_child(
-			afterlife_overlay_body
-		)
+		body_scroll.follow_focus = true
+		body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		afterlife_overlay_content = VBoxContainer.new()
+		afterlife_overlay_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		afterlife_overlay_content.add_theme_constant_override("separation", 16)
+		body_scroll.add_child(afterlife_overlay_content)
+		afterlife_overlay_content.add_child(afterlife_overlay_body)
 
 		afterlife_reincarnation_identity_box = VBoxContainer.new()
 		afterlife_reincarnation_identity_box.name = "afterlife_reincarnation_identity_box"
@@ -36096,7 +36104,7 @@ func _ensure_afterlife_ui() -> void:
 
 
 
-		var afterlife_overlay_close_button:= Button.new()
+		afterlife_overlay_close_button = Button.new()
 		afterlife_overlay_close_button.text = "Close"
 		afterlife_overlay_close_button.size_flags_horizontal = (
 			Control.SIZE_EXPAND_FILL
@@ -36167,6 +36175,7 @@ func _on_prebuilt_death_transition_option_pressed(
 	)
 
 func _hide_afterlife_ui() -> void:
+	afterlife_prompt_revision += 1
 	if death_transition_popup != null:
 		death_transition_popup.visible = false
 	if afterlife_overlay != null:
@@ -36176,6 +36185,8 @@ func _hide_afterlife_ui() -> void:
 func _show_afterlife_death_prompt(
 	result: Dictionary
 ) -> void:
+	afterlife_prompt_revision += 1
+	var returning_from_overlay: bool = afterlife_overlay != null and afterlife_overlay.visible
 	if afterlife_overlay != null:
 		afterlife_overlay.visible = false
 
@@ -36254,9 +36265,7 @@ func _show_afterlife_death_prompt(
 				)
 			)
 
-	death_transition_body.append_text(
-		death_text
-	)
+	death_transition_body.add_text(death_text)
 
 	var options: Array = ValueSceneSupport._safe_array(
 		result.get(
@@ -36339,13 +36348,13 @@ func _show_afterlife_death_prompt(
 		)
 
 	death_transition_popup.visible = true
-	death_transition_popup.mouse_filter = (
-		Control.MOUSE_FILTER_STOP
-	)
-
-	_bring_modal_to_front(
-		death_transition_popup
-	)
+	death_transition_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	_bring_modal_to_front(death_transition_popup, not returning_from_overlay)
+	if returning_from_overlay:
+		for button in prebuilt_buttons:
+			if button is Button and button.visible and not button.disabled:
+				button.grab_focus()
+				break
 
 
 
@@ -36434,13 +36443,29 @@ func _show_afterlife_overlay(result: Dictionary) -> void:
 		player_stats_overlay.visible = false
 
 	afterlife_overlay.visible = true
-	_bring_modal_to_front(afterlife_overlay)
-	afterlife_overlay_title.text = "THE AFTERLIFE"
-	afterlife_overlay_body.clear()
-	afterlife_overlay_body.append_text(str(result.get("text", "")))
-	_clear_container_children(afterlife_overlay_buttons)
-
+	afterlife_prompt_revision += 1
 	var rtype: String = str(result.get("type", ""))
+	const SUCCESSION_TITLES := {
+		"afterlife_continue_lineage_target": "Continue your family line",
+		"afterlife_continue_known_person_target": "Continue as someone you know",
+		"afterlife_continue_lineage_transfer_toggle": "Your next life",
+		"afterlife_continue_lineage_commit_pending": "Your next life",
+	}
+	var succession := SUCCESSION_TITLES.has(rtype)
+	_bring_modal_to_front(afterlife_overlay, not succession)
+	afterlife_overlay_title.text = SUCCESSION_TITLES.get(rtype, "THE AFTERLIFE")
+	_clear_container_children(afterlife_overlay_buttons)
+	afterlife_overlay_body.clear()
+	afterlife_overlay_body.add_text(str(result.get("text", "")))
+	if succession:
+		if afterlife_overlay_buttons.get_parent() != afterlife_overlay_content:
+			afterlife_overlay_buttons.reparent(afterlife_overlay_content, false)
+	else:
+		var overlay_root: Container = afterlife_overlay_close_button.get_parent()
+		if afterlife_overlay_buttons.get_parent() != overlay_root:
+			afterlife_overlay_buttons.reparent(overlay_root, false)
+			overlay_root.move_child(afterlife_overlay_buttons, afterlife_overlay_close_button.get_index())
+	afterlife_overlay_close_button.visible = not succession
 	var showing_identity_form: bool = rtype == "afterlife_reincarnation_identity_form"
 	if afterlife_reincarnation_identity_box != null:
 		afterlife_reincarnation_identity_box.visible = showing_identity_form
@@ -36475,10 +36500,17 @@ func _show_afterlife_overlay(result: Dictionary) -> void:
 	for opp in result.get("opps", []):
 		var btn:= Button.new()
 		btn.text = str(opp)
+		if succession:
+			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			btn.focus_mode = Control.FOCUS_ALL
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.custom_minimum_size = Vector2(0, 46)
 		btn.pressed.connect(_on_afterlife_action_pressed.bind(str(opp)))
 		afterlife_overlay_buttons.add_child(btn)
+		if succession and afterlife_overlay_buttons.get_child_count() == 1:
+			btn.grab_focus()
+			# Show the instructions above the first focused choice after layout.
+			afterlife_overlay_content.get_parent().set_deferred("scroll_vertical", 0)
 
 	if result.get("opps", []).is_empty() and rtype in ["afterlife_round_waiting_for_year_advance", "afterlife_round_complete"]:
 		var age_btn:= Button.new()
@@ -36637,6 +36669,7 @@ func _on_afterlife_action_pressed(
 
 
 	afterlife_action_queue.append({
+		"prompt_revision": afterlife_prompt_revision,
 		"sequence": afterlife_action_sequence,
 		"actor_id": int(
 			gs.player.id
@@ -36714,7 +36747,8 @@ func _service_afterlife_action_queue() -> void:
 	)
 
 	if (
-		gs == null
+		int(request.get("prompt_revision", -1)) != afterlife_prompt_revision
+		or gs == null
 		or gs.player == null
 		or int(
 			gs.player.id

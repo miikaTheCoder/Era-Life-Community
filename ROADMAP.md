@@ -162,3 +162,21 @@ or device verification is included in this task.
 | Date | Item / task | Verification and next action |
 | --- | --- | --- |
 | 2026-11-17 | Essential roadmap + R16, `codex/essential-roadmap` | Roadmap focused and history preserved. R16: 30 regressions, four real write-failure cases and graphical save/cold Continue pass; see [evidence](docs/SAVE-WRITE-SAFETY.md), including one interrupted display run. Next: council/PR gate, then R17 after separate story corrections land. No merge or release. |
+
+### R17 desktop succession choices
+
+- [ ] M1. Choose a descendant or known person, reconsider before the handoff,
+  and return to the death menu when nobody qualifies. Verify that identical
+  descriptions select the intended actor and that browsing preserves the estate.
+  Implemented on `codex/succession-choices` from `5c7df19`. Awaiting council.
+  Godot 4.4.1 reproduced both dead ends and duplicate target selection.
+  Desktop pointer, wheel, keyboard and rapid-click checks passed. From a
+  seeded Household death, the player continued as either their daughter or
+  their friend. The daughter aged, saved, and restored in a separate process
+  with the same identity, balance and history. Reproduce both routes with
+  `bash scripts/test-succession-choices.sh` after importing the project.
+  The ordinary full-lifetime playthrough remains open.
+- [ ] M2. Give the successor a readable first journal entry. The desktop
+  playtest showed the age joined to the first sentence. Identify the person
+  remembered and preserve the entry through a later year and cold Continue.
+  Planned after M1 review.
