@@ -5,6 +5,7 @@ const FAMILY_CONTRACT_SCHEMA:= "eralife.family_contract"
 const FAMILY_CONTRACT_VERSION:= 1
 const HOUSEHOLD_CONTRACT_SCHEMA:= "eralife.family_contract.household"
 const CUSTODIAL_CONTRACT_SCHEMA:= "eralife.family_contract.custodial_authority"
+const PENDING_LINEAGE_ESTATES := "pending_lineage_estates"
 const ESTATE_CONTRACT_SCHEMA:= "eralife.family_contract.estate"
 
 var gs
@@ -49,6 +50,7 @@ func import_state(data: Dictionary) -> Dictionary:
 
 
 func yearly_tick(_payload:= {}) -> void:
+	retry_pending_lineage_estates()
 	rebuild_loaded_family_contracts({
 		"source": "family_contract_engine_yearly_tick",
 	})
@@ -359,6 +361,10 @@ func build_estate_contract(owner: Person, context: Dictionary = {}) -> Dictionar
 	if owner_id <= 0:
 		return {}
 
+	var previous := _saved_estate_contract(owner)
+	if previous.get("execution", {}).get("executed", false):
+		return previous.duplicate(true)
+
 	var heirs: Array = _build_estate_heirs(owner, context)
 	var contract: Dictionary = {
 		"schema": ESTATE_CONTRACT_SCHEMA,
@@ -404,6 +410,56 @@ func build_estate_contract(owner: Person, context: Dictionary = {}) -> Dictionar
 	return contract.duplicate(true)
 
 
+func _saved_estate_contract(owner: Person) -> Dictionary:
+	# Binary/JSON restoration can stringify cache keys. The actor copy also
+	# travels in compact checkpoints that omit the runtime family cache.
+	var cached: Dictionary = estate_contract_cache.get(owner.id, estate_contract_cache.get(str(owner.id), {}))
+	var saved: Dictionary = owner.person_contract.get("family", {}).get("estate", {})
+	if saved.get("execution", {}).get("executed", false) or cached.is_empty():
+		return saved
+	return cached
+
+
+# Earlier saves can still name an intermediate beneficiary who has died.
+# Only a recorded estate decision can pass their entitlement to someone else.
+func _pending_estate_beneficiary(claim: Dictionary, pending: Dictionary) -> Person:
+	var visited := {}
+	var heir_id := int(claim.heir_id)
+	while heir_id > 0 and not visited.has(heir_id):
+		visited[heir_id] = true
+		var beneficiary: Person = gs.get_or_reactivate_npc_by_id(heir_id)
+		if beneficiary == null:
+			return null
+		if beneficiary.alive:
+			claim.get_or_add("original_heir_id", int(claim.heir_id))
+			claim["heir_id"] = heir_id
+			return beneficiary
+		var execution: Dictionary = _saved_estate_contract(beneficiary).get("execution", {})
+		if execution.get("executed", false):
+			heir_id = int(execution.get("heir_id", -1))
+		else:
+			heir_id = int(pending.get(str(heir_id), {}).get("heir_id", -1))
+	return null
+
+
+func retry_pending_lineage_estates(changed_owner: String = "") -> void:
+	if gs == null:
+		return
+	var pending: Dictionary = gs.scenario_state.get(PENDING_LINEAGE_ESTATES, {})
+	for key in pending.keys():
+		var claim: Dictionary = pending.get(key, {})
+		if claim.is_empty():
+			continue
+		var heir := _pending_estate_beneficiary(claim, pending)
+		if heir == null:
+			continue
+		if changed_owner != "" and changed_owner not in ["person:%d" % int(claim.owner_id), "person:%d" % int(claim.heir_id)]:
+			continue
+		var deceased: Person = gs.get_or_reactivate_npc_by_id(int(claim.owner_id))
+		if deceased != null:
+			execute_estate_contract(deceased, heir)
+
+
 func execute_estate_contract(dead_person: Person, explicit_heir: Person = null, context: Dictionary = {}) -> Dictionary:
 	if dead_person == null:
 		return {
@@ -418,7 +474,25 @@ func execute_estate_contract(dead_person: Person, explicit_heir: Person = null, 
 			"reason": "Dead person id invalid."
 		}
 
-	var contract: Dictionary = _safe_dictionary(estate_contract_cache.get(dead_id, {}))
+	if gs == null:
+		return {"success": false, "reason": "GameState unavailable."}
+	var pending: Dictionary = gs.scenario_state.get(PENDING_LINEAGE_ESTATES, {})
+	var claim_key := str(dead_id)
+	var claim: Dictionary = pending.get(claim_key, {})
+	if not claim.is_empty():
+		if explicit_heir != null and explicit_heir.id != int(claim.heir_id):
+			return {"success": false, "reason": "This estate already has a designated heir."}
+		explicit_heir = gs.get_or_reactivate_npc_by_id(int(claim.heir_id))
+		if explicit_heir == null:
+			return {"success": false, "reason": "The designated heir is unavailable."}
+
+	var contract := _saved_estate_contract(dead_person)
+	if contract.get("execution", {}).get("executed", false):
+		pending.erase(claim_key)
+		var settled_heir_id := int(contract.execution.heir_id)
+		if explicit_heir != null and explicit_heir.id != settled_heir_id:
+			return {"success": false, "reason": "This estate already passed to another heir.", "heir_id": settled_heir_id}
+		return _estate_execution_report(contract)
 	if contract.is_empty():
 		contract = build_estate_contract(dead_person, {
 			"source": "execute_estate_contract_missing_prebuilt_contract",
@@ -429,7 +503,7 @@ func execute_estate_contract(dead_person: Person, explicit_heir: Person = null, 
 	if heir == null:
 		heir = _resolve_primary_living_heir(contract)
 
-	if heir == null:
+	if heir == null or not heir.alive or heir.id <= 0:
 		return {
 			"success": false,
 			"reason": "No living heir resolved.",
@@ -443,15 +517,32 @@ func execute_estate_contract(dead_person: Person, explicit_heir: Person = null, 
 			"contract": contract.duplicate(true)
 		}
 
-	var inherited_cash: float = 0.0
-	if float(dead_person.bank_balance) > 0.0:
-		inherited_cash = float(dead_person.bank_balance)
-		heir.bank_balance = float(heir.bank_balance) + inherited_cash
-		dead_person.bank_balance = 0.0
+	# The chosen heir also inherits outstanding entitlements. Persist their
+	# identity even when the deceased's own bank funds are restricted.
+	for entitlement: Dictionary in pending.values():
+		if int(entitlement.heir_id) == dead_id:
+			entitlement.get_or_add("original_heir_id", dead_id)
+			entitlement["heir_id"] = heir.id
+
+	if gs.bank_engine == null:
+		gs.bank_engine = BankEngine.new(gs)
+	var payment: Dictionary = gs.bank_engine.settle_estate_accounts(dead_person, heir)
+	if not payment.success:
+		var reason := str(payment.reason)
+		pending[claim_key] = {"owner_id": dead_id, "heir_id": heir.id,
+			"original_heir_id": int(claim.get("original_heir_id", heir.id)), "reason": reason}
+		gs.scenario_state[PENDING_LINEAGE_ESTATES] = pending
+		var player_inherits: bool = gs.player != null and gs.player.id == heir.id
+		var message := "The bank funds and vehicles from %s's estate are still pending. %s The estate will be checked again when an account reopens or a year passes." % [_person_name(dead_person), reason]
+		payment["pending_notice"] = message
+		if claim.is_empty() and player_inherits and not context.get("lineage_continuation", false):
+			gs.queue_player_inheritance_notice(message, "Inheritance pending")
+		return payment
+	var inherited_cash := float(payment.totals.get(BankEngine.DEFAULT_CURRENCY, 0.0))
 
 	var inherited_vehicle_count: int = 0
-	if gs != null and gs.vehicle_engine != null:
-		inherited_vehicle_count = _transfer_estate_bucket_count(gs.vehicle_engine.vehicles, dead_id, int(heir.id))
+	if gs.vehicle_engine != null:
+		inherited_vehicle_count = gs.vehicle_engine.transfer_estate_vehicles(dead_person, heir)
 
 	var execution: Dictionary = _safe_dictionary(contract.get("execution", {}))
 	execution ["state"] = "executed"
@@ -459,22 +550,34 @@ func execute_estate_contract(dead_person: Person, explicit_heir: Person = null, 
 	execution ["executed_at_ms"] = int(Time.get_ticks_msec())
 	execution ["heir_id"] = int(heir.id)
 	execution ["heir_name"] = _person_name(heir)
+	if not claim.is_empty():
+		execution["original_heir_id"] = int(claim.get("original_heir_id", heir.id))
 	execution ["inherited_cash"] = inherited_cash
+	execution ["inherited_balances"] = payment.totals
 	execution ["inherited_vehicle_count"] = inherited_vehicle_count
 
 	contract ["execution"] = execution
 	contract ["updated_at_ms"] = int(Time.get_ticks_msec())
 	estate_contract_cache [dead_id] = contract.duplicate(true)
 
-	_write_estate_notice(dead_person, heir, inherited_cash, inherited_vehicle_count)
+	var family: Dictionary = dead_person.person_contract.get("family", {})
+	family["estate"] = contract.duplicate(true)
+	dead_person.person_contract["family"] = family
+	pending.erase(claim_key)
+	_write_estate_notice(dead_person, heir, payment.totals, inherited_vehicle_count)
+	return _estate_execution_report(contract)
 
+
+func _estate_execution_report(contract: Dictionary) -> Dictionary:
+	var execution: Dictionary = contract.execution
 	return {
 		"success": true,
 		"mode": "estate_contract_executed",
-		"dead_person_id": dead_id,
-		"heir_id": int(heir.id),
-		"inherited_cash": inherited_cash,
-		"inherited_vehicle_count": inherited_vehicle_count,
+		"dead_person_id": int(contract.owner_id),
+		"heir_id": int(execution.heir_id),
+		"inherited_cash": float(execution.inherited_cash),
+		"inherited_balances": execution.get("inherited_balances", {}).duplicate(),
+		"inherited_vehicle_count": int(execution.inherited_vehicle_count),
 		"contract": contract.duplicate(true)
 	}
 
@@ -863,15 +966,19 @@ func _resolve_primary_living_heir(contract: Dictionary) -> Person:
 	return null
 
 
-func _write_estate_notice(dead_person: Person, heir: Person, inherited_cash: float, inherited_vehicle_count: int) -> void:
+func _write_estate_notice(dead_person: Person, heir: Person, inherited_balances: Dictionary, inherited_vehicle_count: int) -> void:
 	if gs == null or dead_person == null or heir == null:
 		return
 	if gs.player == null or int(heir.id) != int(gs.player.id):
 		return
 
 	var inheritance_parts: Array = []
-	if inherited_cash > 0.0:
-		inheritance_parts.append("$%.0f in cash" % inherited_cash)
+	for currency in inherited_balances:
+		var amount := float(inherited_balances[currency])
+		if currency == BankEngine.DEFAULT_CURRENCY:
+			inheritance_parts.append("$%.2f in bank funds" % amount)
+		else:
+			inheritance_parts.append("%.2f %s in bank funds" % [amount, currency])
 	if inherited_vehicle_count == 1:
 		inheritance_parts.append("1 vehicle")
 	elif inherited_vehicle_count > 1:
@@ -903,36 +1010,6 @@ func _write_estate_notice(dead_person: Person, heir: Person, inherited_cash: flo
 			"event_name": "inheritance_received",
 			"source": "family_contract_engine"
 		})
-
-
-func _transfer_estate_bucket_count(bucket: Dictionary, from_id: int, to_id: int) -> int:
-	if typeof(bucket) != TYPE_DICTIONARY:
-		return 0
-	if not bucket.has(from_id):
-		return 0
-
-	var before_count: int = 0
-	var before_bucket = bucket.get(to_id, [])
-	if typeof(before_bucket) == TYPE_ARRAY:
-		before_count = before_bucket.size()
-
-	var moved_value = bucket [from_id]
-	if bucket.has(to_id) and typeof(bucket [to_id]) == TYPE_ARRAY and typeof(moved_value) == TYPE_ARRAY:
-		var combined: Array = bucket [to_id].duplicate()
-		for item in moved_value:
-			combined.append(item)
-		bucket [to_id] = combined
-	else:
-		bucket [to_id] = moved_value
-
-	bucket.erase(from_id)
-
-	var after_count: int = 0
-	var after_bucket = bucket.get(to_id, [])
-	if typeof(after_bucket) == TYPE_ARRAY:
-		after_count = after_bucket.size()
-
-	return max(0, after_count - before_count)
 
 
 func _parent_ids_for(person: Person) -> Array:

@@ -889,7 +889,8 @@ func present_contract(contract: Dictionary) -> void:
 	title_label.text = str(contract.get("title", "Pending Situation"))
 	body_label.custom_minimum_size = Vector2(0, 118)
 	body_label.clear()
-	body_label.append_text(description_text)
+	# Contract descriptions include authored story text and saved participant names.
+	body_label.add_text(description_text)
 
 	_clear_container(list_box)
 	_clear_container(options_box)

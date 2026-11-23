@@ -973,7 +973,7 @@ func handle_spousal_estate_inheritance(payload) -> void:
 		return
 
 	var dead_npc: Person = _resolve_estate_dead_npc_from_payload(payload)
-	if dead_npc == null:
+	if dead_npc == null or gs.should_skip_manual_player_inheritance(dead_npc.id):
 		return
 
 	var explicit_heir: Person = _resolve_explicit_estate_heir_from_payload(payload)

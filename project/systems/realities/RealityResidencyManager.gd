@@ -5307,6 +5307,8 @@ func _materialize_checkpoint_resume_shell(
 	resident_gs.scenario_state [
 		"resident_runtime_restored_from_checkpoint"
 	] = true
+	# The first frame can run narrative ticks while the saved receipts are still loading.
+	resident_gs.scenario_state["checkpoint_age_windows_pending"] = true
 	resident_gs.scenario_state [
 		"resident_runtime_checkpoint_path"
 	] = str(
@@ -6923,6 +6925,13 @@ func _service_ready_checkpoint_payload_tail(
 
 
 
+
+	# The first Partner projection may predate restoration of the partner's
+	# object reference. Publish the authoritative section after hydration.
+	if resident_gs.player != null and resident_gs.reality_projection_contract_engine != null:
+		resident_gs.reality_projection_contract_engine.queue_resident_relationship_section_refresh(
+			resident_gs.player.id, ["partner"], {"source": "checkpoint_partner_restored"}
+		)
 
 	var life_observation_report: Dictionary = {}
 

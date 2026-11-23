@@ -1,6 +1,6 @@
 # EraLife: what the game needs next
 
-Updated **2026-11-17**. The goal is a life worth continuing: recurring people,
+Updated **2026-11-23**. The goal is a life worth continuing: recurring people,
 meaningful choices and consequences that survive into the next generation.
 Finish and prove the existing game before adding more systems or story catalogs.
 
@@ -21,12 +21,10 @@ are preserved in [the previous roadmap](docs/ROADMAP-HISTORY.md).
   exact APK still needs phone acceptance. Web reflow and keyboard changes have
   partial evidence, with actual mobile-browser acceptance still open.
 
-**Source boundary:** this task starts from committed `main` at `a4b8d0a`.
-The original checkout also contains uncommitted Connected Lives corrections and
-local records reporting a later 30-test suite and unanimous council approval.
-Those corrections and records are not part of this PR. Preserve them and land
-that existing task separately before treating its approval as committed-source
-or release evidence. Do not redo its implemented stories.
+The desktop integration branch combines the reviewed Connected Lives corrections,
+the R17 playtest fixes, checkpoint and estate repairs, and Linux rewind safety
+on top of the merged succession choices. The historical evidence below identifies
+the checkout used for each result.
 
 ## Essential queue
 
@@ -36,8 +34,8 @@ work can proceed without holding desktop fixes for unavailable devices.
 
 | Order / ID | Needed outcome | Status and next action | Dependency |
 | --- | --- | --- | --- |
-| 1 / R16 | A failed replacement save keeps the previous life | Linux verified on `codex/essential-roadmap`, awaiting integration; platform limits remain below | None |
-| 2 / R17 | A complete life and a playable next generation | Queued: run ordinary full-catalog play, then fix the first reproduced progression, pacing or persistence blocker | R16 and separately integrated Connected Lives corrections |
+| 1 / R16 | A failed replacement save keeps the previous life | Normal-save fix merged in `5c7df19`; Linux rewind follow-up included in desktop integration | None |
+| 2 / R17 | A complete life and a playable next generation | In progress on `codex/desktop-lifetime-integration`. The first founder reached natural death without an heir. Linux desktop birth, natural death, chosen heir and cold Continue verified; funded succession also exercised | Linux save safety and Connected Lives corrections |
 | 3 / R06 | The same supported experience on Portrait | Queued: compare missing shared fixes/content, port a bounded slice, then test the exact APK | Reviewed desktop slice; phone access for device acceptance |
 | 4 / R09 | Browser play that survives reload and works by touch | Queued: reproduce static-host startup stalls and run real phone save/Continue | Current Web export; Android/iOS access for each acceptance result |
 | 5 / R04 | A clearly scoped build someone else can reliably play | Queued: package the tested source and publish only when requested | R16 and R17 for desktop; R06 or R09 for those targets |
@@ -57,7 +55,7 @@ and the full shared-state suite. Preserve the observed failure and passing logs.
 
 This slice covers `GameStateSerializationRuntime.serialize_to_path`, used by
 normal `GameState.save_game`. Windows final replacement (Godot removes the old path before moving the new
-one), rewind snapshot storage, power-loss durability and
+one), power-loss durability and
 browser persistence to disk across page termination need separate evidence;
 this change does not certify them. A failed final rename retains the complete
 new file and reports its recovery path; native Windows replacement/recovery must
@@ -163,6 +161,91 @@ or device verification is included in this task.
 | --- | --- | --- |
 | 2026-11-17 | Essential roadmap + R16, `codex/essential-roadmap` | Roadmap focused and history preserved. R16: 30 regressions, four real write-failure cases and graphical save/cold Continue pass; see [evidence](docs/SAVE-WRITE-SAFETY.md), including one interrupted display run. Next: council/PR gate, then R17 after separate story corrections land. No merge or release. |
 
+### R17 desktop field notes, 2026-11-19
+
+Tested desktop commit `233dc842298cb7b7039c9195d3266ed7a45c4892` on
+`codex/r17-playtest`, using Godot 4.4.1 stable, Xvfb and private profiles.
+The fixes and harness are in `57f91b21ff3d6dee38aa19b89c6f96a17bf8e4b5`.
+The first Narrative birth used the Runaway Heir family path, world seed
+2015670852 and the ordinary 18-story catalog. Xanthe Orbital was born to
+Aelin and Nex on Mercury Shade Base. Her diary recorded quiet childhood
+years and a classmate's crush at 18. A pending situation was visible at four
+despite the quiet diary. Before one harness replay she also attended her
+grandmother Vela's funeral.
+
+Cold Continue at one and eighteen preserved identity, parents, affection,
+Narrative history, diary and the exact zero balance. At eighteen the save
+identified her college as Planetary Governance. Relationships opened after
+Continue but appeared blank after aging at four and ten. The yearly change
+invalidated cached renderer nodes. Replaying the age-one save with separate
+renderer and yearly contract lifetimes restored both parent profiles at four.
+On that replay, staying quiet during a financial argument produced a diary
+entry and stepping in for Nex produced a response. Local evidence for review
+is in `build/r17`, including the untouched childhood save and failure images.
+
+At 18, Converse added a lasting diary line about bonding with Aelin. The
+restored year retained the crush and school lines preceding it. At 26 the
+diary recorded Aelin no longer expecting help after an unanswered request.
+At 45, a conversation with Nex ended in a misunderstanding. At 60 she and Nex
+had a deep conversation. At 32, three part-time careers still
+listed age 14 as missing. Refreshing the career contract on an outdated
+qualification age and replaying the same binary save made those three roles
+show as eligible. Each listed no vacancy and Apply stayed disabled.
+
+On the first terminal attempt she died of old age at 95 with zero credits
+and no children. The ordinary Life screen stayed up. An independent replay
+of the same age-80 checkpoint reached fatal injury at 88 and the same missing
+menu. The visible year advances before the annual health simulation finishes.
+The review fix surfaces the existing death choice when that simulation reports
+the controlled actor dead. Replaying from age 80 through a fresh Continue at
+90 reached organ failure at 95. Selecting Continue Lineage displayed no
+living descendants and offered Back to life choices. Another replay from the
+age-90 save ended at 99 of old age with the same empty heir list. The terminal
+checkpoint is in `build/r17/terminal/screens/restore/natural-death.bin`.
+This route leaves
+estate transfer, successor decisions and successor persistence unverified
+in ordinary play.
+
+Of the 80 completed years through the age-80 save, 68 had only the diary
+line “Another year passed.” At 68 and 78 the Partner tab showed no current
+partner or flings and no action to meet someone. At 80 through 94, the
+pending situation count remained zero. Age Up kept working throughout.
+
+The initial ready signal was 24.97 seconds after process launch, including
+scripted title and catalog interaction. Input to visible age change was about
+0.8 to 0.9 seconds in the age-23 segment. Desktop yearly probes included an
+intentional four-second display wait, and ranged from about five seconds in
+childhood to 30.6 seconds on one extended adult session. Fresh Continue
+(input to complete / first frame to complete) took 20.4 / 18.0 seconds at
+one, 21.9 / 19.4 at eighteen, 40.5 / 32.9 at 23 and 63.1 / 49.8 at 90.
+The 90-second first-frame-to-completion gate was retained. These are local
+software-rendered samples and some overlapped with headless runs.
+
+The headless childhood probe attempted three fresh starts. One stopped before
+birth because the dummy display supplied no presentation callback. Both
+generated worlds (seeds 1760510157 and 1489499078) reached age five after
+the harness handled the result card and restored pending viewer in order.
+Both surfaced parental financial conflict and a named family situation.
+After the first desktop death, each generated life also ran a 600-second
+mortality probe from its age-five checkpoint, activating the bound Age Up
+button and leaving optional situations unanswered. Seed 1760510157 completed
+37 and entered 38. Seed 1489499078 completed 65 and entered 66. Each timed out
+during core state resolution, alive with zero recorded children at its last
+completed year. Of two generated headless lives, zero reached death and two
+were incomplete. Neither is a confirmed no-heir death. The single desktop
+founder accounts for one confirmed no-heir death across all her replays.
+
+Verification passed for all 31 headless regressions, the structure and
+generated-map checks, and the seeded graphical family, contacts and cold
+restore controls. The seeded controls do not establish natural inheritance.
+Local logs and checkpoints are under `build/r17`, with a compact chronological
+record in `build/r17/timeline.txt` and linked logs, screenshots and saves in
+`build/r17/evidence.md`.
+
+The November 19 playtest proposed giving a single adult a visible way to meet someone from the
+empty Partner tab, then following that relationship through ordinary decisions.
+The November 23 integration below exercises that route.
+
 ### R17 desktop succession choices
 
 - [x] M1. Choose a descendant or known person, reconsider before the handoff,
@@ -197,3 +280,41 @@ or device verification is included in this task.
   Next for R17 is the ordinary full-lifetime route and a verified estate
   transfer. Additional test coverage can carry a bracketed name through
   cold Continue and exercise a delayed handoff with a fully ready destination.
+
+### Desktop integration, 2026-11-23
+
+The combined estate regression reproduced a death event that paid a default heir
+before the player chose who inherited. The fixed event order reserves the estate
+for the player's choice. A separate graphical handoff exposed a deferred panel
+refresh that hid the successor's new journal memory. The family and contact
+controls now show the memory. The family control also aged, saved and restored
+it in a new process.
+
+The integrated Linux build preserved the previous normal save in all four
+binary/JSON write-failure cases, and preserved the previous rewind in both
+rewind failures. See [save-write evidence](docs/SAVE-WRITE-SAFETY.md#rewind-storage)
+and the [Connected Lives review](docs/COUNCIL-CONNECTED-LIVES.md) for earlier
+results.
+
+A new Narrative founder, Maureen Ainsworth, was born in 1872. At adulthood her
+small world lacked a single eligible local peer. The Partner tab now offers an
+introduction. An existing eligible resident can respond, and a sparse world can
+introduce a new adult. A separate Ask Out choice can succeed or be declined.
+The accepted partnership led to a family-planning decision with Russell. Their
+firstborn son Robin was named through the birth dialog in 1900. A cold Continue
+preserved the family and Maureen's journal. Their second son Rowan was born during
+continued play. Maureen died naturally at 64 in 1936. Both sons appeared in the
+chooser. Robin inherited at 36, read his memory of Maureen, met Margaret Whitlock,
+and aged to 37. A new process restored him in 1937 with both parents, Margaret,
+his journal and the same zero balance. He had inherited an empty estate.
+
+That route also exposed a separate bug in natural NPC deaths. Both of Maureen's
+parents had died with their bank balances still on their records. The targeted
+mortality regression reproduced the missing payment after a cold restart. On the
+repaired path it records the heir, transfers the balance, and resists duplicate
+death delivery. From the age-33 save, Maureen inherited Lillian's bank balance in 1909 and
+Russell's in 1930. When Maureen died at 62 on this replay, choosing Robin paid
+him the full USD 275,721.19 and left Maureen's account at zero. Robin made his
+own relationship choice, aged and saved. The [desktop lifetime playtest](docs/DESKTOP-LIFETIME-PLAYTEST.md)
+records the separate routes and original balances. Broader story pacing,
+vacancy availability and the other platform checks remain open.

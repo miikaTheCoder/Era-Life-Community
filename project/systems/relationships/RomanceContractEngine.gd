@@ -263,11 +263,49 @@ func accept_pending_foreign_romance_contract(actor: Person, contract_id: String,
 
 	return last_report.duplicate(true)
 
+static func can_meet_local_peer(actor: Person) -> bool:
+	return (actor != null and actor.alive and actor.health > 0 and actor.age >= 18
+		and (actor.partner == null or not actor.partner.alive)
+		and actor.marital_status.to_lower() not in ["dating", "partnered", "engaged", "married"])
+
+
+func meet_local_peer(actor: Person, gender: String) -> Dictionary:
+	if gs == null or gs.player != actor or not can_meet_local_peer(actor) or gender not in ["Male", "Female"]:
+		return _failure_report("Introduction unavailable", "This introduction is no longer available.")
+	if gs.relationship_activities_engine == null:
+		return _failure_report("Introduction unavailable", "The relationship system is still loading.")
+
+	var country := _person_country(actor)
+	var city := str(actor.home_city if not actor.home_city.is_empty() else actor.birth_city)
+	var peers: Array[Person] = []
+	for resident in gs.npcs:
+		if not resident is Person or resident.gender != gender or resident.age < 18 or resident.health <= 0:
+			continue
+		if absi(actor.age - resident.age) > 12 or (not country.is_empty() and _person_country(resident) != country):
+			continue
+		var resident_city := str(resident.home_city if not resident.home_city.is_empty() else resident.birth_city)
+		if not city.is_empty() and city != resident_city:
+			continue
+		if gs.relationship_activities_engine.can_ask_out(actor, resident):
+			peers.append(resident)
+	var peer: Person
+	if peers.is_empty():
+		var rng := RandomNumberGenerator.new()
+		peer = _create_romance_candidate(actor, {"country": country, "city": city}, gender, rng, 18)
+	else:
+		peer = peers.pick_random()
+	if peer == null:
+		return _failure_report("Introduction unavailable", "Nobody was available to meet.")
+	if gs.relationship_engine != null:
+		gs.relationship_engine.ensure_pair_relationship_baseline(actor, peer)
+	return {"success": true, "type": "local_introduction", "target_id": peer.id}
+
+
 func _find_or_create_foreign_romance_candidate(actor: Person, entry: Dictionary, preference_gender: String, rng: RandomNumberGenerator) -> Person:
 	var existing: Person = _find_existing_candidate(actor, entry, preference_gender, rng)
 	if existing != null:
 		return existing
-	return _create_foreign_candidate(actor, entry, preference_gender, rng)
+	return _create_romance_candidate(actor, entry, preference_gender, rng)
 
 
 func _find_existing_candidate(actor: Person, entry: Dictionary, preference_gender: String, rng: RandomNumberGenerator) -> Person:
@@ -303,7 +341,7 @@ func _find_existing_candidate(actor: Person, entry: Dictionary, preference_gende
 	return candidates [int(rng.randi_range(0, candidates.size() - 1))] as Person
 
 
-func _create_foreign_candidate(actor: Person, entry: Dictionary, preference_gender: String, rng: RandomNumberGenerator) -> Person:
+func _create_romance_candidate(actor: Person, entry: Dictionary, preference_gender: String, rng: RandomNumberGenerator, minimum_age: int = 16) -> Person:
 	if gs == null:
 		return null
 
@@ -319,7 +357,7 @@ func _create_foreign_candidate(actor: Person, entry: Dictionary, preference_gend
 	npc.first_name = _random_first_name(preference_gender, era_name, rng)
 	npc.last_name = _random_last_name(target_city, target_country, era_name, rng)
 	npc.name = "%s %s" % [npc.first_name, npc.last_name]
-	npc.age = _similar_age(actor, rng)
+	npc.age = maxi(minimum_age, _similar_age(actor, rng))
 	npc.birth_city = target_city
 	npc.birth_country = target_country
 	npc.home_city = target_city

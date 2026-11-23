@@ -26,6 +26,12 @@ func _ready() -> void:
 	body.add_theme_color_override("default_color", Design.TEXT)
 	body.add_theme_stylebox_override("normal", Design.box(Design.PANEL))
 	margin.add_child(body)
+	# AcceptDialog's internal button row does not discover sibling content when
+	# traversing focus. Link the reading surface and return control explicitly.
+	get_ok_button().focus_next = get_ok_button().get_path_to(body)
+	get_ok_button().focus_previous = get_ok_button().get_path_to(body)
+	body.focus_next = body.get_path_to(get_ok_button())
+	body.focus_previous = body.get_path_to(get_ok_button())
 
 func present(contract: Dictionary, viewport: Vector2) -> void:
 	body.clear()
@@ -37,6 +43,13 @@ func present(contract: Dictionary, viewport: Vector2) -> void:
 	body.push_color(Design.MUTED)
 	body.add_text("Choices remembered. Public family outcomes inherited.\n\n")
 	body.pop()
+	if not contract.get("pack_errors", []).is_empty():
+		body.push_color(Design.ACCENT)
+		body.add_text("Some community stories are unavailable (%d loading errors).\n" % contract.pack_errors.size())
+		body.pop()
+		for error in contract.pack_errors:
+			body.add_text(str(error) + "\n")
+		body.add_text("\n")
 	if contract.get("entries", []).is_empty():
 		body.add_text("There are no story memories yet. Keep living and respond to Life Stories in Pending Situations. Your choices will appear here.")
 	for entry in contract.get("entries", []):
@@ -53,10 +66,9 @@ func present(contract: Dictionary, viewport: Vector2) -> void:
 		body.add_text(str(entry.text) + "\n\n")
 	if bool(contract.get("truncated", false)):
 		body.add_text("Showing the latest 200 entries. Earlier history remains in your save.")
-	if not contract.get("pack_errors", []).is_empty():
-		body.add_text("\n\nSome community story packs could not be loaded:\n")
-		for error in contract.pack_errors:
-			body.add_text(str(error) + "\n")
-	popup_centered(Vector2i(minf(860, maxf(280, viewport.x - 32)), minf(680, maxf(240, viewport.y - 48))))
+	# Deferred text/theme minimum-size updates can shrink a wrapped dialog after
+	# opening. Keep the viewport-bounded reading area, including on later opens.
+	min_size = Vector2i(minf(860, maxf(280, viewport.x - 32)), minf(680, maxf(240, viewport.y - 48)))
+	popup_centered(min_size)
 	body.scroll_to_line(0)
 	get_ok_button().grab_focus()

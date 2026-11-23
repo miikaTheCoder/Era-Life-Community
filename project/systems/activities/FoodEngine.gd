@@ -1413,13 +1413,10 @@ func _pay_for_food(actor: Person, amount: float, context: Dictionary = {}) -> Di
 	if amount <= 0.0:
 		return { "success": true, "skipped": true, "amount": 0.0}
 
-	if gs != null and gs.bank_engine != null and gs.bank_engine.has_method("request_actor_bank_action"):
-		return gs.bank_engine.request_actor_bank_action(actor, {
-			"action": "withdraw",
-			"amount": amount,
-			"currency": "USD",
-			"reason": "food_purchase"
-		}, context)
+	if gs != null and gs.bank_engine != null:
+		var reason := str(context.get("source", "food_purchase"))
+		var account_context := context.merged({"currency": BankEngine.DEFAULT_CURRENCY}, true)
+		return gs.bank_engine.settle_obligation_for_actor(actor, amount, {"reason": reason}, account_context)
 
 	if actor.bank_balance < amount:
 		return { "success": false, "reason": "Not enough money for food.", "amount": amount}

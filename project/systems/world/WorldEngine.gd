@@ -4686,6 +4686,8 @@ func _world_vitality_event_for_npc(npc: Person, target_year: int, reality_mode: 
 		npc.alive = false
 		npc.health = 0
 		npc.cause_of_death = cause_text
+		npc.death_year = target_year
+		gs.settle_new_npc_estate(npc)
 		return _world_vitality_make_event(
 			"npc_died",
 			"death",

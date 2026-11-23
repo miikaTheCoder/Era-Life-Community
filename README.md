@@ -45,6 +45,14 @@ for tested source commits, preserved fixtures, and device limitations.
 See the [roadmap](ROADMAP.md) for the essential work queue, completion criteria,
 and the next bounded task. Reliability and a complete life come before more content.
 
+**Connected Lives** on desktop adds a child's independent ambitions, an adult
+continuation with the original childhood friend, and two inherited memories.
+Earlier public story outcomes now inform later conversations. Open **Family
+chronicle** from the Life journal to read saved choices and parental outcomes;
+the journal also shows a short recap. See the [feature loop and evidence](docs/CONNECTED-LIVES-LOOP.md).
+Contributors can add data-only JSON stories using the [story-pack guide](docs/STORY-PACKS.md)
+and its working sample. The native Portrait port remains separate work.
+
 ## Working on the code
 
 Agents: start with [AGENTS.md](AGENTS.md) and the

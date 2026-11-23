@@ -3440,6 +3440,86 @@ func seed_birth_starter_contracts_for_actor(
 		_commit_state()
 
 	return emit_report
+
+
+# A compact save carries each saved actor's admission receipts and any still-open
+# age-window contract. Reopening a life must not run an already settled argument.
+func checkpoint_age_windows(actor_ids: Array) -> Dictionary:
+	var receipts := {}
+	for raw_key in birth_starter_seeded_actor_ids:
+		var parts := str(raw_key).split(":")
+		if parts.size() == 3 and parts[0] == "age_window" and int(parts[1]) in actor_ids:
+			receipts[raw_key] = birth_starter_seeded_actor_ids[raw_key]
+	var active := {}
+	var decisions := {}
+	var runtime = gs.scenario_runtime_contract_engine
+	if runtime != null:
+		for id in runtime.active_popup_contracts:
+			var contract: Dictionary = runtime.active_popup_contracts[id]
+			if str(id).begins_with("age_window_") and int(contract.get("target_id", -1)) in actor_ids:
+				active[id] = contract.duplicate(true)
+				if npc_decision_ledger.has(id):
+					decisions[id] = npc_decision_ledger[id].duplicate(true)
+	var choices := {}
+	var view = gs.contract_view_layer_contract_engine
+	if view != null and not active.is_empty():
+		choices = view.checkpoint_choices_for_contracts(active)
+	return {"receipts": receipts, "active": active, "decisions": decisions,
+		"choices": choices, "captured_ms": int(Time.get_ticks_msec())}
+
+
+func restore_checkpoint_age_windows(data: Dictionary) -> void:
+	gs.scenario_state.erase("checkpoint_age_windows_pending")
+	if not data.get("meta", {}).get("checkpoint_save", false):
+		return
+	var runtime = gs.scenario_runtime_contract_engine
+	if runtime == null:
+		return
+	for key in birth_starter_seeded_actor_ids.keys():
+		if str(key).begins_with("age_window:"):
+			birth_starter_seeded_actor_ids.erase(key)
+	for id in runtime.active_popup_contracts.keys():
+		if str(id).begins_with("age_window_"):
+			runtime.active_popup_contracts.erase(id)
+	for id in npc_decision_ledger.keys():
+		if str(id).begins_with("age_window_"):
+			npc_decision_ledger.erase(id)
+	var state: Dictionary = data.get("age_window_state", {})
+	var offset := int(Time.get_ticks_msec()) - int(state.get("captured_ms", 0))
+	if not data.has("age_window_state"):
+		# Legacy compact saves omitted both receipts and pending events. Avoid
+		# replaying a past age window for the actor whose life is being resumed.
+		var id := int(data.get("controlled_actor_id", data.get("player_id", -1)))
+		for row in data.get("npcs", []):
+			if int(row.get("id", -1)) == id:
+				var window := _pending_age_window_id(int(row.get("age", -1)))
+				if window != "":
+					birth_starter_seeded_actor_ids["age_window:%d:%s" % [id, window]] = true
+				break
+	else:
+		birth_starter_seeded_actor_ids.merge(state.get("receipts", {}), true)
+		for id in state.get("active", {}):
+			var contract: Dictionary = state.active[id].duplicate(true)
+			contract["escalation_stage"] = int(contract.get("escalation_stage", 0))
+			for field in ["created_at_ms", "updated_at_ms"]:
+				if contract.has(field):
+					contract[field] = int(contract[field]) + offset
+			for field in ["next_escalation_ms", "deadline_at_ms"]:
+				if int(contract.get(field, 0)) > 0:
+					contract[field] = maxi(1, int(contract[field]) + offset)
+			runtime.active_popup_contracts[id] = contract
+			var ledger: Dictionary = state.get("decisions", {}).get(id, {}).duplicate(true)
+			for key in ledger:
+				if str(key).is_valid_int():
+					ledger[key] = int(ledger[key]) + offset
+			npc_decision_ledger[id] = ledger
+	var view = gs.contract_view_layer_contract_engine
+	if view != null:
+		view.restore_checkpoint_age_window_choices(state, offset)
+	runtime._commit_state()
+	_commit_state()
+
+
 func seed_age_window_contracts_for_actor(
 	actor: Person,
 	context: Dictionary = {}
@@ -3473,6 +3553,9 @@ func seed_age_window_contracts_for_actor(
 		}
 
 	_ensure_state()
+	if gs != null and gs.scenario_state.get("checkpoint_age_windows_pending", false):
+		return {"success": true, "skipped": true, "reason": "awaiting_checkpoint_age_windows"}
+
 
 	if actor == null:
 		return {
@@ -3601,7 +3684,10 @@ func _pending_age_window_id_for_actor(actor: Person) -> String:
 	if actor == null:
 		return ""
 
-	var age_value: int = int(actor.age)
+	return _pending_age_window_id(int(actor.age))
+
+
+func _pending_age_window_id(age_value: int) -> String:
 	if age_value >= 2 and age_value <= 5:
 		return "toddler_finance_argument"
 

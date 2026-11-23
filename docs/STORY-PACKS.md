@@ -104,14 +104,28 @@ types, unsupported roles and duplicate IDs are rejected. A rejected file cannot
 disable built-in stories or another valid file.
 
 Keep story, node and response IDs stable after release. Removing a pack leaves
-its saved state intact and pauses that content. Reinstalling a compatible pack
-allows it to continue; a changed node layout is not a supported migration. Close
+its cast and history intact and pauses its response deadline or follow-up delay.
+Reinstalling a compatible pack resumes the remaining time when one of the two
+active-story slots is available. Existing active stories keep their slots while
+reinstated stories wait. A changed node layout is not a supported migration. Close
 the game before replacing files. The game has no hot reload for this surface.
 If a saved chapter is absent in the installed version, it pauses with an explanation
 in the Family chronicle. Restore the compatible pack rather than deleting the save.
 
-Run `python3 scripts/test-headless.py test_connected_lives` for the reference
-loader/continuation checks. Test your own complete routes, money failures, free
+Chapter and response IDs must be identifiers, such as `invitation` and `walk`.
+Whitespace, control characters and normalization collisions are rejected, never
+silently renamed. References (`start`, `default`, `next`, and `next_untrusted`)
+must use those exact IDs. Story references retain their pack namespace.
+
+Changed pending offers are regenerated before they can resolve. Their contract
+revision includes the validated definition, saved era scale and deadline; an old
+button cannot charge a replacement offer's price. Reopen the updated situation
+and choose after reading its current terms. Authored text and saved names appear
+literally, including text that resembles BBCode. Formatting, resource loading
+and scripts cannot be requested through story prose.
+
+Run `python3 scripts/test-headless.py test_connected_lives test_story_pack_safety --timeout 300`
+for loader, suspension, cold-restore, text and offer-replacement checks. Test your own complete routes, money failures, free
 defaults, missing/deceased cast and save/Continue before distributing a pack.
 The authoring path is implemented on desktop `main`; native Portrait porting and
 browser file import are separate tasks. This does not add a marketplace or editor.

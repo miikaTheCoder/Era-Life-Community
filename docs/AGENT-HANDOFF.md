@@ -1,6 +1,6 @@
 # EraLife desktop and Portrait: agent handoff
 
-Last roadmap update: **2026-11-17**. Gameplay evidence below remains dated. Read [AGENTS.md](../AGENTS.md), then
+Last roadmap update: **2026-11-23**. Gameplay evidence below remains dated. Read [AGENTS.md](../AGENTS.md), then
 [ROADMAP.md](../ROADMAP.md) for priorities and [Architecture](ARCHITECTURE.md)
 for ownership. This guide is shared by the two permanent branches.
 
@@ -15,14 +15,13 @@ has since been integrated into `main` from commit `cd6ca7d`.
 
 The [essential roadmap](../ROADMAP.md) now prioritizes failed-save preservation,
 a complete life and inheritance, target-specific phone/browser acceptance, then
-a verified package. R16 is tracked on `codex/essential-roadmap`; implementation
-and verification details belong in [save-write evidence](SAVE-WRITE-SAFETY.md).
-Older milestone notes below are historical, not the active queue.
-
-The original desktop checkout has separate uncommitted Connected Lives corrections
-and approval records. This roadmap task does not include or certify them. Portrait
-also has uncommitted documentation; reconcile the shared plan during its next
-coordinated port without overwriting those changes.
+a verified package. The normal-save repair landed in `5c7df19`. The desktop
+integration branch combines Linux rewind safety, Connected Lives corrections,
+and R17 checkpoint, natural death and estate work. On Linux, a fresh Narrative
+life reached natural death and continued as a chosen child. A replay from an older
+ordinary family save also passed a funded estate through three generations.
+The [lifetime playtest](DESKTOP-LIFETIME-PLAYTEST.md) records the saves, choices
+and remaining platform limits. Original checkouts retain their local work.
 
 ## Start here
 
@@ -430,11 +429,31 @@ contains implementation work based on `7d90ed3`: child ambitions and their memor
 adult friendship and its memory, saved recollections between existing stories,
 a Family chronicle and journal recap, and data-only community story packs.
 See [the current loop](CONNECTED-LIVES-LOOP.md) and [authoring guide](STORY-PACKS.md).
-The four new stories contain 18 chapters and 50 responses; desktop now has 18
+The four new stories contain 18 chapters and 51 responses; desktop now has 18
 stories while Portrait retains 14. Story state remains version 1.
 
-Verification and council are in progress. The first full desktop suite passed
-29 regressions. Preserve failed discovery evidence: the first test found that
+Round-one council requested changes. All six required corrections now pass the
+new safety regression, including nine cold-process cases; all 51 responses and
+the chronicle input checks pass. A final graphical run exposed an opaque contract
+ID being treated as a numeric item in the Crime panel's shared pending list.
+The reproducing regression and repair are complete, and the fresh full suite
+passes 30/30 in `build/tests/headless-zz6zvnch`. Final child and friend five-year
+graphical routes, two cold restores each, standard Household smoke, three
+chronicle sizes, actual keyboard/wheel controls and the sample validator pass.
+A final fixture-only chronicle capture repair passes separately. The corrected
+artifact received two round-two PASS votes. Security found two further
+profile-switch diary consumers of unescaped text. That P1 was reproduced and
+repaired, including cached and fallback text before and after cold hydration.
+The fresh full suite passes 30/30 in `build/tests/headless-pyr2zn7x`; four literal
+diary fixture images, standard Household smoke and an additional friendship
+year/save/cold Continue pass. Final restored state is 2006 / age 41 / $9,900 with
+three decisions. All three round-two reviewers matched their frozen manifest.
+All three round-three members returned PASS with no required findings, matching
+all 33 reviewed-file and 131 evidence hashes at start and end. The finite desktop
+loop is complete. Only closure documentation changed after review; production
+code and tests remain exactly as reviewed. See [the verdict](COUNCIL-CONNECTED-LIVES.md#round-3-approved-the-council-gives-its-blessing).
+Earlier evidence includes 29 full regressions, four affected checks and the
+original graphical cold-save routes. Preserve failed discovery evidence: the first test found that
 longer existing arcs could exhaust a child's 16 to 30 age window. The child arc
 now has bounded admission priority without changing caps or cooldowns.
 

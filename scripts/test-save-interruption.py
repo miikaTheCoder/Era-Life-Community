@@ -3,6 +3,7 @@
 
 Run scripts/test-headless.py first to import the project. No normal saves are used.
 """
+import argparse
 import os
 from pathlib import Path
 import signal
@@ -13,6 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--rewind", action="store_true", help="Exercise the incremental rewind writer")
+    args = parser.parse_args()
     if os.name != "posix":
         raise SystemExit("POSIX file limits required; run on Linux or macOS")
     import resource
@@ -23,10 +27,10 @@ def main():
         raise SystemExit("Godot 4.4.1 stable required")
     evidence = ROOT / "build/tests"
     evidence.mkdir(parents=True, exist_ok=True)
-    run = Path(tempfile.mkdtemp(prefix="save-interruption-", dir=evidence))
+    run = Path(tempfile.mkdtemp(prefix="rewind-interruption-" if args.rewind else "save-interruption-", dir=evidence))
     print(f"Evidence: {run}", flush=True)
     failures = []
-    for extension in ("bin", "json"):
+    for extension in (("bin",) if args.rewind else ("bin", "json")):
         for mode in ("interrupt", "write-error"):
             case = run / f"{extension}-{mode}"
             case.mkdir()
@@ -37,7 +41,7 @@ def main():
                 env[key] = str(folder)
             saved = case / f"life.{extension}"
             command = [binary, "--headless", "--path", str(ROOT / "project"),
-                       "--script", str(ROOT / "tests/test_atomic_save.gd"), "--"]
+                       "--script", str(ROOT / "tests" / ("test_rewind_storage.gd" if args.rewind else "test_atomic_save.gd")), "--"]
             seeded = subprocess.run(command + ["--seed-path", str(saved)], env=env,
                                     capture_output=True, text=True, timeout=120)
             (case / "seed.log").write_text(seeded.stdout + seeded.stderr)

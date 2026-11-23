@@ -38,12 +38,20 @@ func yearly_tick(_payload: Dictionary = {}) -> Dictionary:
 		if yearly_cost <= 0:
 			continue
 
-		var before_balance: int = int(actor.bank_balance)
-		var paid_amount: int = min(before_balance, yearly_cost)
-		var unpaid_amount: int = yearly_cost - paid_amount
-
+		if gs.bank_engine == null:
+			gs.bank_engine = BankEngine.new(gs)
+		var bank = gs.bank_engine
+		var account_context := {"import_legacy_balance": true}
+		if actor.realm_id >= 0:
+			account_context["world_id"] = "realm:%d" % actor.realm_id
+		var account: Dictionary = bank.ensure_bank_account_for_actor(actor, account_context)
+		var before_balance := float(account.balance)
+		var paid_amount := int(clampf(before_balance, 0.0, float(yearly_cost)))
 		if paid_amount > 0:
-			actor.bank_balance = max(0, before_balance - paid_amount)
+			var payment: Dictionary = bank.settle_obligation(str(account.owner_id), paid_amount, str(account.world_id), str(account.currency))
+			if not payment.get("success", false):
+				paid_amount = 0
+		var unpaid_amount := yearly_cost - paid_amount
 
 		var debt_report: Dictionary = {}
 		if unpaid_amount > 0:
@@ -115,11 +123,9 @@ func _add_debt(actor: Person, amount: int, context: Dictionary = {}) -> Dictiona
 
 	var state: Dictionary = _state()
 	var debts: Array = _safe_array(state.get("debts", []))
-	var debt_id: String = "debt:%d:%d:%d" % [
-		int(actor.id),
-		int(gs.year if gs != null else 0),
-		int(Time.get_ticks_msec())
-	]
+	var sequence := int(state.get("debt_sequence", 0)) + 1
+	state["debt_sequence"] = sequence
+	var debt_id := "debt:v2:%d:%d" % [actor.id, sequence]
 
 	var debt: Dictionary = {
 		"schema": "eralife.debt_contract",

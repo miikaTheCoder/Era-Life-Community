@@ -19,6 +19,9 @@ var active_contract: Dictionary = {}
 var accounts: Dictionary = {}
 var cash_on_hand: Dictionary = {}
 var owner_index: Dictionary = {}
+# Legacy routed accounts keep their original keys and transaction references.
+# An empty binding means the old save omitted the original identity.
+var legacy_routed_owners: Dictionary = {}
 var world_bank_policies: Dictionary = {}
 var interworld_credit_routes: Dictionary = {}
 var ledger: Array = []
@@ -33,6 +36,7 @@ func reset_runtime() -> void:
 	accounts.clear()
 	cash_on_hand.clear()
 	owner_index.clear()
+	legacy_routed_owners.clear()
 	world_bank_policies.clear()
 	interworld_credit_routes.clear()
 	ledger.clear()
@@ -60,6 +64,7 @@ func export_state() -> Dictionary:
 		"accounts": accounts.duplicate(true),
 		"cash_on_hand": cash_on_hand.duplicate(true),
 		"owner_index": owner_index.duplicate(true),
+		"legacy_routed_owners": legacy_routed_owners.duplicate(),
 		"world_bank_policies": world_bank_policies.duplicate(true),
 		"interworld_credit_routes": interworld_credit_routes.duplicate(true),
 		"ledger": ledger.duplicate(true),
@@ -98,6 +103,17 @@ func import_state(data: Dictionary) -> Dictionary:
 	_tx_seq = int(data.get("tx_seq", ledger.size()))
 
 	_rebuild_owner_index()
+	legacy_routed_owners = data.get("legacy_routed_owners", {}).duplicate()
+	if not data.has("legacy_routed_owners"):
+		for owner in owner_index:
+			_note_legacy_routed_owner(owner)
+		for wallet in cash_on_hand.values():
+			_note_legacy_routed_owner(wallet.get("owner_id"))
+		for entry in ledger:
+			var tx: Dictionary = entry.get("data", {})
+			var extra: Dictionary = tx.get("extra", {})
+			for owner in [tx.get("owner_id"), extra.get("target_owner_id"), extra.get("victim_owner_id")]:
+				_note_legacy_routed_owner(owner)
 	repair_legacy_player_money_mirror()
 
 	last_report = {
@@ -106,6 +122,7 @@ func import_state(data: Dictionary) -> Dictionary:
 		"success": true,
 		"account_count": accounts.size(),
 		"wallet_count": cash_on_hand.size(),
+		"legacy_routed_owners": legacy_routed_owners.duplicate(),
 		"ledger_count": ledger.size(),
 		"imported_at_ms": int(Time.get_ticks_msec())
 	}
@@ -114,6 +131,14 @@ func import_state(data: Dictionary) -> Dictionary:
 func export_checkpoint_state(owner_ids: Array) -> Dictionary:
 	# Copy only indexed accounts needed by the saved household and its ventures.
 	# A company account has no Person.bank_balance mirror to restore from.
+	var selected_bindings := {}
+	owner_ids = owner_ids.duplicate()
+	for legacy in legacy_routed_owners:
+		var binding: String = legacy_routed_owners[legacy]
+		if binding != "" and binding in owner_ids and legacy not in owner_ids:
+			owner_ids.append(legacy)
+		if legacy in owner_ids:
+			selected_bindings[legacy] = binding
 	var selected: Dictionary = {}
 	var wallets: Dictionary = {}
 	for raw_owner in owner_ids:
@@ -123,13 +148,21 @@ func export_checkpoint_state(owner_ids: Array) -> Dictionary:
 				continue
 			var account: Dictionary = accounts[id]
 			selected[id] = account.duplicate(true)
-			var wallet_id := _wallet_id(owner, str(account.world_id), str(account.currency))
-			if cash_on_hand.has(wallet_id):
-				wallets[wallet_id] = cash_on_hand[wallet_id].duplicate(true)
+	for wallet_id in cash_on_hand:
+		var wallet: Dictionary = cash_on_hand[wallet_id]
+		if str(wallet.owner_id) in owner_ids:
+			wallets[wallet_id] = wallet.duplicate(true)
+	var history: Array = []
+	for transaction in ledger:
+		var data: Dictionary = transaction.get("data", {})
+		var extra: Dictionary = data.get("extra", {})
+		if data.get("owner_id") in owner_ids or extra.get("target_owner_id") in owner_ids or extra.get("victim_owner_id") in owner_ids:
+			history.append(transaction.duplicate(true))
 	return {"schema": "eralife.bank_engine_state", "version": CONTRACT_VERSION,
 		"active_contract": active_contract.duplicate(true), "accounts": selected, "cash_on_hand": wallets,
-		"world_bank_policies": world_bank_policies.duplicate(true), "tx_seq": _tx_seq,
-		"ledger": ledger.filter(func(row): return str(row.get("data", {}).get("owner_id", "")) in owner_ids or str(row.get("data", {}).get("extra", {}).get("target_owner_id", "")) in owner_ids)}
+		"world_bank_policies": world_bank_policies.duplicate(true), "tx_seq": _tx_seq, "ledger": history,
+		"legacy_routed_owners": selected_bindings}
+
 
 func credit_bank(owner_id: String, amount: float, world_id: String = "", currency: String = DEFAULT_CURRENCY, payload: Dictionary = {}) -> Dictionary:
 	amount = _money_amount(amount)
@@ -216,7 +249,7 @@ func ensure_account(owner_id: String, world_id: String = "", account_kind: Strin
 			"account_id": account_id,
 			"owner_id": clean_owner,
 			"world_id": clean_world,
-			"balance": max(0.0, float(options.get("starting_balance", 0.0))),
+			"balance": _money_amount(options.get("starting_balance", 0.0)),
 			"type": clean_kind,
 			"currency": clean_currency,
 			"transfer_scope": str(options.get("transfer_scope", TRANSFER_SCOPE_LOCAL)),
@@ -249,6 +282,7 @@ func get_owner_summary(owner_id: String, context: Dictionary = {}) -> Dictionary
 	var bank_balance: float = 0.0
 	var interworld_balance: float = 0.0
 	var total_secured: float = 0.0
+	var accessible_secured: float = 0.0
 
 	for account_id in _accounts_for_owner(clean_owner):
 		var account_raw: Variant = accounts.get(account_id, {})
@@ -263,6 +297,8 @@ func get_owner_summary(owner_id: String, context: Dictionary = {}) -> Dictionary
 		else:
 			bank_balance += balance
 		total_secured += balance
+		if _can_credit_or_debit(account_id, balance, "debit").allowed:
+			accessible_secured += balance
 
 	return {
 		"schema": "eralife.money_owner_summary",
@@ -274,7 +310,7 @@ func get_owner_summary(owner_id: String, context: Dictionary = {}) -> Dictionary
 		"bank_balance": bank_balance,
 		"interworld_credit": interworld_balance,
 		"secured_total": total_secured,
-		"total_accessible": max(0.0, float(wallet.get("amount", 0.0))) + total_secured,
+		"total_accessible": max(0.0, float(wallet.get("amount", 0.0))) + accessible_secured,
 		"wallet_id": str(wallet.get("wallet_id", "")),
 		"account_count": _accounts_for_owner(clean_owner).size(),
 		"updated_at_ms": int(Time.get_ticks_msec())
@@ -299,7 +335,7 @@ func ensure_cash_wallet(owner_id: String, world_id: String = "", currency: Strin
 			"owner_id": clean_owner,
 			"world_id": clean_world,
 			"currency": clean_currency,
-			"amount": max(0.0, float(context.get("starting_cash", 0.0))),
+			"amount": _money_amount(context.get("starting_cash", 0.0)),
 			"risk_surface": "physical",
 			"created_at_ms": int(Time.get_ticks_msec()),
 			"updated_at_ms": int(Time.get_ticks_msec())
@@ -330,13 +366,18 @@ func request_bank_action(payload: Dictionary = {}, context: Dictionary = {}) -> 
 	var action: String = str(payload.get("action", payload.get("command", ""))).strip_edges().to_lower()
 	var owner_id: String = str(payload.get("owner_id", context.get("owner_id", ""))).strip_edges()
 	if owner_id == "":
-		owner_id = _owner_key_from_context(context)
+		var route := _resolve_bank_owner(context)
+		if not route.success:
+			return route
+		owner_id = route.owner_id
 	if owner_id == "":
 		return { "success": false, "reason": "Bank action missing owner_id."}
 
 	var amount: float = _money_amount(payload.get("amount", payload.get("value", 0.0)))
 	var world_id: String = _resolve_world_id(context)
-	var currency: String = _resolve_currency(context)
+	var currency := str(payload.get("currency", "")).strip_edges().to_upper()
+	if currency == "":
+		currency = _resolve_currency(context)
 
 	match action:
 		"deposit", "deposit_money":
@@ -376,8 +417,10 @@ func route_command_envelope(envelope: Dictionary) -> Dictionary:
 	var context: Dictionary = context_raw.duplicate(true) if typeof(context_raw) == TYPE_DICTIONARY else {}
 	context ["source"] = str(envelope.get("source", context.get("source", "command_envelope")))
 	context ["world_id"] = str(context.get("world_id", envelope.get("world_container_id", envelope.get("guild_id", ""))))
-	if str(context.get("owner_id", "")).strip_edges() == "":
-		context ["owner_id"] = _owner_key_from_context(envelope)
+	# Keep explicit request context while also accepting the flat command format.
+	for key in ["owner_id", "player_id", "actor_id", "user_id", "external_user_id", "guild_id", "world_container_id", "life_node_id"]:
+		if envelope.has(key) and str(context.get(key, "")).strip_edges() == "":
+			context[key] = envelope[key]
 	if str(payload.get("action", "")).strip_edges() == "":
 		payload ["action"] = _bank_action_from_command(str(envelope.get("command", envelope.get("action_id", ""))))
 	return request_bank_action(payload, context)
@@ -435,9 +478,12 @@ func withdraw(owner_id: String, amount: float, world_id: String = "", currency: 
 
 	var wallet: Dictionary = ensure_cash_wallet(clean_owner, clean_world, clean_currency, context)
 	var wallet_id: String = str(wallet.get("wallet_id", ""))
+	var cash_after := float(wallet.amount) + amount
+	if not is_finite(cash_after):
+		return {"success": false, "reason": "Withdrawal exceeds the supported wallet balance."}
 	accounts [account_id] ["balance"] = max(0.0, balance - amount)
 	accounts [account_id] ["updated_at_ms"] = int(Time.get_ticks_msec())
-	cash_on_hand [wallet_id] ["amount"] = max(0.0, float(cash_on_hand [wallet_id].get("amount", 0.0)) + amount)
+	cash_on_hand [wallet_id] ["amount"] = cash_after
 	cash_on_hand [wallet_id] ["updated_at_ms"] = int(Time.get_ticks_msec())
 	_sync_actor_by_owner(clean_owner)
 
@@ -536,7 +582,10 @@ func credit_cash(owner_id: String, amount: float, world_id: String = "", currenc
 	var wallet: Dictionary = ensure_cash_wallet(clean_owner, clean_world, clean_currency, context)
 	var wallet_id: String = str(wallet.get("wallet_id", ""))
 
-	cash_on_hand [wallet_id] ["amount"] = max(0.0, float(cash_on_hand [wallet_id].get("amount", 0.0)) + amount)
+	var cash_after := float(wallet.amount) + amount
+	if not is_finite(cash_after):
+		return {"success": false, "reason": "Cash credit exceeds the supported wallet balance."}
+	cash_on_hand[wallet_id].amount = cash_after
 	cash_on_hand [wallet_id] ["updated_at_ms"] = int(Time.get_ticks_msec())
 	_sync_actor_by_owner(clean_owner)
 
@@ -550,6 +599,8 @@ func credit_cash(owner_id: String, amount: float, world_id: String = "", currenc
 	return report
 
 func apply_justice_penalty(owner_id: String, amount: float, world_id: String = "", currency: String = DEFAULT_CURRENCY, payload: Dictionary = {}, context: Dictionary = {}) -> Dictionary:
+	if not is_finite(amount):
+		return {"success": false, "reason": "Penalty amount must be finite."}
 	amount = _money_amount(amount)
 	if amount <= 0.0:
 		return { "success": true, "skipped": true, "reason": "No justice penalty amount."}
@@ -653,6 +704,57 @@ func freeze_owner_accounts(owner_id: String, payload: Dictionary = {}, context: 
 	report ["frozen_accounts"] = frozen.duplicate(true)
 	last_report = report.duplicate(true)
 	return report
+
+
+# Settle the ordinary bank accounts represented by Person.bank_balance. Each
+# currency stays in its original world. Validate every leg before moving funds.
+func settle_estate_accounts(deceased: Person, heir: Person) -> Dictionary:
+	if deceased == null or heir == null or deceased.id <= 0 or heir.id <= 0 or deceased.id == heir.id:
+		return {"success": false, "reason": "An estate needs two different owners."}
+
+	for actor in [deceased, heir]:
+		var context := {"import_legacy_balance": true}
+		if actor.realm_id >= 0:
+			context["world_id"] = "realm:%d" % actor.realm_id
+		ensure_bank_account_for_actor(actor, context)
+	var from_owner := owner_key_from_actor(deceased)
+	var to_owner := owner_key_from_actor(heir)
+	var payouts: Array[Dictionary] = []
+	var totals := {}
+	for id in _accounts_for_owner(from_owner):
+		var source: Dictionary = accounts[id]
+		if source.type != ACCOUNT_KIND_BANK or source.balance == 0.0:
+			continue
+		var amount := float(source.balance)
+		var target := ensure_account(to_owner, source.world_id, ACCOUNT_KIND_BANK, source.currency)
+		var debit := _can_credit_or_debit(id, amount, "debit")
+		var credit := _can_credit_or_debit(target.account_id, amount, "credit")
+		if not debit.allowed:
+			return {"success": false, "reason": debit.reason}
+		if not credit.allowed:
+			return {"success": false, "reason": credit.reason}
+		var total := float(totals.get(source.currency, 0.0)) + amount
+		var target_balance := float(target.balance) + amount
+		if amount < 0.0 or not is_finite(total) or not is_finite(target_balance):
+			return {"success": false, "reason": "Unsupported estate balance."}
+		totals[source.currency] = total
+		payouts.append({"source": id, "target": target.account_id, "amount": amount,
+			"target_balance": target_balance, "world": source.world_id, "currency": source.currency})
+
+	for payout in payouts:
+		accounts[payout.source].balance = 0.0
+		accounts[payout.target].balance = payout.target_balance
+		var now := Time.get_ticks_msec()
+		accounts[payout.source].updated_at_ms = now
+		accounts[payout.target].updated_at_ms = now
+		_record_ledger("money_transferred", {"owner_id": from_owner, "amount": payout.amount,
+			"world_id": payout.world, "currency": payout.currency, "extra": {
+				"target_owner_id": to_owner, "from_account_id": payout.source,
+				"to_account_id": payout.target, "reason": "inheritance"}})
+	_sync_actor_money_mirror(deceased)
+	_sync_actor_money_mirror(heir)
+	return {"success": true, "totals": totals}
+
 func transfer_owner_to_owner(from_owner_id: String, to_owner_id: String, amount: float, world_id: String = "", currency: String = DEFAULT_CURRENCY, payload: Dictionary = {}, context: Dictionary = {}) -> Dictionary:
 	amount = _money_amount(amount)
 	var clean_from: String = str(from_owner_id).strip_edges()
@@ -668,10 +770,12 @@ func transfer_owner_to_owner(from_owner_id: String, to_owner_id: String, amount:
 	var clean_currency: String = str(currency).strip_edges().to_upper()
 	var scope: String = str(payload.get("transfer_scope", context.get("transfer_scope", TRANSFER_SCOPE_LOCAL))).strip_edges().to_lower()
 	var account_kind: String = ACCOUNT_KIND_INTERWORLD if scope == TRANSFER_SCOPE_ERANET else ACCOUNT_KIND_BANK
-	var from_account: Dictionary = ensure_account(clean_from, clean_world, account_kind, clean_currency, { "transfer_scope": scope})
 	var to_world: String = str(payload.get("target_world_id", clean_world)).strip_edges()
 	if to_world == "":
 		to_world = clean_world
+	if scope != TRANSFER_SCOPE_ERANET and to_world != clean_world:
+		return {"success": false, "reason": "Local transfers must stay in the same world."}
+	var from_account: Dictionary = ensure_account(clean_from, clean_world, account_kind, clean_currency, { "transfer_scope": scope})
 	var to_account: Dictionary = ensure_account(clean_to, to_world, account_kind, clean_currency, { "transfer_scope": scope})
 	var from_account_id: String = str(from_account.get("account_id", ""))
 	var to_account_id: String = str(to_account.get("account_id", ""))
@@ -711,6 +815,8 @@ func steal_cash(thief_owner_id: String, victim_owner_id: String, amount: float, 
 	amount = _money_amount(amount)
 	var thief: String = str(thief_owner_id).strip_edges()
 	var victim: String = str(victim_owner_id).strip_edges()
+	if thief == victim:
+		return {"success": false, "reason": "Cash theft requires different owners."}
 	if thief == "" or victim == "":
 		return { "success": false, "reason": "Cash theft needs thief_owner_id and victim_owner_id."}
 	if amount <= 0.0:
@@ -718,7 +824,7 @@ func steal_cash(thief_owner_id: String, victim_owner_id: String, amount: float, 
 
 	var clean_world: String = _resolve_world_id({ "world_id": world_id})
 	var clean_currency: String = str(currency).strip_edges().to_upper()
-	var gate: Dictionary = _can_steal_cash(thief, victim, amount, clean_world, payload, context)
+	var gate: Dictionary = _can_steal_cash(thief, victim, amount, clean_world, clean_currency, payload, context)
 	if not bool(gate.get("allowed", false)):
 		return { "success": false, "reason": str(gate.get("reason", "Cash theft blocked.")), "gate": gate}
 
@@ -731,9 +837,12 @@ func steal_cash(thief_owner_id: String, victim_owner_id: String, amount: float, 
 
 	var thief_wallet: Dictionary = ensure_cash_wallet(thief, clean_world, clean_currency, context)
 	var thief_wallet_id: String = str(thief_wallet.get("wallet_id", ""))
+	var cash_after := float(thief_wallet.amount) + resolved_amount
+	if not is_finite(cash_after):
+		return {"success": false, "reason": "Theft exceeds the supported wallet balance."}
 	cash_on_hand [victim_wallet_id] ["amount"] = max(0.0, victim_cash - resolved_amount)
 	cash_on_hand [victim_wallet_id] ["updated_at_ms"] = int(Time.get_ticks_msec())
-	cash_on_hand [thief_wallet_id] ["amount"] = max(0.0, float(cash_on_hand [thief_wallet_id].get("amount", 0.0)) + resolved_amount)
+	cash_on_hand [thief_wallet_id] ["amount"] = cash_after
 	cash_on_hand [thief_wallet_id] ["updated_at_ms"] = int(Time.get_ticks_msec())
 
 	var report: Dictionary = _finish_money_action("cash_stolen", thief, resolved_amount, clean_world, clean_currency, {
@@ -761,6 +870,10 @@ func set_account_status(account_id: String, status: String, payload: Dictionary 
 		"status": clean_status,
 		"text": "A Bank Engine account status changed."
 	})
+	if clean_status == ACCOUNT_STATUS_OPEN and gs != null and not gs.scenario_state.get(FamilyContractEngine.PENDING_LINEAGE_ESTATES, {}).is_empty():
+		if gs.family_contract_engine == null:
+			gs.family_contract_engine = FamilyContractEngine.new(gs)
+		gs.family_contract_engine.retry_pending_lineage_estates(str(accounts[clean_account_id].owner_id))
 	last_report = report.duplicate(true)
 	return report
 
@@ -907,23 +1020,86 @@ func owner_key_from_actor(actor) -> String:
 		return "person:%d" % int(actor.id)
 	return "person:unknown"
 
-func _owner_key_from_context(context: Dictionary = {}) -> String:
-	var direct: String = str(context.get("owner_id", "")).strip_edges()
+func _note_legacy_routed_owner(owner: Variant) -> void:
+	if owner is String and (owner.begins_with("life:") or owner.begins_with("discord:")):
+		legacy_routed_owners[owner] = ""
+
+
+func _routed_identity(context: Dictionary) -> Dictionary:
+	var user := str(context.get("user_id", context.get("external_user_id", ""))).strip_edges()
+	var guild := str(context.get("guild_id", context.get("world_container_id", ""))).strip_edges()
+	if user != "" and guild != "":
+		return {"key": "discord2:%s:%s" % [guild.uri_encode(), user.uri_encode()],
+			"legacy": "discord:%s:%s" % [_safe_id(guild), _safe_id(user)],
+			"unambiguous": _numeric_identity(guild) and _numeric_identity(user)}
+	var life := str(context.get("life_node_id", "")).strip_edges()
+	if life != "":
+		return {"key": "life2:" + life, "legacy": "life:" + _safe_id(life), "unambiguous": _numeric_identity(life)}
+	return {}
+
+
+func external_birth_bank_owners() -> Array:
+	var result: Array = []
+	if gs == null:
+		return result
+	var birth: Dictionary = gs.scenario_state.get("external_birth_intent", {})
+	if birth.get("world_mode") != "solo":
+		return result
+	for context in [birth, {"life_node_id": birth.get("life_node_id", "")}]:
+		if not _routed_identity(context).is_empty():
+			var route := _resolve_bank_owner(context)
+			if route.success and route.owner_id not in result:
+				result.append(route.owner_id)
+	return result
+
+
+func _numeric_identity(value: String) -> bool:
+	return value.is_valid_int() and not value.begins_with("-") and not value.begins_with("+")
+
+
+# Local save recovery only. The host supplies the verified original identity
+# after reconciling its records. Player commands cannot create a binding.
+func recover_legacy_routed_owner(legacy: String, verified_identity: Dictionary) -> Dictionary:
+	var identity := _routed_identity(verified_identity)
+	if not legacy_routed_owners.has(legacy) or identity.get("legacy") != legacy:
+		return {"success": false, "reason": "The verified identity does not match this saved owner."}
+	if legacy_routed_owners[legacy] not in ["", identity.key]:
+		return {"success": false, "reason": "This saved owner already belongs to another identity."}
+	legacy_routed_owners[legacy] = identity.key
+	return {"success": true, "owner_id": legacy}
+
+
+func _resolve_bank_owner(context: Dictionary) -> Dictionary:
+	var direct := str(context.get("owner_id", "")).strip_edges()
 	if direct != "":
-		return direct
-	var player_id: int = int(context.get("player_id", context.get("actor_id", -1)))
-	if player_id > 0:
-		return "person:%d" % player_id
-	var user_id: String = str(context.get("user_id", context.get("external_user_id", ""))).strip_edges()
-	var guild_id: String = str(context.get("guild_id", context.get("world_container_id", ""))).strip_edges()
-	if user_id != "" and guild_id != "":
-		return "discord:%s:%s" % [_safe_id(guild_id), _safe_id(user_id)]
-	var life_node_id: String = str(context.get("life_node_id", "")).strip_edges()
-	if life_node_id != "":
-		return "life:%s" % _safe_id(life_node_id)
-	if gs != null and gs.player != null:
-		return owner_key_from_actor(gs.player)
-	return ""
+		return {"success": true, "owner_id": direct}
+	var actor_id := int(context.get("player_id", context.get("actor_id", -1)))
+	if actor_id > 0:
+		return {"success": true, "owner_id": "person:%d" % actor_id}
+	var identity := _routed_identity(context)
+	if identity.is_empty():
+		return {"success": true, "owner_id": owner_key_from_actor(gs.player) if gs != null else ""}
+	var legacy: String = identity.legacy
+	if not legacy_routed_owners.has(legacy):
+		return {"success": true, "owner_id": identity.key}
+	if legacy_routed_owners[legacy] == "":
+		if identity.unambiguous:
+			return recover_legacy_routed_owner(legacy, context)
+		# A solo save can identify the original owner from its stored birth
+		# record, even if a different spelling makes the first request.
+		if gs != null:
+			var birth: Dictionary = gs.scenario_state.get("external_birth_intent", {})
+			if birth.get("world_mode") == "solo":
+				var original := {"life_node_id": birth.get("life_node_id", "")} if legacy.begins_with("life:") else birth
+				if _routed_identity(original).get("legacy") == legacy:
+					recover_legacy_routed_owner(legacy, original)
+	if legacy_routed_owners[legacy] == "":
+		return {"success": false, "code": "legacy_owner_recovery_required", "legacy_owner_id": legacy,
+			"reason": "This save needs its original bank owner verified before using these funds."}
+	var owner: String = legacy if legacy_routed_owners[legacy] == identity.key else identity.key
+	return {"success": true, "owner_id": owner}
+
+
 func settle_obligation_for_actor(
 	actor,
 	amount: float,
@@ -949,12 +1125,11 @@ func settle_obligation_for_actor(
 	] = owner_key_from_actor(
 		actor
 	)
-	merged_context [
-		"world_id"
-	] = _resolve_world_id(
-		context
-	)
+	if not context.has("world_id") and not context.has("world_container_id") and not context.has("guild_id"):
+		if actor.get("realm_id") != null and int(actor.realm_id) >= 0:
+			merged_context["world_id"] = "realm:%d" % int(actor.realm_id)
 
+	merged_context["import_legacy_balance"] = true
 	var account: Dictionary = ensure_bank_account_for_actor(
 		actor,
 		merged_context
@@ -972,61 +1147,6 @@ func settle_obligation_for_actor(
 			"reason": "Could not resolve the actor's bank account."
 		}
 
-
-
-	if (
-		float(
-			accounts [
-				account_id
-			].get(
-				"balance",
-				0.0
-			)
-		) <= 0.0
-		and actor.get(
-			"bank_balance"
-		) != null
-	):
-		var legacy_amount: float = max(
-			0.0,
-			float(
-				actor.bank_balance
-			)
-		)
-
-		if legacy_amount > 0.0:
-			accounts [
-				account_id
-			] ["balance"] = legacy_amount
-			accounts [
-				account_id
-			] ["updated_at_ms"] = int(
-				Time.get_ticks_msec()
-			)
-
-			_record_ledger(
-				"legacy_money_imported",
-				{
-					"owner_id": owner_key_from_actor(
-						actor
-					),
-					"account_id": account_id,
-					"amount": legacy_amount,
-					"currency": str(
-						account.get(
-							"currency",
-							DEFAULT_CURRENCY
-						)
-					),
-					"world_id": str(
-						account.get(
-							"world_id",
-							DEFAULT_WORLD_ID
-						)
-					),
-					"source": "Person.bank_balance"
-				}
-			)
 
 	return settle_obligation(
 		owner_key_from_actor(
@@ -1062,6 +1182,8 @@ func settle_obligation(
 	payload: Dictionary = {},
 	context: Dictionary = {}
 ) -> Dictionary:
+	if not is_finite(amount):
+		return {"success": false, "reason": "Obligation amount must be finite."}
 	amount = _money_amount(
 		amount
 	)
@@ -1261,10 +1383,18 @@ func _bank_action_from_command(command_id: String) -> String:
 			return clean.replace("bank.", "")
 
 func _account_id(owner_id: String, world_id: String, account_kind: String, currency: String) -> String:
-	return "acct.%s.%s.%s.%s" % [_safe_id(owner_id), _safe_id(world_id), _safe_id(account_kind), _safe_id(currency)]
+	var legacy := "acct.%s.%s.%s.%s" % [_safe_id(owner_id), _safe_id(world_id), _safe_id(account_kind), _safe_id(currency)]
+	var row: Dictionary = accounts.get(legacy, {})
+	if row.get("owner_id") == owner_id and row.get("world_id") == world_id and row.get("type") == account_kind and row.get("currency") == currency:
+		return legacy
+	return "acct2:" + JSON.stringify([owner_id, world_id, account_kind, currency])
 
 func _wallet_id(owner_id: String, world_id: String, currency: String) -> String:
-	return "cash.%s.%s.%s" % [_safe_id(owner_id), _safe_id(world_id), _safe_id(currency)]
+	var legacy := "cash.%s.%s.%s" % [_safe_id(owner_id), _safe_id(world_id), _safe_id(currency)]
+	var row: Dictionary = cash_on_hand.get(legacy, {})
+	if row.get("owner_id") == owner_id and row.get("world_id") == world_id and row.get("currency") == currency:
+		return legacy
+	return "cash2:" + JSON.stringify([owner_id, world_id, currency])
 
 func _safe_id(value: Variant) -> String:
 	var out: String = str(value).strip_edges().to_lower()
@@ -1279,7 +1409,7 @@ func _safe_id(value: Variant) -> String:
 
 func _money_amount(value: Variant) -> float:
 	var amount: float = float(value)
-	if amount < 0.0:
+	if not is_finite(amount) or amount < 0.0:
 		amount = 0.0
 	return amount
 
@@ -1290,19 +1420,21 @@ func _can_credit_or_debit(account_id: String, amount: float, direction: String, 
 	var status: String = str(account.get("status", ACCOUNT_STATUS_OPEN)).strip_edges().to_lower()
 	if status in [ACCOUNT_STATUS_FROZEN, ACCOUNT_STATUS_SANCTIONED]:
 		return { "allowed": false, "reason": "Account is %s." % status, "status": status}
+	if direction == "credit" and not is_finite(float(account.balance) + amount):
+		return {"allowed": false, "reason": "Credit exceeds the supported account balance."}
 	return { "allowed": true, "amount": amount, "direction": direction}
 
-func _can_steal_cash(_thief_owner_id: String, victim_owner_id: String, amount: float, world_id: String, payload: Dictionary = {}, context: Dictionary = {}) -> Dictionary:
+func _can_steal_cash(_thief_owner_id: String, victim_owner_id: String, amount: float, world_id: String, currency: String, payload: Dictionary = {}, context: Dictionary = {}) -> Dictionary:
 	var permissions_raw: Variant = active_contract.get("permissions", {})
 	var permissions: Dictionary = permissions_raw if typeof(permissions_raw) == TYPE_DICTIONARY else {}
 	if not bool(permissions.get("allow_cash_theft", true)):
 		return { "allowed": false, "reason": "Cash theft disabled by bank contract."}
 	if bool(permissions.get("require_governed_theft", true)) and not bool(payload.get("governed", context.get("governed", false))):
 		return { "allowed": false, "reason": "Cash theft must be routed by a governed crime/event/system."}
-	var wallet: Dictionary = ensure_cash_wallet(victim_owner_id, world_id, _resolve_currency(context), context)
+	var wallet: Dictionary = ensure_cash_wallet(victim_owner_id, world_id, currency, context)
 	var victim_cash: float = max(0.0, float(wallet.get("amount", 0.0)))
 	var max_percent: float = clamp(float(permissions.get("max_cash_theft_percent", 0.35)), 0.0, 1.0)
-	var max_allowed: float = max(1.0, floor(victim_cash * max_percent))
+	var max_allowed: float = maxf(1.0, floor(victim_cash * max_percent)) if max_percent > 0.0 else 0.0
 	if amount > max_allowed:
 		return { "allowed": false, "reason": "Requested theft exceeds governed theft limit.", "max_allowed": max_allowed, "victim_cash": victim_cash}
 	return { "allowed": true, "max_allowed": max_allowed, "victim_cash": victim_cash}
@@ -1326,7 +1458,7 @@ func _sync_actor_by_owner(owner_id: String) -> void:
 	var id_text: String = owner_id.replace("person:", "")
 	if not id_text.is_valid_int():
 		return
-	var actor = gs.get_npc_by_id(int(id_text))
+	var actor = gs.player if gs.player != null and gs.player.id == int(id_text) else gs.get_npc_by_id(int(id_text))
 	if actor != null:
 		_sync_actor_money_mirror(actor)
 

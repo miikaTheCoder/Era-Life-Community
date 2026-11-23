@@ -524,7 +524,7 @@
           "title": "A small beginning",
           "text": "{person} is willing to try occasional contact again. Neither of you needs to call it a return to the friendship you had as children.",
           "deadline": 2,
-          "default": "accept",
+          "default": "pass",
           "choices": [
             {
               "id": "accept",
@@ -533,6 +533,14 @@
               "legacy": "friendship_repaired",
               "outcome": "Friendship repaired",
               "relationship": 3
+            },
+            {
+              "id": "pass",
+              "label": "Let this opening pass without promising contact",
+              "result": "I let the opening with {person} pass without promising renewed contact.",
+              "legacy": "friendship_distance",
+              "outcome": "Friendship distance",
+              "relationship": 0
             },
             {
               "id": "private",

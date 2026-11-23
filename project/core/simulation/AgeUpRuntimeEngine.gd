@@ -6916,6 +6916,15 @@ func _record_phase_overflow_if_needed(phase_id: String, elapsed_ms: int) -> Dict
 	if elapsed_ms < soft_budget_ms:
 		return {}
 
+	# The phase timers accumulate across walker slices. A threshold crossing
+	# should apply its governor once, even when hundreds of NPCs remain.
+	var reported_levels: Dictionary = active_year_context.get("phase_overflow_levels", {})
+	var level := 2 if elapsed_ms >= hard_budget_ms else 1
+	if int(reported_levels.get(phase_id, 0)) >= level:
+		return {}
+	reported_levels[phase_id] = level
+	active_year_context["phase_overflow_levels"] = reported_levels
+
 	var report:= {
 		"phase_id": str(phase_id),
 		"elapsed_ms": elapsed_ms,

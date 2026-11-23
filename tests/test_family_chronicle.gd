@@ -1,5 +1,15 @@
 extends "test_ui_presentation.gd"
 
+func _key(code: Key, shift: bool = false) -> void:
+	for pressed in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.shift_pressed = shift
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await _settle()
+
 func _run() -> void:
 	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
@@ -12,6 +22,10 @@ func _run() -> void:
 	host.add_child(ui)
 	host.output_label = RichTextLabel.new()
 	ui.add_child(host.output_label)
+	var age_up := Button.new()
+	age_up.text = "Age up"
+	ui.add_child(age_up)
+	host.ui_nav_buttons.age_up = age_up
 	host.gs = GameState.new()
 	host.gs.player = Person.new()
 	host.gs.player.id = 101
@@ -46,6 +60,7 @@ func _run() -> void:
 		await _settle()
 		_check(panel.visible, "Chronicle closed during refresh")
 		_check(panel.size.x <= dimensions.x and panel.size.y <= dimensions.y, "Chronicle escaped viewport at " + str(dimensions))
+		_check(panel.body.size.y >= panel.size.y * 0.5 and panel.body.size.x >= panel.size.x - 80, "Chronicle reading area collapsed after layout")
 		_check(panel.body.get_parsed_text().contains("Sam Story"), "Chronicle omitted saved participant")
 		_check(panel.body.get_content_height() > panel.body.size.y, "Long chronicle has no scrollable content")
 		panel.body.get_v_scroll_bar().value = panel.body.get_v_scroll_bar().max_value
@@ -60,6 +75,34 @@ func _run() -> void:
 		panel.get_ok_button().pressed.emit()
 		await _settle()
 		_check(not panel.visible, "Return to life failed")
+	# Dispatch actual keys through the viewport, including traversal into the dialog.
+	age_up.grab_focus()
+	for step in range(40):
+		if root.gui_get_focus_owner() == shell.chronicle_button:
+			break
+		await _key(KEY_TAB)
+	_check(root.gui_get_focus_owner() == shell.chronicle_button, "Chronicle button is not Tab reachable")
+	await _key(KEY_ENTER)
+	_check(panel.visible, "Enter did not open the focused chronicle")
+	for step in range(8):
+		if panel.gui_get_focus_owner() == panel.body:
+			break
+		await _key(KEY_TAB)
+	_check(panel.gui_get_focus_owner() == panel.body, "Chronicle timeline is not Tab reachable")
+	_check(panel.body.size.y >= panel.size.y * 0.5 and panel.body.get_v_scroll_bar().page > 0, "Reopened chronicle has no usable reading area")
+	await _key(KEY_PAGEDOWN)
+	_check(panel.body.get_v_scroll_bar().value > 0, "PageDown did not scroll the focused chronicle")
+	var before_wheel: float = panel.body.get_v_scroll_bar().value
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	wheel.position = panel.body.get_global_rect().get_center()
+	panel.push_input(wheel, true)
+	await _settle()
+	_check(panel.body.get_v_scroll_bar().value > before_wheel, "Wheel did not scroll the chronicle")
+	await _key(KEY_ESCAPE)
+	_check(not panel.visible, "Escape did not close the chronicle")
+	_check(root.gui_get_focus_owner() == shell.chronicle_button, "Closing the chronicle did not restore keyboard focus")
 	# Hydration and a same-year response must refresh the recap without a new year.
 	shell.recap_check_at = 0
 	await _settle()
@@ -71,9 +114,28 @@ func _run() -> void:
 	shell.recap_check_at = 0
 	await _settle()
 	_check(shell.recap.text.contains("left:"), "Generation change did not show inherited recap")
-	var literal := {"person":"[url=https://invalid.example]Alex[/url]", "entries":[], "truncated":false}
-	panel.present(literal, Vector2(420, 900))
+	# Reopen through the shell after switching people so its owner guard matches
+	# the current person before exercising a synthetic loading-error contract.
+	shell.chronicle_button.pressed.emit()
+	await _settle()
+	_check(panel.visible, "Generation change prevented reopening the chronicle")
+	panel.hide()
+	await _settle()
+	var literal := {"person":"[url=https://invalid.example]Alex[/url]", "entries":[], "truncated":false, "pack_errors":["sample.json: missing starting chapter"]}
+	panel.present(literal, Vector2(root.size))
+	await _settle()
+	_check(panel.visible, "Loading-error chronicle is not visible")
 	_check(panel.body.get_parsed_text().contains("[url="), "Authored text was interpreted as BBCode")
+	_check(panel.body.get_parsed_text().find("loading errors") < panel.body.get_parsed_text().find("no story memories"), "Pack errors were buried beneath the timeline")
+	if OS.has_environment("ERA_PREVIEW_DIR") and DisplayServer.get_name() != "headless":
+		panel.hide()
+		await _settle()
+		literal.person = "Sam Story"
+		panel.present(literal, Vector2(root.size))
+		await _settle()
+		_check(panel.visible, "Loading-error screenshot has no visible chronicle")
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png(OS.get_environment("ERA_PREVIEW_DIR").path_join("chronicle-pack-error.png"))
 	panel.hide()
 	host.free()
 	await _settle()

@@ -586,6 +586,13 @@ func _interactive_checkpoint_actor_ids(
 				int(actor.partner.id)
 			)
 
+	# Keep unpaid estates intact even when the ordinary household roster is full.
+	for claim in gs.scenario_state.get(FamilyContractEngine.PENDING_LINEAGE_ESTATES, {}).values():
+		for id in [int(claim.owner_id), int(claim.heir_id)]:
+			if not seen.has(id) and gs.get_npc_by_id(id) != null:
+				seen[id] = true
+				out.append(id)
+
 	return out
 
 
@@ -628,9 +635,11 @@ func _interactive_checkpoint_scenario_capsule(
 		"choose_adventure",
 		"life_stories",
 		"family_businesses",
+		FamilyContractEngine.PENDING_LINEAGE_ESTATES,
 		"choose_adventure_birth_trigger",
 		"narrative_birth_bias",
 		"choose_adventure_lineage_birth",
+		"external_birth_intent",
 		"active_lineage_birth_contract"
 	]
 	var capsule: Dictionary = {}
@@ -648,6 +657,19 @@ func _interactive_checkpoint_scenario_capsule(
 		var actor_id: int = int(raw_actor_id)
 		if actor_id > 0:
 			switch_actor_keys [str(actor_id)] = true
+
+	var debt_state: Dictionary = gs.scenario_state.get(DebtContractEngine.STATE_KEY, {})
+	if not debt_state.is_empty():
+		var saved_debts: Array = debt_state.get("debts", []).filter(
+			func(row): return row is Dictionary and switch_actor_keys.has(str(row.get("actor_id", -1)))
+		)
+		capsule[DebtContractEngine.STATE_KEY] = {
+			"schema": "eralife.debt_contract_engine_state",
+			"version": DebtContractEngine.CONTRACT_VERSION,
+			"debt_sequence": int(debt_state.get("debt_sequence", 0)),
+			"debts": saved_debts,
+			"last_debt": saved_debts.back() if not saved_debts.is_empty() else {}
+		}
 
 	# Preserve the visible diary for saved actors without serializing every
 	# resident NPC's history or UI caches.
@@ -870,11 +892,7 @@ func _checkpoint_presentation_snapshot(source: Dictionary) -> Dictionary:
 		stats[field] = actor.get(field)
 		snapshot[field] = actor.get(field)
 	snapshot["stats"] = stats
-	var entries: Array = gs.scenario_state.get("life_diary_state_by_npc", {}).get(str(actor.id), {}).get("entries", [])
-	if gs.life_diary_contract_engine != null:
-		var current_entries: Array = gs.life_diary_contract_engine.diary_entries_for_actor(actor.id, {"read_only": true})
-		if not current_entries.is_empty():
-			entries = current_entries
+	var entries: Array = gs.checkpoint_diary_entries(actor.id)
 	var lines: Array = []
 	for entry in entries:
 		var entry_lines: Array = entry if entry is Array else entry.get("lines", []) if entry is Dictionary else [str(entry)]
@@ -1082,11 +1100,15 @@ func _build_interactive_checkpoint_payload(
 		}
 	}
 
-	if gs.bank_engine != null and scenario_capsule.has("family_businesses"):
-		var bank_owners: Array = []
+	if gs.school_engine != null:
+		payload.merge(gs.school_engine.checkpoint_school_state(actor_ids))
+	if gs.pending_situations_engine != null:
+		payload["age_window_state"] = gs.pending_situations_engine.checkpoint_age_windows(actor_ids)
+	if gs.bank_engine != null:
+		var bank_owners: Array = gs.bank_engine.external_birth_bank_owners()
 		for actor_id in actor_ids:
 			bank_owners.append("person:%d" % int(actor_id))
-		for venture in scenario_capsule.family_businesses.get("ventures", {}).values():
+		for venture in scenario_capsule.get("family_businesses", {}).get("ventures", {}).values():
 			bank_owners.append(str(venture.bank_owner))
 		payload["bank_engine_state"] = gs.bank_engine.export_checkpoint_state(bank_owners)
 	return _make_binary_safe(payload)
@@ -1785,6 +1807,7 @@ func _build_legacy_payload(_options: Dictionary = {}) -> Dictionary:
 		"dragonballs_ownership": _engine_field(gs.dragonballs_engine, "ownership", {}),
 		"red_bonnet_owner_id": _engine_field(gs.red_bonnet_engine, "owner_id", -1),
 		"school_enrollment": _engine_field(gs.school_engine, "enrollment", {}),
+		"school_academic_records": _engine_field(gs.school_engine, "school_academic_records", {}),
 		"school_rosters": _engine_field(gs.school_engine, "school_rosters", {}),
 		"school_teachers": _engine_field(gs.school_engine, "school_teachers", {}),
 		"workplace_rosters": _engine_field(gs.workplace_engine, "workplace_rosters", {}),
@@ -2461,6 +2484,9 @@ func _build_cross_device_checkpoint(
 		if current_panel == "":
 			current_panel = "life"
 
+		var saved_entries: Array = gs.checkpoint_diary_entries(controlled_actor_id)
+		if not saved_entries.is_empty():
+			resume_contract["life_diary_entries"] = saved_entries
 		summary ["path"] = clean_path
 		summary ["residency_signature"] = (
 			residency_signature

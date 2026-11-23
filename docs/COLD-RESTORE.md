@@ -41,6 +41,22 @@ identity discovery. Its cold-restore harness enters through MobileBoot's
 **Saved life & account** button and taps **Continue**, retaining the failing route
 as a graphical regression.
 
+## Older routed bank accounts
+
+Older saves sometimes stored different life-node or Discord names under the
+same owner key. The bank keeps those accounts, wallets, restrictions and ledger
+references together. Numeric identifiers can be matched exactly. A solo life's
+saved birth record can also identify its original route.
+
+When the save lacks enough evidence, a routed bank request returns
+`legacy_owner_recovery_required` and the stored owner ID. For a standalone
+or shared-world save, the host can check its original identity records and call
+`BankEngine.recover_legacy_routed_owner(saved_owner_id, verified_identity)`
+locally. Supply the original `life_node_id`, or both `guild_id` and `user_id`.
+Only bind an owner when the records establish who held the entire balance.
+Keep a genuinely mixed balance pending until its ownership can be reconciled.
+Save the bank state to retain the binding.
+
 ## Repeatable checks
 
 Use Godot 4.4.1 and a graphical display. Each command exits fully before starting

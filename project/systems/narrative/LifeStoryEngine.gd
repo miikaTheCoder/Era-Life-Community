@@ -143,6 +143,9 @@ static func _validate_content_types(data: Variant) -> Array:
 		for key in ["series", "origin_story", "death_node", "separation_node", "trust_from"]:
 			if story.has(key) and not story[key] is String:
 				return [where + ": " + key + " must be text."]
+		for key in ["id", "start", "origin_story", "death_node", "separation_node"]:
+			if story.has(key) and not _content_identifier(story[key], key in ["id", "origin_story"]):
+				return [where + ": " + key + " must be a canonical ID without whitespace or punctuation other than underscores (and dots between story namespaces)."]
 		if story.has("allow_deceased_cast") and not story.allow_deceased_cast is bool:
 			return [where + ": allow_deceased_cast must be boolean."]
 		if not _content_integer(story.get("admission_priority", 0), 0, 100):
@@ -159,6 +162,8 @@ static func _validate_content_types(data: Variant) -> Array:
 			return [where + ": minimum age exceeds maximum age."]
 		if gate.has("completed_story") and not gate.completed_story is String:
 			return [where + ": completed_story must be an ID."]
+		if gate.has("completed_story") and not _content_identifier(gate.completed_story, true):
+			return [where + ": completed_story must be a canonical story ID."]
 		for key in ["employed", "crime_history"]:
 			if gate.has(key) and not gate[key] is bool:
 				return [where + ": " + key + " must be boolean."]
@@ -170,17 +175,23 @@ static func _validate_content_types(data: Variant) -> Array:
 		for connection in story.get("connections", []):
 			if not connection is Dictionary or not connection.get("story") is String or not connection.get("texts") is Dictionary:
 				return [where + ": each connection needs a story ID and texts keyed by outcome."]
+			if not _content_identifier(connection.story, true):
+				return [where + ": a connection needs a canonical story ID."]
 			for value in connection.texts.values():
 				if not value is String:
 					return [where + ": connection text must be a string."]
 		for node_id in story.nodes:
 			var chapter: Variant = story.nodes[node_id]
 			var location := where + "/" + str(node_id)
+			if not _content_identifier(node_id):
+				return [location + ": chapter IDs must be canonical identifiers without whitespace."]
 			if not chapter is Dictionary or not chapter.get("choices") is Array or chapter.choices.is_empty() or chapter.choices.size() > 16:
 				return [location + ": choices must contain 1 to 16 responses."]
 			for key in ["title", "text", "default"]:
 				if not chapter.get(key) is String:
 					return [location + ": " + key + " must be text."]
+			if not _content_identifier(chapter.default):
+				return [location + ": default must be a canonical response ID."]
 			if not _content_integer(chapter.get("deadline", 2), 1, 50):
 				return [location + ": deadline must be an integer from 1 to 50."]
 			for choice in chapter.choices:
@@ -192,6 +203,11 @@ static func _validate_content_types(data: Variant) -> Array:
 				for key in ["next", "next_untrusted", "legacy", "outcome"]:
 					if choice.has(key) and not choice[key] is String:
 						return [location + ": " + key + " must be text."]
+				if not _content_identifier(choice.id):
+					return [location + ": response IDs must be canonical identifiers without whitespace."]
+				for key in ["next", "next_untrusted"]:
+					if choice.has(key) and choice[key] != "" and not _content_identifier(choice[key]):
+						return [location + ": " + key + " must be a canonical chapter ID."]
 				for key in ["transfer", "cash", "relationship", "delay"]:
 					if choice.has(key) and not _content_integer(choice[key], -100000, 100000):
 						return [location + ": " + key + " must be a bounded integer."]
@@ -210,6 +226,14 @@ static func _validate_content_types(data: Variant) -> Array:
 
 static func _content_integer(value: Variant, minimum: int, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and float(value) == floor(float(value)) and float(value) >= minimum and float(value) <= maximum
+
+static func _content_identifier(value: Variant, qualified: bool = false) -> bool:
+	if not value is String or value.is_empty():
+		return false
+	for part in str(value).split(".") if qualified else [value]:
+		if not str(part).is_valid_identifier():
+			return false
+	return true
 
 static func _acyclic(nodes: Dictionary, id: String, path: Dictionary, visited: Dictionary) -> bool:
 	if path.has(id):
@@ -266,27 +290,18 @@ func service_year() -> Dictionary:
 	if gs.scenario_state.has("family_businesses"):
 		businesses().service_actor(actor)
 	var profile: Dictionary = _actor_state(actor.id)
-	var active := 0
+	var runnable := _runnable_stories(profile)
+	var active := runnable.size()
 	var surfaced := 0
-	for id in profile.stories.keys():
+	for id in runnable:
 		var instance: Dictionary = profile.stories[id]
-		if str(instance.status) == "finished":
-			continue
 		var definition: Dictionary = _definition(str(id))
-		if definition.is_empty():
-			continue # Keep unknown content in saves for a later compatible pack.
-		if not definition.nodes.has(str(instance.get("node", ""))):
-			var warning := str(id) + ": saved chapter is missing from this version. Reinstall a compatible story pack to continue it."
-			if warning not in pack_report.get("errors", []):
-				pack_report.errors.append(warning)
-			active += 1
-			continue
+		instance.last_available_year = int(gs.year)
 		if definition.has("separation_node") and _partnership_loading():
-			active += 1
 			continue
 		var cast: Person = _person(int(instance.cast_id))
 		if cast == null:
-			active += 1 # A temporarily unloaded participant must not be replaced.
+			# A temporarily unloaded participant must not be replaced.
 			continue
 		var absent := false
 		var lost_name := "" if cast.alive else str(instance.cast_name)
@@ -297,7 +312,6 @@ func service_year() -> Dictionary:
 			elif not person.alive:
 				lost_name = str(participant.name)
 		if absent:
-			active += 1
 			continue
 		if lost_name != "" and not bool(definition.get("allow_deceased_cast", false)):
 			if definition.has("death_node"):
@@ -314,19 +328,16 @@ func service_year() -> Dictionary:
 		if definition.has("separation_node") and not instance.has("lost_person"):
 			var partnership := _partnership_state(actor, cast)
 			if partnership == "unavailable" and not instance.has("separated"):
-				active += 1
 				continue
 			if partnership == "separated" and not instance.has("separated"):
 				_separate(instance, definition)
-		active += 1
 		if int(gs.year) < int(instance.due_year):
 			continue
-		var contract_id := _contract_id(instance)
 		if str(instance.status) == "pending" and int(gs.year) > int(instance.deadline_year):
 			# Restore the contract first if a compact checkpoint omitted projections.
 			_surface(actor, definition, instance)
 			var node: Dictionary = definition.nodes[instance.node]
-			gs.scenario_runtime_contract_engine.resolve_popup_contract(contract_id, str(node.default), {
+			gs.scenario_runtime_contract_engine.resolve_popup_contract(_contract_id(instance), str(node.default), {
 				"viewer_actor_id": actor.id, "life_story_automatic": true
 			})
 			continue
@@ -359,6 +370,7 @@ func service_year() -> Dictionary:
 				"cast_id": cast.id, "cast_name": _name(cast),
 				"node": definition.start, "status": "waiting", "due_year": int(gs.year),
 				"started_year": int(gs.year), "history": [], "legacy": "unfinished",
+				"last_available_year": int(gs.year),
 				"origin": casting.get("origin", ""), "origin_legacy": casting.get("legacy", ""),
 				"scale": float(casting.get("scale", _era_scale())),
 				"ensemble": casting.get("ensemble", {}),
@@ -375,6 +387,57 @@ func service_year() -> Dictionary:
 				surfaced += 1
 			break
 	return {"success": true, "surfaced": surfaced}
+
+# Reserve existing slots before resuming suspended records. Unknown future save
+# shapes stay opaque; only records owned by this version acquire pause metadata.
+func _runnable_stories(profile: Dictionary) -> Array:
+	var ready: Array = []
+	var paused: Array = []
+	for id in profile.stories:
+		var instance: Dictionary = profile.stories[id]
+		if str(instance.get("status", "")) not in ["pending", "waiting"]:
+			continue
+		var definition := _definition(str(id))
+		if definition.is_empty() or not definition.nodes.has(str(instance.get("node", ""))):
+			_suspend(instance, "content_unavailable")
+			if not definition.is_empty():
+				var warning := str(id) + ": saved chapter is missing from this version. Reinstall a compatible story pack to continue it."
+				if warning not in pack_report.get("errors", []):
+					pack_report.errors.append(warning)
+			continue
+		if instance.has("suspension"):
+			paused.append(id)
+		elif ready.size() < MAX_ACTIVE_STORIES:
+			ready.append(id)
+		else:
+			_suspend(instance, "waiting_for_slot")
+			paused.append(id)
+	for id in paused:
+		var instance: Dictionary = profile.stories[id]
+		if ready.size() >= MAX_ACTIVE_STORIES:
+			_suspend(instance, "waiting_for_slot")
+			continue
+		var elapsed := maxi(0, int(gs.year) - int(instance.suspension.since_year))
+		instance.due_year = int(instance.due_year) + elapsed
+		if str(instance.status) == "pending":
+			instance.deadline_year = int(instance.deadline_year) + elapsed
+		instance.erase("suspension")
+		ready.append(id)
+	return ready
+
+func _suspend(instance: Dictionary, reason: String) -> void:
+	for key in ["story_id", "actor_id", "node", "due_year", "cast_id"]:
+		if not instance.has(key):
+			return
+	if not instance.has("suspension"):
+		instance.suspension = {"since_year": mini(int(gs.year), int(instance.get("last_available_year", gs.year)))}
+	instance.suspension.reason = reason
+	_discard_offer(instance)
+
+func _discard_offer(instance: Dictionary) -> void:
+	var runtime = gs.scenario_runtime_contract_engine
+	if runtime.active_popup_contracts.erase(_contract_id(instance)):
+		runtime._commit_state()
 
 func _eligible(actor: Person, definition: Dictionary) -> bool:
 	var gate: Dictionary = definition.get("eligibility", {})
@@ -596,12 +659,16 @@ func _business_cast(actor: Person, role: String) -> Dictionary:
 
 func _surface(actor: Person, definition: Dictionary, instance: Dictionary) -> bool:
 	var runtime = gs.scenario_runtime_contract_engine
-	var id := _contract_id(instance)
-	if runtime.active_popup_contracts.has(id):
-		return false
 	var node: Dictionary = definition.nodes[instance.node]
 	if str(instance.status) != "pending":
 		instance.deadline_year = int(gs.year) + int(node.get("deadline", 2))
+	var revision := _offer_revision(definition, instance)
+	var existing: Dictionary = runtime.active_popup_contracts.get(_contract_id(instance), {})
+	if str(instance.get("offer_revision", "")) == revision and str(existing.get("source_result", {}).get("offer_revision", "")) == revision:
+		return false
+	_discard_offer(instance)
+	instance.offer_revision = revision
+	var id := _contract_id(instance)
 	var choices: Array = []
 	for choice in node.choices:
 		var cost: int = _amount(int(choice.get("transfer", 0)), instance)
@@ -634,7 +701,8 @@ func _surface(actor: Person, definition: Dictionary, instance: Dictionary) -> bo
 	if str(instance.origin) != "":
 		var origin: Dictionary = _definition(str(instance.origin))
 		var origin_title := str(origin.get("title", str(instance.origin).replace("_", " ").capitalize()))
-		details += "\n\nYour family's story: %s (%s)." % [origin_title, str(instance.origin_legacy).replace("_", " ")]
+		var caption := "Your earlier story" if str(definition.cast) == "story_cast" else "Your family's story"
+		details += "\n\n%s: %s (%s)." % [caption, origin_title, str(instance.origin_legacy).replace("_", " ")]
 	# A pending contract may remain open across years. Use its absolute deadline
 	# so the saved projection never shows a stale relative countdown.
 	details += "\n\nYou can respond through year %d. If you leave this unanswered: %s." % [int(instance.deadline_year), _render(_choice_label(node, str(node.default)), instance)]
@@ -645,7 +713,7 @@ func _surface(actor: Person, definition: Dictionary, instance: Dictionary) -> bo
 		"title": "%s · %s: %s" % [str(definition.get("series", "Life Stories")), str(definition.title), str(node.title)],
 		"overview": details, "details": details, "response_options": choices,
 		"urgency": 65, "expires_age": -1, "source": "life_stories",
-		"source_result": {"story_id": instance.story_id, "node_id": instance.node}
+		"source_result": {"story_id": instance.story_id, "node_id": instance.node, "offer_revision": revision}
 	}, {"source": "life_stories", "target_id": actor.id})
 	if not bool(report.get("success", false)):
 		return false
@@ -660,10 +728,16 @@ func resolve_choice(contract: Dictionary, option_id: String, payload: Dictionary
 	var actor: Person = gs.player
 	var source: Dictionary = contract.get("source_result", {})
 	var instance: Dictionary = _actor_state(actor_id).stories.get(str(source.get("story_id", "")), {})
-	if instance.is_empty() or str(instance.status) != "pending" or _contract_id(instance) != str(contract.id):
+	if instance.is_empty() or instance.has("suspension") or str(instance.status) != "pending" or _contract_id(instance) != str(contract.id):
 		return _failure("This chapter has already moved on.")
 	var definition: Dictionary = _definition(str(instance.story_id))
 	var node: Dictionary = definition.get("nodes", {}).get(str(instance.node), {})
+	if node.is_empty():
+		_suspend(instance, "content_unavailable")
+		return _failure("This story is paused until a compatible story pack is installed.")
+	if str(source.get("offer_revision", "")) != _offer_revision(definition, instance):
+		_surface(actor, definition, instance)
+		return _failure("This story has changed. Reopen it in Pending Situations to read the updated choices before responding.")
 	var choice: Dictionary = {}
 	for row in node.get("choices", []):
 		if str(row.id) == option_id:
@@ -730,6 +804,7 @@ func resolve_choice(contract: Dictionary, option_id: String, payload: Dictionary
 	if automatic:
 		text = "I let the moment pass. " + text
 	instance.history.append({"year": int(gs.year), "node": instance.node, "choice": option_id, "text": text, "automatic": automatic})
+	instance.last_available_year = int(gs.year)
 	instance.legacy = str(choice.get("legacy", instance.legacy))
 	var next: String = str(choice.get("next", ""))
 	var trust: int = cast_trust if str(definition.get("trust_from", "player")) == "cast" else int(actor.affection.get(int(instance.cast_id), 50))
@@ -792,7 +867,15 @@ func _interrupt(actor: Person, instance: Dictionary) -> void:
 	_record(actor, instance, "%s died before our story was finished. I remember what passed between us." % str(instance.cast_name))
 
 func _contract_id(instance: Dictionary) -> String:
-	return "life_story:%d:%s:%s" % [int(instance.actor_id), str(instance.story_id), str(instance.node)]
+	var id := "life_story:%d:%s:%s" % [int(instance.actor_id), str(instance.story_id), str(instance.node)]
+	var revision := str(instance.get("offer_revision", ""))
+	return id + ":" + revision if revision != "" else id
+
+# Revisioned contract IDs make buttons on old open views inert after a content
+# update. Hash sorted data, including the saved price scale and response window.
+func _offer_revision(definition: Dictionary, instance: Dictionary) -> String:
+	return JSON.stringify({"definition": definition, "node": instance.node,
+		"scale": float(instance.scale), "deadline_year": int(instance.deadline_year)}).sha256_text()
 
 func _render(text: String, instance: Dictionary) -> String:
 	var out := text.replace("{person}", str(instance.cast_name))

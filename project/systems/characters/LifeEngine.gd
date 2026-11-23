@@ -1,6 +1,8 @@
 extends Resource
 class_name LifeEngine
 
+signal controlled_death_after_year(actor_id: int)
+
 const LIFE_CONTRACT_SCHEMA:= "eralife.life_engine_contract"
 const LIFE_CONTRACT_VERSION:= 1
 const DEFAULT_LIFE_CONTRACT_ID:= "eralife_default_life_engine"
@@ -1439,7 +1441,7 @@ func _queue_age_up_relationship_projection_refresh(
 		"actor_reports": temporal_surface_reports,
 		"actor_count": refresh_actor_ids.size(),
 		"surface_ids": temporal_surface_ids.duplicate(false),
-		"renderer_thread_poll_only": true,
+		"renderer_thread_poll_only": false,
 		"requires_input_idle": false,
 		"ready_gate_member": false,
 	}
@@ -3294,12 +3296,20 @@ func _service_zero_frame_age_up_tail_runtime_quantum() -> void:
 		"age_up_tail_runtime_last_autonomous_quantum_frame"
 	] = current_process_frame
 
-	var report: Dictionary = (
-		continue_zero_frame_age_up_tail_runtime(
-			1,
-			1
-		)
+	# A walker may yield after just advancing a cursor. Share the observed
+	# frame duration with the yearly simulation so slow renders do not
+	# starve large populations. Check the deadline between walker units.
+	var frame_budget_usec := clampi(
+		int(200000.0 / maxf(1.0, Engine.get_frames_per_second())), 4000, 12000
 	)
+	var deadline_usec := Time.get_ticks_usec() + frame_budget_usec
+	var report: Dictionary = {}
+	for _step in range(32):
+		report = continue_zero_frame_age_up_tail_runtime(1, 1)
+		if report.get("is_complete", false) or not report.get("success", false):
+			break
+		if Time.get_ticks_usec() >= deadline_usec:
+			break
 
 	var quantum_finished_ms: int = int(
 		Time.get_ticks_msec()
@@ -3446,6 +3456,9 @@ func _service_zero_frame_age_up_tail_runtime_quantum() -> void:
 			gs.scenario_state [
 				"age_up_world_feed_publication_pending"
 			] = false
+
+		if gs.player != null and not gs.player.alive:
+			controlled_death_after_year.emit(gs.player.id)
 
 		return
 

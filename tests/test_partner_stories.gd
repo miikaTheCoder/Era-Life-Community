@@ -161,9 +161,11 @@ func _test_partner_trust() -> void:
 	_check(record.node == "refusal" and state.player.partner.affection[101] == 46, "Effect bought consent at threshold")
 	# Missing selector preserves the version 1 player-side, post-effect rule.
 	var old := _couple()
+	# Install the older definition before presenting its offer. Changing it after
+	# presentation intentionally invalidates the pending contract revision.
+	old.scenario_runtime_contract_engine._ensure_life_story_engine()._definition(PARTNER).erase("trust_from")
 	var old_record := _start_partner(old)
 	_partner_node(old, old_record, "first_attempt")
-	old.scenario_runtime_contract_engine.life_story_engine._definition(PARTNER).erase("trust_from")
 	old.player.affection[103] = 44
 	old.player.partner.affection[101] = 5
 	_resolve(old, PARTNER, "join")
@@ -217,11 +219,16 @@ func _test_partner_interruptions() -> void:
 	var cast := state.player.partner
 	state.npcs.erase(cast)
 	state._rebuild_npc_index()
-	var before := JSON.stringify(record)
+	var before := record.duplicate(true)
+	before.erase("last_available_year")
 	_check(not _resolve(state, PARTNER, "materials").get("success", true), "Unloaded cast accepted money")
 	state.year = int(record.deadline_year) + 2
 	_tick(state)
-	_check(JSON.stringify(record) == before, "Unloaded cast triggered deadline or substitution")
+	# Content remains available even while a participant is not resident. Only
+	# that bookkeeping clock may advance, not the deadline, cast or consequences.
+	var after := record.duplicate(true)
+	after.erase("last_available_year")
+	_check(after == before and record.last_available_year == state.year, "Unloaded cast triggered deadline or substitution")
 	state.npcs.append(cast)
 	state._rebuild_npc_index()
 	_tick(state)
@@ -246,12 +253,12 @@ func _test_partner_interruptions() -> void:
 			"loading":
 				state.player.ex_partners.append(cast.id)
 				state.scenario_state.loading_runtime = {"active":true}
-		before = _snapshot(state, record)
+		var interruption_before := _snapshot(state, record)
 		_check(not _resolve(state, PARTNER, "materials").get("success", true), "Stale paid option accepted: " + interruption)
 		_check(state.player.bank_balance == 10000 and record.history.is_empty(), "Stale option spent money or wrote history")
 		_tick(state)
 		if interruption in ["loading", "partial"]:
-			_check(_snapshot(state, record) == before, "Partial restoration inferred breakup")
+			_check(_snapshot(state, record) == interruption_before, "Partial restoration inferred breakup")
 			continue
 		_check(record.cast_id == 103 and record.node == ("loss" if interruption == "death" else "separation"), "Interruption lost precedence/cast")
 		_check(not state.scenario_runtime_contract_engine.active_popup_contracts.has(pending.id), "Stale projection retained")
