@@ -57,9 +57,6 @@ var resident_surface_admission_packet_by_actor: Dictionary = {}
 var resident_surface_admission_key_order: Array = []
 
 
-var projection_step_threads: Dictionary = {}
-var projection_step_thread_context_by_signature: Dictionary = {}
-var checkpoint_resume_life_observation_threads: Dictionary = {}
 var checkpoint_resume_life_observation_request_by_signature: Dictionary = {}
 var checkpoint_resume_life_observation_poll_armed: Dictionary = {}
 
@@ -67,7 +64,6 @@ var checkpoint_resume_life_observation_poll_armed: Dictionary = {}
 
 
 var checkpoint_resume_life_observation_generation_by_signature: Dictionary = {}
-var checkpoint_resume_life_observation_worker_generation_by_signature: Dictionary = {}
 
 func _init(
 	_gs = null
@@ -784,14 +780,7 @@ func checkpoint_resume_life_observation_pending(
 	if clean_signature == "":
 		return false
 
-	return (
-		checkpoint_resume_life_observation_request_by_signature.has(
-			clean_signature
-		)
-		or checkpoint_resume_life_observation_threads.has(
-			clean_signature
-		)
-	)
+	return checkpoint_resume_life_observation_request_by_signature.has(clean_signature)
 
 
 func _arm_checkpoint_resume_life_observation_poll(
@@ -843,191 +832,16 @@ func _service_checkpoint_resume_life_observation(
 	if request.is_empty():
 		return
 
-	var worker_raw: Variant = (
-		checkpoint_resume_life_observation_threads.get(
-			clean_signature,
-			null
-		)
+	# Consume the request before building so reentrant requests keep their own generation.
+	checkpoint_resume_life_observation_request_by_signature.erase(clean_signature)
+	var observation := _build_checkpoint_resume_life_observation(
+		request.get("runtime_ref"), clean_signature, _dict(request.get("resume_contract")), _dict(request.get("context"))
 	)
-
-	if worker_raw is Thread:
-		var active_life_observation_worker: Thread = (
-			worker_raw as Thread
-		)
-
-		if active_life_observation_worker.is_alive():
-			_arm_checkpoint_resume_life_observation_poll(
-				clean_signature
-			)
-			return
-
-		var worker_generation: int = int(
-			checkpoint_resume_life_observation_worker_generation_by_signature.get(
-				clean_signature,
-				0
-			)
-		)
-		var result_raw: Variant = (
-			active_life_observation_worker.wait_to_finish()
-		)
-
-		checkpoint_resume_life_observation_threads.erase(
-			clean_signature
-		)
-		checkpoint_resume_life_observation_worker_generation_by_signature.erase(
-			clean_signature
-		)
+	if observation.get("success", false):
+		publish_resident_continuous_observation("checkpoint_resume_life_shell:%s" % clean_signature, observation)
 
 
-
-		var latest_request: Dictionary = _dict(
-			checkpoint_resume_life_observation_request_by_signature.get(
-				clean_signature,
-				{}
-			)
-		)
-		var latest_generation: int = int(
-			latest_request.get(
-				"generation",
-				0
-			)
-		)
-
-		if (
-			latest_request.is_empty()
-			or latest_generation <= worker_generation
-		):
-			checkpoint_resume_life_observation_request_by_signature.erase(
-				clean_signature
-			)
-
-		var newer_request_pending: bool = (
-			checkpoint_resume_life_observation_request_by_signature.has(
-				clean_signature
-			)
-		)
-
-		if typeof(result_raw) != TYPE_DICTIONARY:
-			if newer_request_pending:
-				_arm_checkpoint_resume_life_observation_poll(
-					clean_signature
-				)
-
-			return
-
-		var observation: Dictionary = (
-			(result_raw as Dictionary).duplicate(false)
-		)
-
-		if bool(
-			observation.get(
-				"success",
-				false
-			)
-		):
-			publish_resident_continuous_observation(
-				"checkpoint_resume_life_shell:%s"
-				% clean_signature,
-				observation
-			)
-
-		if newer_request_pending:
-			_arm_checkpoint_resume_life_observation_poll(
-				clean_signature
-			)
-
-		return
-
-
-
-	var projection_worker_raw: Variant = (
-		projection_step_threads.get(
-			clean_signature,
-			null
-		)
-	)
-
-	if (
-		projection_worker_raw is Thread
-		and (
-			projection_worker_raw as Thread
-		).is_alive()
-	):
-		_arm_checkpoint_resume_life_observation_poll(
-			clean_signature
-		)
-		return
-
-	var runtime = request.get(
-		"runtime_ref",
-		null
-	)
-	var resume_contract: Dictionary = _dict(
-		request.get(
-			"resume_contract",
-			{}
-		)
-	)
-	var context: Dictionary = _dict(
-		request.get(
-			"context",
-			{}
-		)
-	)
-	var request_generation: int = int(
-		request.get(
-			"generation",
-			0
-		)
-	)
-
-	var new_life_observation_worker: Thread = Thread.new()
-	var new_worker_error: int = (
-		new_life_observation_worker.start(
-			Callable(
-				self,
-				"_build_checkpoint_resume_life_observation_on_worker"
-			).bind(
-				runtime,
-				clean_signature,
-				resume_contract,
-				context
-			),
-			Thread.PRIORITY_LOW
-		)
-	)
-
-	if new_worker_error != OK:
-		var current_request: Dictionary = _dict(
-			checkpoint_resume_life_observation_request_by_signature.get(
-				clean_signature,
-				{}
-			)
-		)
-
-		if int(
-			current_request.get(
-				"generation",
-				-1
-			)
-		) == request_generation:
-			checkpoint_resume_life_observation_request_by_signature.erase(
-				clean_signature
-			)
-
-		return
-
-	checkpoint_resume_life_observation_threads [
-		clean_signature
-	] = new_life_observation_worker
-	checkpoint_resume_life_observation_worker_generation_by_signature [
-		clean_signature
-	] = request_generation
-
-	_arm_checkpoint_resume_life_observation_poll(
-		clean_signature
-	)
-func _build_checkpoint_resume_life_observation_on_worker(
+func _build_checkpoint_resume_life_observation(
 	runtime,
 	signature: String,
 	resume_contract: Dictionary,
@@ -1786,16 +1600,6 @@ func begin_resident_projection(
 	return projection_status(
 		signature
 	)
-func _run_projection_step_on_worker(
-	step_id: String,
-	runtime,
-	work: Dictionary
-) -> Dictionary:
-	return _run_projection_step(
-		step_id,
-		runtime,
-		work
-	)
 func _interactive_projection_stage_authority_descriptor(
 	runtime,
 	stage_id: String
@@ -1910,21 +1714,6 @@ func promote_next_hot_interactive_stage(
 		}
 
 
-
-	var active_thread_raw: Variant = (
-		projection_step_threads.get(
-			clean_signature,
-			null
-		)
-	)
-
-	if active_thread_raw is Thread:
-		return {
-			"success": true,
-			"signature": clean_signature,
-			"promoted": false,
-			"reason": "active_projection_worker_owns_cursor"
-		}
 
 	var runtime = work.get(
 		"runtime_ref",
@@ -2388,219 +2177,9 @@ func step_resident_projection(
 		var step_id: String = str(
 			steps [cursor]
 		).strip_edges().to_lower()
-		var step_report: Dictionary = {}
-
-
-
-
-		# A resumed runtime is built and hydrated on the main thread. Its
-		# projections call the same live engines, so they must share that thread.
-		# step_resident_projection still limits work by steps and frame budget.
-		var detached_step_required: bool = not bool(work.get("checkpoint_main_thread_projection", false))
-
-		var active_thread_raw: Variant = (
-			projection_step_threads.get(
-				clean_signature,
-				null
-			)
-		)
-
-		if active_thread_raw is Thread:
-			var active_thread: Thread = (
-				active_thread_raw as Thread
-			)
-			var worker_context: Dictionary = _dict(
-				projection_step_thread_context_by_signature.get(
-					clean_signature,
-					{}
-				)
-			)
-
-			if active_thread.is_alive():
-				work [
-					"active_projection_step_id"
-				] = str(
-					worker_context.get(
-						"step_id",
-						step_id
-					)
-				)
-				work [
-					"active_projection_step_pending"
-				] = true
-				work [
-					"active_projection_step_detached"
-				] = true
-				work [
-					"projection_worker_renderer_thread_poll_only"
-				] = true
-				projection_work_by_signature [
-					clean_signature
-				] = work
-
-				return projection_status(
-					clean_signature
-				)
-
-			var worker_result_raw: Variant = (
-				active_thread.wait_to_finish()
-			)
-
-			projection_step_threads.erase(
-				clean_signature
-			)
-			projection_step_thread_context_by_signature.erase(
-				clean_signature
-			)
-
-			var worker_step_id: String = str(
-				worker_context.get(
-					"step_id",
-					""
-				)
-			)
-			var worker_cursor: int = int(
-				worker_context.get(
-					"cursor",
-					-1
-				)
-			)
-			var worker_actor_id: int = int(
-				worker_context.get(
-					"actor_id",
-					-1
-				)
-			)
-			var current_actor_id: int = int(
-				work.get(
-					"actor_id",
-					-1
-				)
-			)
-
-			if (
-				worker_step_id != step_id
-				or worker_cursor != cursor
-				or worker_actor_id != current_actor_id
-			):
-				work [
-					"stale_projection_worker_result_discarded"
-				] = true
-				work [
-					"stale_projection_worker_result_discarded_at_ms"
-				] = int(
-					Time.get_ticks_msec()
-				)
-				work [
-					"active_projection_step_detached"
-				] = false
-				projection_work_by_signature [
-					clean_signature
-				] = work
-
-				return projection_status(
-					clean_signature
-				)
-
-			step_report = (
-				worker_result_raw as Dictionary
-				if typeof(
-					worker_result_raw
-				) == TYPE_DICTIONARY
-				else {
-					"success": false,
-					"complete": false,
-					"reason": (
-						"projection_worker_return_invalid"
-					),
-					"step_id": step_id,
-					"work": work
-				}
-			)
-
-			work [
-				"active_projection_step_detached"
-			] = false
-			work [
-				"projection_worker_last_completed_at_ms"
-			] = int(
-				Time.get_ticks_msec()
-			)
-
-		elif detached_step_required:
-			var worker:= Thread.new()
-			var worker_error: int = worker.start(
-				Callable(
-					self,
-					"_run_projection_step_on_worker"
-				).bind(
-					step_id,
-					runtime,
-					work.duplicate(false)
-				),
-				Thread.PRIORITY_LOW
-			)
-
-			if worker_error != OK:
-				step_report = {
-					"success": false,
-					"complete": false,
-					"reason": (
-						"projection_worker_start_failed"
-					),
-					"worker_error": worker_error,
-					"step_id": step_id,
-					"work": work
-				}
-			else:
-				projection_step_threads [
-					clean_signature
-				] = worker
-				projection_step_thread_context_by_signature [
-					clean_signature
-				] = {
-					"signature": clean_signature,
-					"step_id": step_id,
-					"cursor": cursor,
-					"actor_id": int(
-						work.get(
-							"actor_id",
-							-1
-						)
-					),
-					"started_at_ms": int(
-						Time.get_ticks_msec()
-					),
-					"worker_thread_used": true,
-				}
-				work [
-					"active_projection_step_id"
-				] = step_id
-				work [
-					"active_projection_step_pending"
-				] = true
-				work [
-					"active_projection_step_detached"
-				] = true
-				work [
-					"projection_worker_renderer_thread_poll_only"
-				] = true
-				projection_work_by_signature [
-					clean_signature
-				] = work
-
-				return projection_status(
-					clean_signature
-				)
-
-		else:
-			step_report = (
-				_run_projection_step(
-					step_id,
-					runtime,
-					work
-				)
-			)
+		# New lives and restored lives both project live engine state. The
+		# caller bounds work by step count and frame time on the main thread.
+		var step_report := _run_projection_step(step_id, runtime, work)
 
 		if not bool(
 			step_report.get(
@@ -5339,7 +4918,7 @@ func queue_resident_temporal_surface_refresh(
 	)
 	set_meta(
 		"resident_temporal_surface_refresh_renderer_thread_authoring_forbidden",
-		true
+		false
 	)
 
 	_arm_resident_temporal_surface_refresh_service()
@@ -5358,7 +4937,7 @@ func queue_resident_temporal_surface_refresh(
 		"requires_input_idle": false,
 		"render_boundary_required": false,
 		"ready_gate_member": false,
-		"renderer_thread_poll_only": true
+		"renderer_thread_poll_only": false
 	}
 
 
@@ -5372,15 +4951,7 @@ func _arm_resident_temporal_surface_refresh_service() -> void:
 		if typeof(order_raw) == TYPE_ARRAY
 		else []
 	)
-	var active_thread_raw: Variant = get_meta(
-		"resident_temporal_surface_refresh_thread",
-		null
-	)
-
-	if (
-		order.is_empty()
-		and not (active_thread_raw is Thread)
-	):
+	if order.is_empty():
 		set_meta(
 			"resident_temporal_surface_refresh_service_active",
 			false
@@ -5436,7 +5007,7 @@ func _drive_resident_temporal_surface_refresh_process_frame() -> void:
 	_service_resident_temporal_surface_refresh_queue()
 
 
-func _build_resident_temporal_surface_successor_on_worker(
+func _build_resident_temporal_surface_successor(
 	surface_id: String,
 	runtime,
 	actor
@@ -5498,463 +5069,54 @@ func _build_resident_temporal_surface_successor_on_worker(
 
 
 func _service_resident_temporal_surface_refresh_queue() -> void:
-	var active_thread_raw: Variant = get_meta(
-		"resident_temporal_surface_refresh_thread",
-		null
-	)
-	var worker_context_raw: Variant = get_meta(
-		"resident_temporal_surface_refresh_thread_context",
-		{}
-	)
-	var worker_context: Dictionary = (
-		(worker_context_raw as Dictionary).duplicate(false)
-		if typeof(worker_context_raw) == TYPE_DICTIONARY
-		else {}
-	)
-
-	if active_thread_raw is Thread:
-		var active_thread: Thread = active_thread_raw as Thread
-
-		if active_thread.is_alive():
-			set_meta(
-				"resident_temporal_surface_refresh_renderer_thread_poll_only",
-				true
-			)
-			_arm_resident_temporal_surface_refresh_service()
-			return
-
-
-
-		var worker_result_raw: Variant = active_thread.wait_to_finish()
-		var completed_request_key: String = str(
-			worker_context.get(
-				"request_key",
-				""
-			)
-		)
-		var completed_signature: String = str(
-			worker_context.get(
-				"signature",
-				""
-			)
-		).strip_edges()
-		var completed_surface_id: String = str(
-			worker_context.get(
-				"surface_id",
-				""
-			)
-		).strip_edges().to_lower()
-		var completed_actor_id: int = int(
-			worker_context.get(
-				"actor_id",
-				-1
-			)
-		)
-
-		set_meta(
-			"resident_temporal_surface_refresh_thread",
-			null
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_thread_context",
-			{}
-		)
-
-		var completed_jobs_raw: Variant = get_meta(
-			"resident_temporal_surface_refresh_jobs",
-			{}
-		)
-		var completed_jobs: Dictionary = (
-			(completed_jobs_raw as Dictionary).duplicate(false)
-			if typeof(completed_jobs_raw) == TYPE_DICTIONARY
-			else {}
-		)
-		var worker_result: Dictionary = (
-			(worker_result_raw as Dictionary).duplicate(false)
-			if typeof(worker_result_raw) == TYPE_DICTIONARY
-			else {}
-		)
-		var surface_contract: Dictionary = _dict(
-			worker_result.get(
-				"surface_contract",
-				{}
-			)
-		)
-		var worker_success: bool = bool(
-			worker_result.get(
-				"success",
-				false
-			)
-		)
-		var worker_complete: bool = bool(
-			worker_result.get(
-				"complete",
-				false
-			)
-		)
-		var packet_valid: bool = (
-			worker_success
-			and worker_complete
-			and completed_signature != ""
-			and completed_surface_id != ""
-			and not surface_contract.is_empty()
-			and int(
-				surface_contract.get(
-					"actor_id",
-					-1
-				)
-			) == completed_actor_id
-		)
-
-		if packet_valid:
-			completed_jobs.erase(
-				completed_request_key
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_jobs",
-				completed_jobs
-			)
-			_emit_resident_surface_contract_packet(
-				completed_signature,
-				completed_surface_id,
-				surface_contract
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_last_success",
-				true
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_last_actor_id",
-				completed_actor_id
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_last_surface_id",
-				completed_surface_id
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_last_surface_revision",
-				str(
-					surface_contract.get(
-						"surface_revision",
-						""
-					)
-				)
-			)
-		elif worker_success and not worker_complete:
-			var pending_job: Dictionary = _dict(
-				completed_jobs.get(
-					completed_request_key,
-					{}
-				)
-			)
-			var retry_count: int = int(
-				pending_job.get(
-					"retry_count",
-					0
-				)
-			) + 1
-
-			pending_job ["retry_count"] = retry_count
-			pending_job ["last_pending_at_ms"] = int(
-				Time.get_ticks_msec()
-			)
-
-			if retry_count <= 8:
-				completed_jobs [
-					completed_request_key
-				] = pending_job
-
-				var pending_order_raw: Variant = get_meta(
-					"resident_temporal_surface_refresh_order",
-					[]
-				)
-				var pending_order: Array = (
-					(pending_order_raw as Array).duplicate(false)
-					if typeof(pending_order_raw) == TYPE_ARRAY
-					else []
-				)
-
-				if not pending_order.has(
-					completed_request_key
-				):
-					pending_order.append(
-						completed_request_key
-					)
-
-				set_meta(
-					"resident_temporal_surface_refresh_order",
-					pending_order
-				)
-				set_meta(
-					"resident_temporal_surface_refresh_jobs",
-					completed_jobs
-				)
-			else:
-				completed_jobs.erase(
-					completed_request_key
-				)
-				set_meta(
-					"resident_temporal_surface_refresh_jobs",
-					completed_jobs
-				)
-				set_meta(
-					"resident_temporal_surface_refresh_last_success",
-					false
-				)
-				set_meta(
-					"resident_temporal_surface_refresh_last_failure_reason",
-					"projection_remained_pending"
-				)
-		else:
-			completed_jobs.erase(
-				completed_request_key
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_jobs",
-				completed_jobs
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_last_success",
-				false
-			)
-			set_meta(
-				"resident_temporal_surface_refresh_last_failure",
-				worker_result.duplicate(false)
-			)
-
-		set_meta(
-			"resident_temporal_surface_refresh_last_at_ms",
-			int(Time.get_ticks_msec())
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_last_blocks_ui",
-			false
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_blocking_wait_performed",
-			false
-		)
-
-		_arm_resident_temporal_surface_refresh_service()
-		return
-
-	var order_raw: Variant = get_meta(
-		"resident_temporal_surface_refresh_order",
-		[]
-	)
-	var order: Array = (
-		(order_raw as Array).duplicate(false)
-		if typeof(order_raw) == TYPE_ARRAY
-		else []
-	)
-
+	var order: Array = get_meta("resident_temporal_surface_refresh_order", [])
 	if order.is_empty():
-		set_meta(
-			"resident_temporal_surface_refresh_service_active",
-			false
-		)
+		set_meta("resident_temporal_surface_refresh_service_active", false)
 		return
 
-	var request_key: String = str(
-		order.pop_front()
-	)
-	var jobs_raw: Variant = get_meta(
-		"resident_temporal_surface_refresh_jobs",
-		{}
-	)
-	var jobs: Dictionary = (
-		(jobs_raw as Dictionary).duplicate(false)
-		if typeof(jobs_raw) == TYPE_DICTIONARY
-		else {}
-	)
-	var job_raw: Variant = jobs.get(
-		request_key,
-		{}
-	)
+	var request_key := str(order.pop_front())
+	var jobs: Dictionary = get_meta("resident_temporal_surface_refresh_jobs", {})
+	var job := _dict(jobs.get(request_key, {}))
+	var signature := str(job.get("signature", ""))
+	var actor_id := int(job.get("actor_id", -1))
+	var surface_id := str(job.get("surface_id", ""))
+	var actor := _resident_relationship_projection_actor_by_id(actor_id)
+	jobs.erase(request_key)
 
-	set_meta(
-		"resident_temporal_surface_refresh_order",
-		order
-	)
-
-	if typeof(job_raw) != TYPE_DICTIONARY:
-		jobs.erase(
-			request_key
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_jobs",
-			jobs
-		)
+	if actor == null or signature.is_empty() or surface_id.is_empty():
+		set_meta("resident_temporal_surface_refresh_last_success", false)
+		set_meta("resident_temporal_surface_refresh_last_failure_reason", "actor_signature_or_surface_unavailable")
 		_arm_resident_temporal_surface_refresh_service()
 		return
 
-	var job: Dictionary = job_raw as Dictionary
-	var signature: String = str(
-		job.get(
-			"signature",
-			""
-		)
-	).strip_edges()
-	var actor_id: int = int(
-		job.get(
-			"actor_id",
-			-1
-		)
-	)
-	var surface_id: String = str(
-		job.get(
-			"surface_id",
-			""
-		)
-	).strip_edges().to_lower()
-	var actor: Person = (
-		_resident_relationship_projection_actor_by_id(
-			actor_id
-		)
-	)
-
-	if (
-		actor == null
-		or signature == ""
-		or surface_id == ""
-	):
-		jobs.erase(
-			request_key
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_jobs",
-			jobs
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_last_success",
-			false
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_last_failure_reason",
-			"actor_signature_or_surface_unavailable"
-		)
-		_arm_resident_temporal_surface_refresh_service()
-		return
-
-
-
-
-	var projection_worker_raw: Variant = projection_step_threads.get(
-		signature,
-		null
-	)
-	var checkpoint_worker_raw: Variant = (
-		checkpoint_resume_life_observation_threads.get(
-			signature,
-			null
-		)
-	)
-	var another_projection_worker_alive: bool = (
-		(
-			projection_worker_raw is Thread
-			and (projection_worker_raw as Thread).is_alive()
-		)
-		or (
-			checkpoint_worker_raw is Thread
-			and (checkpoint_worker_raw as Thread).is_alive()
-		)
-	)
-
-	if another_projection_worker_alive:
-		order = (
-			get_meta(
-				"resident_temporal_surface_refresh_order",
-				[]
-			) as Array
-		).duplicate(false)
-		order.push_front(
-			request_key
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_order",
-			order
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_waiting_for_projection_worker",
-			true
-		)
-		_arm_resident_temporal_surface_refresh_service()
-		return
-
-	set_meta(
-		"resident_temporal_surface_refresh_waiting_for_projection_worker",
-		false
-	)
-
-	var worker:= Thread.new()
-	var worker_error: int = worker.start(
-		Callable(
-			self,
-			"_build_resident_temporal_surface_successor_on_worker"
-		).bind(
-			surface_id,
-			gs,
-			actor
-		),
-		Thread.PRIORITY_LOW
-	)
-
-	if worker_error != OK:
-		order = (
-			get_meta(
-				"resident_temporal_surface_refresh_order",
-				[]
-			) as Array
-		).duplicate(false)
-		order.push_front(
-			request_key
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_order",
-			order
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_last_success",
-			false
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_last_failure_reason",
-			"worker_start_failed"
-		)
-		set_meta(
-			"resident_temporal_surface_refresh_last_worker_error",
-			worker_error
-		)
-		_arm_resident_temporal_surface_refresh_service()
-		return
-
-	set_meta(
-		"resident_temporal_surface_refresh_thread",
-		worker
-	)
-	set_meta(
-		"resident_temporal_surface_refresh_thread_context",
-		{
-			"request_key": request_key,
-			"signature": signature,
-			"actor_id": actor_id,
-			"surface_id": surface_id,
-			"started_at_ms": int(
-				Time.get_ticks_msec()
-			),
-			"worker_thread_used": true,
-		}
-	)
-	set_meta(
-		"resident_temporal_surface_refresh_renderer_thread_authoring_forbidden",
-		true
-	)
-	set_meta(
-		"resident_temporal_surface_refresh_renderer_thread_poll_only",
-		true
-	)
-
+	# Build one surface per process frame, on the same thread as its live actor.
+	var result := _build_resident_temporal_surface_successor(surface_id, gs, actor)
+	var contract := _dict(result.get("surface_contract", {}))
+	var pending := bool(result.get("projection_pending", false))
+	if pending and int(job.get("retry_count", 0)) < 8:
+		job["retry_count"] = int(job.get("retry_count", 0)) + 1
+		job["last_pending_at_ms"] = Time.get_ticks_msec()
+		# Surface construction may have queued another request in the meantime.
+		get_meta("resident_temporal_surface_refresh_jobs")[request_key] = job
+		get_meta("resident_temporal_surface_refresh_order").append(request_key)
+	else:
+		var valid := bool(result.get("complete", false)) and int(contract.get("actor_id", -1)) == actor_id
+		set_meta("resident_temporal_surface_refresh_last_success", valid)
+		if valid:
+			_emit_resident_surface_contract_packet(signature, surface_id, contract)
+			set_meta("resident_temporal_surface_refresh_last_actor_id", actor_id)
+			set_meta("resident_temporal_surface_refresh_last_surface_id", surface_id)
+			set_meta("resident_temporal_surface_refresh_last_surface_revision", str(contract.get("surface_revision", "")))
+		elif pending:
+			set_meta("resident_temporal_surface_refresh_last_failure_reason", "projection_remained_pending")
+		else:
+			set_meta("resident_temporal_surface_refresh_last_failure", result)
+	set_meta("resident_temporal_surface_refresh_last_at_ms", Time.get_ticks_msec())
+	set_meta("resident_temporal_surface_refresh_last_blocks_ui", false)
+	set_meta("resident_temporal_surface_refresh_blocking_wait_performed", false)
 	_arm_resident_temporal_surface_refresh_service()
+
+
 func _resident_relationship_projection_actor_by_id(
 	actor_id: int
 ) -> Person:
@@ -6369,25 +5531,15 @@ func import_state(
 	}
 
 
-func _runtime_signature(
-	runtime
-) -> String:
-	if (
-		runtime != null
-		and typeof(
-			runtime.scenario_state
-		) == TYPE_DICTIONARY
-	):
-		return str(
-			runtime.scenario_state.get(
-				"reality_residency_signature",
-				runtime.scenario_state.get(
-					"god_mode_life_prewarm_signature",
-					""
-				)
-			)
-		).strip_edges()
-
+func _runtime_signature(runtime) -> String:
+	if runtime == null or typeof(runtime.scenario_state) != TYPE_DICTIONARY:
+		return ""
+	# Checkpoint attachment supplies its own signature after a cold Continue.
+	# Older saves may carry blank values for the prewarming signature keys.
+	for key in ["reality_residency_signature", "god_mode_life_prewarm_signature", "resident_runtime_attached_signature"]:
+		var signature := str(runtime.scenario_state.get(key, "")).strip_edges()
+		if not signature.is_empty():
+			return signature
 	return ""
 
 

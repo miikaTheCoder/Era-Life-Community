@@ -2306,6 +2306,11 @@ func handle_death(entity, cause: String):
 	if "death_year" in entity and gs != null:
 		entity.death_year = int(gs.year)
 
+	# Commit the estate alongside the death. A resumed life may have no NPC_DIED
+	# subscribers yet, and an intervening checkpoint must preserve both changes.
+	if gs != null and entity is Person:
+		gs.settle_new_npc_estate(entity)
+
 	_emit_state_contract(entity, "death", "handle_death", {
 		"before_snapshot": before_snapshot,
 		"domain": "mortality",

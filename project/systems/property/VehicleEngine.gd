@@ -493,11 +493,6 @@ func _bind_contract_events() -> void:
 		self,
 		"yearly_asset_ecology_tick"
 	)
-	gs.event_bus.subscribe(
-		ActionEventTypes.NPC_DIED,
-		self,
-		"handle_inheritance"
-	)
 
 	_bound_event_bus_instance_id = event_bus_instance_id
 
@@ -555,6 +550,15 @@ func _publish_contract_state(reason: String) -> void:
 	state ["contract"] = contract()
 
 	gs.scenario_state [STATE_KEY] = state
+
+func _vehicle_bank_account(actor: Person) -> Dictionary:
+	if gs.bank_engine == null:
+		gs.bank_engine = BankEngine.new(gs)
+	var context := {"import_legacy_balance": true}
+	if actor.realm_id >= 0:
+		context["world_id"] = "realm:%d" % actor.realm_id
+	return gs.bank_engine.ensure_bank_account_for_actor(actor, context)
+
 
 func buy_vehicle(
 	buyer: Person,
@@ -646,11 +650,19 @@ func buy_vehicle(
 			clean_context
 		)
 
-	if int(buyer.bank_balance) < final_price:
+	if gs == null:
+		return {"success": false, "text": "Vehicle market unavailable."}
+	var account := _vehicle_bank_account(buyer)
+	if float(account.balance) < final_price:
 		return {
 			"success": false,
 			"text": "Not enough money."
 		}
+
+	if final_price > 0:
+		var gate: Dictionary = gs.bank_engine._can_credit_or_debit(account.account_id, final_price, "debit")
+		if not gate.allowed:
+			return {"success": false, "text": str(gate.reason)}
 
 	var destination_id: String = str(
 		storage_validation.get(
@@ -671,64 +683,19 @@ func buy_vehicle(
 	vehicle ["source_engine"] = "vehicle_engine"
 
 
-	buyer.bank_balance -= final_price
 
-	_register_vehicle_for_owner(
-		buyer,
-		vehicle,
-		false
-	)
-
-	var storage_report: Dictionary = (
-		_commit_initial_vehicle_storage(
-			buyer,
-			vehicle,
-			destination_id
-		)
-	)
-
-	if not bool(
-		storage_report.get(
-			"success",
-			false
-		)
-	):
-
-		buyer.bank_balance += final_price
-		_remove_vehicle_refs(
-			int(buyer.id),
-			int(
-				vehicle.get(
-					"id",
-					-1
-				)
-			)
-		)
-
-		if (
-			gs != null
-			and gs.belongings_engine != null
-		):
-			gs.belongings_engine.remove_item_by_id(
-				buyer,
-				"Vehicles",
-				int(
-					vehicle.get(
-						"id",
-						-1
-					)
-				)
-			)
-
-		return {
-			"success": false,
-			"text": str(
-				storage_report.get(
-					"text",
-					"Vehicle storage failed; the purchase was rolled back."
-				)
-			)
-		}
+	# Reserve storage first. Ownership and its acquisition notice are published
+	# together after the bank accepts the debit.
+	var storage_report := _commit_initial_vehicle_storage(buyer, vehicle, destination_id)
+	if not storage_report.success:
+		return storage_report
+	if final_price > 0:
+		var payment: Dictionary = gs.bank_engine.settle_obligation(account.owner_id, final_price,
+			account.world_id, account.currency, {"reason": "vehicle_purchase"})
+		if not payment.success:
+			_remove_vehicle_from_property_storage(buyer, vehicle)
+			return {"success": false, "text": str(payment.reason)}
+	_register_vehicle_for_owner(buyer, vehicle)
 
 	if gs != null and gs.event_bus != null:
 		gs.event_bus.emit(
@@ -1576,14 +1543,6 @@ func _commit_initial_vehicle_storage(
 		vehicle ["stored_at_property_name"] = ""
 		vehicle ["physical_location_kind"] = "with_owner"
 
-		_replace_vehicle_instance_for_all_owners(
-			vehicle
-		)
-		_sync_vehicle_belongings_projection(
-			owner,
-			vehicle
-		)
-
 		return {
 			"success": true,
 			"destination_id": "belongings",
@@ -1604,7 +1563,7 @@ func _commit_initial_vehicle_storage(
 		return _store_vehicle_at_property(
 			owner,
 			vehicle,
-			property_id
+			property_id, false
 		)
 
 	return {
@@ -1713,7 +1672,8 @@ func _remove_vehicle_from_property_storage(
 func _store_vehicle_at_property(
 	owner: Person,
 	vehicle: Dictionary,
-	property_id: int
+	property_id: int,
+	publish_ownership: bool = true
 ) -> Dictionary:
 	var property_contract: Dictionary = _find_owned_property(
 		owner,
@@ -1792,9 +1752,6 @@ func _store_vehicle_at_property(
 		)
 	)
 
-	_replace_vehicle_instance_for_all_owners(
-		vehicle
-	)
 
 	if gs.property_engine.has_method(
 		"_replace_property_for_all_owners"
@@ -1803,10 +1760,9 @@ func _store_vehicle_at_property(
 			property_contract
 		)
 
-	_sync_vehicle_belongings_projection(
-		owner,
-		vehicle
-	)
+	if publish_ownership:
+		_replace_vehicle_instance_for_all_owners(vehicle)
+		_sync_vehicle_belongings_projection(owner, vehicle)
 
 	return {
 		"success": true,
@@ -1851,7 +1807,8 @@ func _unstore_vehicle(
 
 func _sync_vehicle_belongings_projection(
 	owner: Person,
-	vehicle: Dictionary
+	vehicle: Dictionary,
+	event_context: Dictionary = {}
 ) -> void:
 	if (
 		owner == null
@@ -1913,21 +1870,10 @@ func _sync_vehicle_belongings_projection(
 
 
 
-	gs.belongings_engine.remove_item_by_id(
-		owner,
-		"Vehicles",
-		asset_id
-	)
-	gs.belongings_engine.add_item(
-		owner,
-		projection,
-		"Vehicles",
-		true
-	)
+	# Belongings replaces a matching item ID in place. Removing it first
+	# would turn every condition or storage update into a new acquisition.
+	gs.belongings_engine.add_item(owner, projection, "Vehicles", true, event_context)
 
-	# DIAGNOSTIC: remove-then-add should keep exactly one entry per asset_id. If the
-	# Vehicles category keeps growing, either remove_item_by_id is not matching the
-	# id, or something is adding entries outside this function.
 	EraLog.truth(
 		"ERALIFE_VEHICLE_BELONGINGS_SYNC|owner=%d|asset_id=%d|name=%s"
 		% [
@@ -2125,10 +2071,11 @@ func yearly_maintenance() -> void:
 			)
 
 			if owner != null:
-				_sync_vehicle_belongings_projection(
-					owner,
-					vehicle
-				)
+				_sync_vehicle_belongings_projection(owner, vehicle, {
+					"source": "yearly_vehicle_maintenance",
+					"transaction_enrichment_deferred": true,
+					"ui_blocking_forbidden": true
+				})
 
 		vehicles [npc_id] = owner_items
 func _resolve_vehicle_template(
@@ -4154,42 +4101,10 @@ func run_asset_action(
 				}
 
 			"sell":
-				_remove_vehicle_from_property_storage(
-					owner,
-					vehicle
-				)
-
-				var sale_value: int = int(
-					round(
-						float(
-							vehicle.get(
-								"value",
-								0
-							)
-						) * randf_range(
-							0.78,
-							1.05
-						)
-					)
-				)
-
-				owner.bank_balance += sale_value
-
-				if (
-					gs != null
-					and gs.belongings_engine != null
-				):
-					gs.belongings_engine.remove_item_by_id(
-						owner,
-						"Vehicles",
-						asset_id
-					)
-
-				_remove_vehicle_refs(
-					owner.id,
-					asset_id
-				)
-
+				var sale_value := maxi(0, roundi(float(vehicle.get("value", 0)) * randf_range(0.78, 1.05)))
+				var payment := _settle_vehicle_sale(owner, vehicle, sale_value)
+				if not payment.success:
+					return payment
 				return {
 					"success": true,
 					"text": "I sold %s for %s." % [
@@ -4403,13 +4318,13 @@ func _register_vehicle_for_owner(
 		]
 	)
 
-	_sync_vehicle_belongings_projection(
-		owner,
-		vehicle
-	)
 	_sync_vehicle_access_roles(
 		vehicle,
 		owner.id
+	)
+	_sync_vehicle_belongings_projection(
+		owner,
+		vehicle
 	)
 
 	if not share_with_partner:
@@ -4429,13 +4344,13 @@ func _register_vehicle_for_owner(
 	if vehicle not in vehicles [spouse.id]:
 		vehicles [spouse.id].append(vehicle)
 
-	_sync_vehicle_belongings_projection(
-		spouse,
-		vehicle
-	)
 	_sync_vehicle_access_roles(
 		vehicle,
 		spouse.id
+	)
+	_sync_vehicle_belongings_projection(
+		spouse,
+		vehicle
 	)
 
 
@@ -4466,48 +4381,48 @@ func _remove_vehicle_refs(owner_id: int, asset_id: int) -> void:
 
 
 func handle_inheritance(payload) -> void:
+	# Direct callers use the same estate authority as the NPC death subscription.
 	if gs == null:
 		return
-	var dead_id: int = -1
-	if typeof(payload) == TYPE_DICTIONARY:
-		dead_id = int(payload.get("npc_id", -1))
-	elif payload is Person:
-		dead_id = int(payload.id)
+	if gs.family_control_engine == null:
+		gs.family_control_engine = FamilyControlEngine.new(gs)
+	gs.family_control_engine.handle_spousal_estate_inheritance(payload)
 
-	if dead_id <= 0:
-		return
-	if gs.should_skip_manual_player_inheritance(dead_id):
-		return
-	if not vehicles.has(dead_id):
-		return
 
-	var dead_npc: Person = gs.get_or_reactivate_npc_by_id(dead_id)
-	if dead_npc == null:
-		return
-
-	var heir: Person = gs.get_valid_partner(dead_npc, true)
-	if heir == null or not heir.alive:
-		for child_id in dead_npc.children:
-			var child: Person = gs.get_or_reactivate_npc_by_id(int(child_id))
-			if child != null and child.alive:
-				heir = child
-				break
-
-	if heir == null:
-		return
-
-	var inherited: Array = vehicles.get(dead_id, []).duplicate(true)
-	vehicles.erase(dead_id)
-
+func transfer_estate_vehicles(deceased: Person, heir: Person) -> int:
+	if not vehicles.has(deceased.id):
+		return 0
+	var inherited: Array = vehicles[deceased.id]
+	vehicles.erase(deceased.id)
+	var count := 0
+	var moved_ids := {}
 	for raw_vehicle in inherited:
-		if typeof(raw_vehicle) != TYPE_DICTIONARY:
+		if not raw_vehicle is Dictionary:
 			continue
-		var v: Dictionary = raw_vehicle
-		var provenance: Dictionary = v.get("provenance", {})
-		provenance ["last_inherited_year"] = int(gs.year)
-		provenance ["last_inherited_by"] = int(heir.id)
-		v ["provenance"] = provenance
-		_register_vehicle_for_owner(heir, v, false)
+		var vehicle: Dictionary = raw_vehicle
+		var asset_id := int(vehicle.get("id", -1))
+		if asset_id > 0:
+			if moved_ids.has(asset_id):
+				continue
+			moved_ids[asset_id] = true
+		if gs.belongings_engine != null:
+			gs.belongings_engine.remove_item_by_id(deceased, "Vehicles", asset_id)
+		var owned: Array = vehicles.get(heir.id, [])
+		for existing in owned:
+			if asset_id > 0 and existing is Dictionary and int(existing.get("id", -1)) == asset_id:
+				vehicle = existing
+				break
+		var provenance: Dictionary = vehicle.get("provenance", {})
+		provenance["last_inherited_year"] = int(gs.year)
+		provenance["last_inherited_by"] = heir.id
+		vehicle["provenance"] = provenance
+		var roles: Dictionary = vehicle.get("access_roles", {})
+		for key in ["owner_ids", "household_user_ids"]:
+			if roles.has(key):
+				roles[key].erase(deceased.id)
+		_register_vehicle_for_owner(heir, vehicle)
+		count += 1
+	return count
 
 
 func simulate_npc_vehicle_market() -> void:
@@ -4570,6 +4485,40 @@ func simulate_npc_vehicle_market() -> void:
 				trade_vehicle_between_npcs(npc, target, int(raw_vehicle.get("id", -1)))
 
 
+func _settle_vehicle_sale(seller: Person, vehicle: Dictionary, price: int, buyer: Person = null) -> Dictionary:
+	if gs == null:
+		return {"success": false, "text": "Vehicle market unavailable."}
+	var asset_id := int(vehicle.id)
+	# Reserve every owner's copy before publishing the bank transaction. A
+	# declined sale restores the original inventories and storage projections.
+	var previous_inventories := {}
+	for owner_key in vehicles:
+		var inventory: Array = vehicles[owner_key]
+		if inventory.any(func(item): return item is Dictionary and int(item.get("id", -1)) == asset_id):
+			previous_inventories[owner_key] = inventory
+			_remove_vehicle_refs(int(owner_key), asset_id)
+	if price > 0:
+		var seller_account := _vehicle_bank_account(seller)
+		var payment: Dictionary
+		if buyer == null:
+			payment = gs.bank_engine.credit_bank(seller_account.owner_id, price,
+				seller_account.world_id, seller_account.currency, {"reason": "vehicle_sale", "asset_id": asset_id})
+		else:
+			var buyer_account := _vehicle_bank_account(buyer)
+			payment = gs.bank_engine.transfer_owner_to_owner(buyer_account.owner_id,
+				seller_account.owner_id, price, buyer_account.world_id, buyer_account.currency)
+		if not payment.success:
+			vehicles.merge(previous_inventories, true)
+			return {"success": false, "text": str(payment.reason)}
+	for owner_key in previous_inventories:
+		var holder: Person = seller if int(owner_key) == seller.id else gs.get_or_reactivate_npc_by_id(int(owner_key))
+		if holder != null:
+			_remove_vehicle_from_property_storage(holder, vehicle)
+			if gs.belongings_engine != null:
+				gs.belongings_engine.remove_item_by_id(holder, "Vehicles", asset_id)
+	return {"success": true}
+
+
 func trade_vehicle_between_npcs(from_owner: Person, to_owner: Person, asset_id: int) -> Dictionary:
 	if from_owner == null or to_owner == null:
 		return { "success": false, "text": "Trade participants missing."}
@@ -4585,13 +4534,14 @@ func trade_vehicle_between_npcs(from_owner: Person, to_owner: Person, asset_id: 
 		if int(v.get("id", -1)) != asset_id:
 			continue
 
-		var transfer_value: int = int(round(float(v.get("value", 0)) * randf_range(0.85, 1.1)))
-		if float(to_owner.bank_balance) < float(transfer_value):
-			return { "success": false, "text": "Target owner cannot afford this trade."}
-
-		to_owner.bank_balance -= transfer_value
-		from_owner.bank_balance += transfer_value
-		_remove_vehicle_refs(from_owner.id, asset_id)
+		var transfer_value := maxi(0, roundi(float(v.get("value", 0)) * randf_range(0.85, 1.1)))
+		var payment := _settle_vehicle_sale(from_owner, v, transfer_value, to_owner)
+		if not payment.success:
+			return payment
+		v["stored_at_property_id"] = -1
+		v["storage_status"] = "unstored"
+		v["physical_location_kind"] = "with_owner"
+		v["stored_at_property_name"] = ""
 
 		var access_roles: Dictionary = v.get("access_roles", {})
 		access_roles ["owner_ids"] = []

@@ -1393,11 +1393,12 @@ func get_category_items(person: Person, category: String) -> Array:
 func remove_item_by_id(person: Person, category: String, item_id: int) -> Dictionary:
 	if person == null:
 		return {}
-	if not belongings.has(person.id):
+	var owner_key: Variant = _belongings_owner_key_for_person(person)
+	if not belongings.has(owner_key):
 		return {}
-	if not belongings [person.id].has(category):
+	if not belongings [owner_key].has(category):
 		return {}
-	var items: Array = belongings [person.id] [category]
+	var items: Array = belongings [owner_key] [category]
 	for i in range(items.size()):
 		var item = items [i]
 		if typeof(item) != TYPE_DICTIONARY:
@@ -1406,12 +1407,25 @@ func remove_item_by_id(person: Person, category: String, item_id: int) -> Dictio
 			continue
 		var removed: Dictionary = _normalize_belonging_entry(person, item as Dictionary, category, bool((item as Dictionary).get("mirrored_asset", false)), false)
 		items.remove_at(i)
-		belongings [person.id] [category] = items
+		belongings [owner_key] [category] = items
 		_record_belongings_event("item_removed", person, removed, category, {
 			"reason": "remove_item_by_id"
 		})
 		return removed
 	return {}
+
+func transfer_lineage_belongings(deceased: Person, heir: Person) -> void:
+	var inventory := get_inventory(deceased)
+	for category in inventory.keys():
+		for item in get_category_items(deceased, category):
+			if not item is Dictionary:
+				continue
+			# The vehicle authority transfers these rows when the bank clears the estate.
+			if category == "Vehicles" and item.get("mirrored_asset", false):
+				continue
+			add_item(heir, item, category, bool(item.get("mirrored_asset", false)), {"source": "inheritance"})
+			remove_item_by_id(deceased, category, int(item.get("id", -1)))
+
 
 func gift_item_to_person(giver: Person, receiver: Person, category: String, item_id: int) -> Dictionary:
 	if giver == null or receiver == null:

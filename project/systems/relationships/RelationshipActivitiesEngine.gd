@@ -1945,6 +1945,42 @@ func _relationship_pair_can_try_for_baby(
 	return int(
 		carrier.pregnancy_progress
 	) < 0
+# Use saved parent IDs as well as resident relatives. Friendship can coexist
+# with kinship, and should never make a sibling or cousin a dating candidate.
+func _dating_ancestry(person: Person) -> Dictionary:
+	var known := {person.id: true}
+	var pending := person.parents.duplicate()
+	while not pending.is_empty():
+		var parent_id := int(pending.pop_back())
+		if parent_id <= 0 or known.has(parent_id):
+			continue
+		known[parent_id] = true
+		var resident: Person = gs.get_npc_by_id(parent_id, false)
+		if resident != null:
+			pending.append_array(resident.parents)
+		else:
+			var snapshot: Dictionary = gs.get_dormant_npc_snapshot(parent_id)
+			pending.append_array(EraUtils.safe_array(snapshot.get("parents", [])))
+	return known
+
+func can_ask_out(actor: Person, target: Person) -> bool:
+	if gs == null or actor == null or target == null or actor.id == target.id or not actor.alive or not target.alive:
+		return false
+	if mini(actor.age, target.age) < 14 or (actor.age < 18) != (target.age < 18):
+		return false
+	for person: Person in [actor, target]:
+		if person.partner != null and person.partner.alive:
+			return false
+		if person.marital_status.to_lower() in ["dating", "partnered", "engaged", "married"]:
+			return false
+	if target.id in actor.children or actor.id in target.children or _is_family_member(actor, target):
+		return false
+	var actor_kin := _dating_ancestry(actor)
+	for ancestor in _dating_ancestry(target):
+		if actor_kin.has(ancestor):
+			return false
+	return true
+
 func get_contextual_relationship_actions(
 	actor: Person,
 	target: Person,
@@ -1966,6 +2002,9 @@ func get_contextual_relationship_actions(
 
 	var actor_age: int = int(actor.age)
 	var target_age: int = int(target.age)
+
+	if can_ask_out(actor, target):
+		actions.append(_relationship_contract_action("Ask Out", "ask_out", "Romance"))
 
 	if (
 		_is_newborn(actor)
@@ -4742,6 +4781,10 @@ func resolve_relationship_action(
 		)
 
 	match clean_action:
+		"ask_out":
+			if actor != gs.player:
+				return _family_care_blocked("Ask Out", "This invitation belongs to another life.")
+			return ask_out(target)
 		"propose":
 			return _proposal_entry_result(
 				actor,
@@ -7283,6 +7326,9 @@ func ask_out(target: Person) -> Dictionary:
 				"popup_footer": "Tap anywhere to continue."
 			}
 
+	if not can_ask_out(gs.player, target):
+		return _family_care_blocked("Ask Out", "You can ask an unrelated single person to start dating when you are both single.")
+
 	var base_chance: int = 35
 	base_chance += int(target.affection.get(gs.player.id, 50) / 2)
 	base_chance = _reaction_chance(target, base_chance)
@@ -7305,6 +7351,11 @@ func ask_out(target: Person) -> Dictionary:
 				"other_person_id": target.id
 			}
 		)
+
+		if gs.reality_projection_contract_engine != null:
+			gs.reality_projection_contract_engine.queue_resident_relationship_section_refresh(
+				gs.player.id, ["partner", "household", "family"], {"source": "ask_out"}
+			)
 
 		return _log_player(
 			"I asked out %s. They accepted." % ref,

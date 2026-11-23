@@ -1205,7 +1205,7 @@ func _latest_parent_decision_for_source(source_id: String, viewer_id: int) -> Di
 			continue
 
 		var updated_ms: int = int(decision.get("updated_at_ms", decision.get("created_at_ms", 0)))
-		if updated_ms > best_ms:
+		if best.is_empty() or updated_ms > best_ms:
 			best_ms = updated_ms
 			best = decision.duplicate(true)
 
@@ -1255,6 +1255,33 @@ func _actor_first_name(actor: Person) -> String:
 		return full_name.split(" ") [0]
 
 	return "Someone"
+func checkpoint_choices_for_contracts(active: Dictionary) -> Dictionary:
+	var selected := {}
+	for id in decision_contracts:
+		var choice: Dictionary = decision_contracts[id]
+		if active.has(str(choice.get("source_contract_id", ""))):
+			selected[id] = choice.duplicate(true)
+	return selected
+
+
+func restore_checkpoint_age_window_choices(state: Dictionary, offset_ms: int) -> void:
+	for id in decision_contracts.keys():
+		if str(decision_contracts[id].get("source_contract_id", "")).begins_with("age_window_"):
+			decision_contracts.erase(id)
+	for id in collision_contracts.keys():
+		if str(collision_contracts[id].get("source_contract_id", "")).begins_with("age_window_"):
+			collision_contracts.erase(id)
+	for id in state.get("choices", {}):
+		var choice: Dictionary = state.choices[id].duplicate(true)
+		for field in ["created_at_ms", "updated_at_ms"]:
+			if choice.has(field):
+				choice[field] = int(choice[field]) + offset_ms
+		decision_contracts[id] = choice
+	for id in state.get("active", {}):
+		_rebuild_collision_contract_for_source(id)
+	_commit_state()
+
+
 func _rebuild_collision_contract_for_source(source_id: String) -> Dictionary:
 	var decisions: Array = []
 	for raw_decision_id in decision_contracts.keys():

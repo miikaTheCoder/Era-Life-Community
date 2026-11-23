@@ -12,7 +12,7 @@ python3 scripts/code_map.py --symbols checkpoint restore
 python3 scripts/code_map.py --symbols MainScene _ready
 ```
 
-377 scripts; 927,677 source lines.
+377 scripts; 927,490 source lines.
 
 ## Largest files
 
@@ -20,14 +20,14 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Lines | Functions |
 | --- | ---: | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | 228,008 | 3109 |
-| [GameState.gd](../project/core/state/GameState.gd) | 23,381 | 337 |
-| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,662 | 147 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | 228,013 | 3111 |
+| [GameState.gd](../project/core/state/GameState.gd) | 23,429 | 341 |
+| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | 16,634 | 148 |
 | [BendingEngine.gd](../project/systems/supernatural/bending/BendingEngine.gd) | 15,788 | 369 |
 | [StickFighterMiniGameProvider.gd](../project/systems/minigames/StickFighterMiniGameProvider.gd) | 13,025 | 107 |
-| [SchoolEngine.gd](../project/systems/education/SchoolEngine.gd) | 12,940 | 205 |
+| [SchoolEngine.gd](../project/systems/education/SchoolEngine.gd) | 13,018 | 208 |
 | [GameStateContractEngine.gd](../project/core/state/GameStateContractEngine.gd) | 12,452 | 183 |
-| [RealityResidencyManager.gd](../project/systems/realities/RealityResidencyManager.gd) | 11,622 | 56 |
+| [RealityResidencyManager.gd](../project/systems/realities/RealityResidencyManager.gd) | 11,631 | 56 |
 | [CrownHubContractEngine.gd](../project/systems/politics/CrownHubContractEngine.gd) | 11,594 | 87 |
 | [LuxuryShopEngine.gd](../project/systems/economy/LuxuryShopEngine.gd) | 9,845 | 64 |
 | [RealmEngine.gd](../project/systems/world/RealmEngine.gd) | 9,021 | 108 |
@@ -46,7 +46,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [CapabilityGraphEngine.gd](../project/core/contracts/CapabilityGraphEngine.gd) | CapabilityGraphEngine | 9 |
 | [ChecksAndBalancesContractEngine.gd](../project/core/contracts/ChecksAndBalancesContractEngine.gd) | ChecksAndBalancesContractEngine | 42 |
 | [ContractMetaGovernor.gd](../project/core/contracts/ContractMetaGovernor.gd) | ContractMetaGovernor | 17 |
-| [ContractViewLayerContractEngine.gd](../project/core/contracts/ContractViewLayerContractEngine.gd) | ContractViewLayerContractEngine | 68 |
+| [ContractViewLayerContractEngine.gd](../project/core/contracts/ContractViewLayerContractEngine.gd) | ContractViewLayerContractEngine | 70 |
 | [CrossGovernorSyncLayer.gd](../project/core/contracts/CrossGovernorSyncLayer.gd) | CrossGovernorSyncLayer | 15 |
 | [ECLContractLanguageEngine.gd](../project/core/contracts/ECLContractLanguageEngine.gd) | ECLContractLanguageEngine | 43 |
 | [GlobalNodeContractEngine.gd](../project/core/contracts/GlobalNodeContractEngine.gd) | GlobalNodeContractEngine | 34 |
@@ -109,7 +109,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [GameState.gd](../project/core/state/GameState.gd) | GameState | 337 |
+| [GameState.gd](../project/core/state/GameState.gd) | GameState | 341 |
 | [GameStateContractEngine.gd](../project/core/state/GameStateContractEngine.gd) | GameStateContractEngine | 183 |
 | [GameStateHydrationRuntime.gd](../project/core/state/GameStateHydrationRuntime.gd) | GameStateHydrationRuntime | 81 |
 
@@ -184,7 +184,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [MainScene.gd](../project/scenes/MainScene.gd) | - | 3109 |
+| [MainScene.gd](../project/scenes/MainScene.gd) | - | 3111 |
 | [MobileBoot.gd](../project/scenes/MobileBoot.gd) | - | 2 |
 
 ## project/systems/activities
@@ -284,7 +284,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [BankEngine.gd](../project/systems/economy/BankEngine.gd) | BankEngine | 57 |
+| [BankEngine.gd](../project/systems/economy/BankEngine.gd) | BankEngine | 63 |
 | [DebtContractEngine.gd](../project/systems/economy/DebtContractEngine.gd) | DebtContractEngine | 15 |
 | [EconomyEngine.gd](../project/systems/economy/EconomyEngine.gd) | EconomyEngine | 40 |
 | [FamilyBusinessEngine.gd](../project/systems/economy/FamilyBusinessEngine.gd) | FamilyBusinessEngine | 17 |
@@ -296,7 +296,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 
 | Script | Global class | Functions |
 | --- | --- | ---: |
-| [SchoolEngine.gd](../project/systems/education/SchoolEngine.gd) | SchoolEngine | 205 |
+| [SchoolEngine.gd](../project/systems/education/SchoolEngine.gd) | SchoolEngine | 208 |
 | [SchoolHubContractEngine.gd](../project/systems/education/SchoolHubContractEngine.gd) | SchoolHubContractEngine | 41 |
 
 ## project/systems/items
@@ -307,7 +307,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [ArtifactShopContractEngine.gd](../project/systems/items/ArtifactShopContractEngine.gd) | ArtifactShopContractEngine | 35 |
 | [ArtifactsCatalogContractEngine.gd](../project/systems/items/ArtifactsCatalogContractEngine.gd) | ArtifactsCatalogContractEngine | 29 |
 | [ArtifactsEngine.gd](../project/systems/items/ArtifactsEngine.gd) | ArtifactsEngine | 93 |
-| [BelongingsEngine.gd](../project/systems/items/BelongingsEngine.gd) | BelongingsEngine | 126 |
+| [BelongingsEngine.gd](../project/systems/items/BelongingsEngine.gd) | BelongingsEngine | 127 |
 | [EraLifeAssetCatalogExpansion.gd](../project/systems/items/EraLifeAssetCatalogExpansion.gd) | EraLifeAssetCatalogExpansion | 31 |
 | [GlobalObjectCatalogSystem.gd](../project/systems/items/GlobalObjectCatalogSystem.gd) | GlobalObjectCatalogSystem | 47 |
 | [HeirloomCatalogContractEngine.gd](../project/systems/items/HeirloomCatalogContractEngine.gd) | HeirloomCatalogContractEngine | 29 |
@@ -347,11 +347,11 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [FamilyChronicleContractEngine.gd](../project/systems/narrative/FamilyChronicleContractEngine.gd) | FamilyChronicleContractEngine | 3 |
 | [GoalPlanningEngine.gd](../project/systems/narrative/GoalPlanningEngine.gd) | GoalPlanningEngine | 7 |
 | [LifeDiaryContractEngine.gd](../project/systems/narrative/LifeDiaryContractEngine.gd) | LifeDiaryContractEngine | 72 |
-| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 34 |
+| [LifeStoryEngine.gd](../project/systems/narrative/LifeStoryEngine.gd) | LifeStoryEngine | 39 |
 | [NarrativeEngine.gd](../project/systems/narrative/NarrativeEngine.gd) | NarrativeEngine | 35 |
 | [NarrativeGovernor.gd](../project/systems/narrative/NarrativeGovernor.gd) | NarrativeGovernor | 4 |
 | [OpportunityEngine.gd](../project/systems/narrative/OpportunityEngine.gd) | OpportunityEngine | 4 |
-| [PendingSituationsEngine.gd](../project/systems/narrative/PendingSituationsEngine.gd) | PendingSituationsEngine | 101 |
+| [PendingSituationsEngine.gd](../project/systems/narrative/PendingSituationsEngine.gd) | PendingSituationsEngine | 104 |
 | [ScenarioEngine.gd](../project/systems/narrative/ScenarioEngine.gd) | ScenarioEngine | 190 |
 | [ScenarioPopupContractEngine.gd](../project/systems/narrative/ScenarioPopupContractEngine.gd) | ScenarioPopupContractEngine | 18 |
 | [ScenarioResolver.gd](../project/systems/narrative/ScenarioResolver.gd) | ScenarioResolver | 10 |
@@ -395,7 +395,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [PropertyMakeoverContractEngine.gd](../project/systems/property/PropertyMakeoverContractEngine.gd) | PropertyMakeoverContractEngine | 54 |
 | [PropertyMarketContractEngine.gd](../project/systems/property/PropertyMarketContractEngine.gd) | PropertyMarketContractEngine | 31 |
 | [RoomGraphContractEngine.gd](../project/systems/property/RoomGraphContractEngine.gd) | RoomGraphContractEngine | 84 |
-| [VehicleEngine.gd](../project/systems/property/VehicleEngine.gd) | VehicleEngine | 85 |
+| [VehicleEngine.gd](../project/systems/property/VehicleEngine.gd) | VehicleEngine | 88 |
 
 ## project/systems/realities
 
@@ -415,7 +415,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [RealityIntegrityContractEngine.gd](../project/systems/realities/RealityIntegrityContractEngine.gd) | RealityIntegrityContractEngine | 4 |
 | [RealityMergeContractEngine.gd](../project/systems/realities/RealityMergeContractEngine.gd) | RealityMergeContractEngine | 4 |
 | [RealityOrchestrator.gd](../project/systems/realities/RealityOrchestrator.gd) | RealityOrchestrator | 50 |
-| [RealityProjectionContractEngine.gd](../project/systems/realities/RealityProjectionContractEngine.gd) | RealityProjectionContractEngine | 66 |
+| [RealityProjectionContractEngine.gd](../project/systems/realities/RealityProjectionContractEngine.gd) | RealityProjectionContractEngine | 65 |
 | [RealityResidencyContractEngine.gd](../project/systems/realities/RealityResidencyContractEngine.gd) | RealityResidencyContractEngine | 14 |
 | [RealityResidencyManager.gd](../project/systems/realities/RealityResidencyManager.gd) | RealityResidencyManager | 56 |
 | [RealityStreamContractEngine.gd](../project/systems/realities/RealityStreamContractEngine.gd) | RealityStreamContractEngine | 29 |
@@ -432,7 +432,7 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [BreedingContractEngine.gd](../project/systems/relationships/BreedingContractEngine.gd) | BreedingContractEngine | 39 |
 | [DynastyEngine.gd](../project/systems/relationships/DynastyEngine.gd) | DynastyEngine | 9 |
 | [DynastyLegacyEngine.gd](../project/systems/relationships/DynastyLegacyEngine.gd) | DynastyLegacyEngine | 8 |
-| [FamilyContractEngine.gd](../project/systems/relationships/FamilyContractEngine.gd) | FamilyContractEngine | 59 |
+| [FamilyContractEngine.gd](../project/systems/relationships/FamilyContractEngine.gd) | FamilyContractEngine | 62 |
 | [FamilyControlEngine.gd](../project/systems/relationships/FamilyControlEngine.gd) | FamilyControlEngine | 41 |
 | [HumanRelationshipContractEngine.gd](../project/systems/relationships/HumanRelationshipContractEngine.gd) | HumanRelationshipContractEngine | 9 |
 | [LegacyEchoEngine.gd](../project/systems/relationships/LegacyEchoEngine.gd) | LegacyEchoEngine | 6 |
@@ -440,11 +440,11 @@ These remain refactoring candidates; line count is a navigation aid, not a quali
 | [LineageEngine.gd](../project/systems/relationships/LineageEngine.gd) | LineageEngine | 28 |
 | [MemoryEngine.gd](../project/systems/relationships/MemoryEngine.gd) | MemoryEngine | 7 |
 | [NPCMemoryWebEngine.gd](../project/systems/relationships/NPCMemoryWebEngine.gd) | NPCMemoryWebEngine | 10 |
-| [RelationshipActivitiesEngine.gd](../project/systems/relationships/RelationshipActivitiesEngine.gd) | RelationshipActivitiesEngine | 141 |
+| [RelationshipActivitiesEngine.gd](../project/systems/relationships/RelationshipActivitiesEngine.gd) | RelationshipActivitiesEngine | 143 |
 | [RelationshipEngine.gd](../project/systems/relationships/RelationshipEngine.gd) | RelationshipEngine | 21 |
 | [RelationshipGraphContractEngine.gd](../project/systems/relationships/RelationshipGraphContractEngine.gd) | RelationshipGraphContractEngine | 43 |
-| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | RelationshipsHubContractEngine | 147 |
-| [RomanceContractEngine.gd](../project/systems/relationships/RomanceContractEngine.gd) | RomanceContractEngine | 67 |
+| [RelationshipsHubContractEngine.gd](../project/systems/relationships/RelationshipsHubContractEngine.gd) | RelationshipsHubContractEngine | 148 |
+| [RomanceContractEngine.gd](../project/systems/relationships/RomanceContractEngine.gd) | RomanceContractEngine | 69 |
 | [SocialGraphEngine.gd](../project/systems/relationships/SocialGraphEngine.gd) | SocialGraphEngine | 12 |
 
 ## project/systems/reputation

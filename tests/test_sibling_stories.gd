@@ -137,11 +137,14 @@ func _test_sibling_cast() -> void:
 	var sibling := state.get_npc_by_id(103, false)
 	state.npcs.erase(sibling)
 	state._rebuild_npc_index()
-	var before := JSON.stringify(record)
+	var before := record.duplicate(true)
+	before.erase("last_available_year")
 	_check(not _resolve(state, SIBLINGS, "contribute").get("success", true), "Unavailable sibling accepted money")
 	state.year = int(record.deadline_year) + 1
 	state.scenario_runtime_contract_engine.service_life_stories()
-	_check(JSON.stringify(record) == before and int(record.cast_id) == 103, "Missing sibling was replaced or the deadline changed history")
+	var after := record.duplicate(true)
+	after.erase("last_available_year")
+	_check(after == before and record.last_available_year == state.year and int(record.cast_id) == 103, "Missing sibling was replaced or the deadline changed history")
 	state.npcs.append(sibling)
 	state._rebuild_npc_index()
 	state.year += 1

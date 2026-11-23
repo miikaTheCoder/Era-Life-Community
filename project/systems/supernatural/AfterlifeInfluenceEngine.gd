@@ -4571,6 +4571,7 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 
 		return {}
 
+	dead_player.person_contract["manual_estate_death_year"] = dead_player.death_year
 	var inheritance_transferred: bool = false
 
 	if (
@@ -4584,16 +4585,19 @@ func _commit_continue_lineage_intent_if_hot() -> Dictionary:
 			)
 		)
 	):
-		_transfer_player_estate_to_descendant(
-			dead_player,
-			target
-		)
-
-		gs.afterlife_state [
-			"continue_lineage_transfer_applied"
-		] = true
-
-		inheritance_transferred = true
+		var settlement := _transfer_player_estate_to_descendant(dead_player, target)
+		inheritance_transferred = bool(settlement.success)
+		var pending_notice := str(settlement.get("pending_notice", ""))
+		if not pending_notice.is_empty():
+			spirit_text += " " + pending_notice
+			if gs.life_diary_contract_engine == null:
+				gs.life_diary_contract_engine = LifeDiaryContractEngine.new(gs)
+				var saved_diary: Dictionary = gs.scenario_state.get("life_diary_contract_engine_state", {})
+				if not saved_diary.is_empty():
+					gs.life_diary_contract_engine.import_state(saved_diary)
+			if not gs.life_diary_contract_engine.has_diary_for_actor(target_id):
+				gs.life_diary_contract_engine.append_legacy_entries_for_actor(target_id, gs.checkpoint_diary_entries(target_id))
+		gs.afterlife_state["continue_lineage_transfer_applied"] = inheritance_transferred
 
 	var diary_report: Dictionary = {}
 
@@ -5122,21 +5126,16 @@ func _service_continue_known_destination_prewarm_quantum() -> void:
 func _transfer_player_estate_to_descendant(
 	dead_player: Person,
 	heir: Person
-) -> void:
-	if dead_player == null or heir == null:
-		return
+) -> Dictionary:
+	if dead_player == null or heir == null or dead_player.id == heir.id or not heir.alive:
+		return {"success": false}
+	if gs.family_contract_engine == null:
+		gs.family_contract_engine = FamilyContractEngine.new(gs)
+	var estate: Dictionary = gs.family_contract_engine.execute_estate_contract(dead_player, heir, {"lineage_continuation": true})
 
-	heir.bank_balance = float(
-		heir.bank_balance
-	) + float(
-		dead_player.bank_balance
-	)
-
-	dead_player.bank_balance = 0.0
-
-
-
-
+	if not estate.success and not estate.has("pending_notice"):
+		return estate
+	# A blocked bank account does not prevent inheritance of heirlooms or property.
 	var heirloom_transfer_report: Dictionary = {}
 
 	if gs.heirloom_contract_engine != null:
@@ -5164,14 +5163,7 @@ func _transfer_player_estate_to_descendant(
 		)
 
 	if gs.belongings_engine != null:
-
-
-		_transfer_owner_bucket(
-			gs.belongings_engine.belongings,
-			dead_player.id,
-			heir.id
-		)
-
+		gs.belongings_engine.transfer_lineage_belongings(dead_player, heir)
 
 	if (
 		not bool(
@@ -5191,13 +5183,6 @@ func _transfer_player_estate_to_descendant(
 	if gs.property_engine != null:
 		_transfer_owner_bucket(
 			gs.property_engine.properties,
-			dead_player.id,
-			heir.id
-		)
-
-	if gs.vehicle_engine != null:
-		_transfer_owner_bucket(
-			gs.vehicle_engine.vehicles,
 			dead_player.id,
 			heir.id
 		)
@@ -5252,6 +5237,8 @@ func _transfer_player_estate_to_descendant(
 		gs.scenario_state [
 			"last_heirloom_estate_transfer_report"
 		] = heirloom_transfer_report.duplicate(true)
+
+	return estate
 
 
 func _transfer_owner_bucket(bucket: Dictionary, from_id: int, to_id: int) -> void:

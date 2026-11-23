@@ -662,6 +662,11 @@ func begin_resident_checkpoint_spatial_hydration(
 		)
 
 	_ensure_runtime_dependencies()
+	if gs.school_engine != null:
+		gs.school_engine.restore_school_state(data)
+	if gs.pending_situations_engine != null:
+		gs.pending_situations_engine.restore_checkpoint_age_windows(data)
+
 
 	background_hydration_active = false
 	background_hydration_queue.clear()
@@ -3794,6 +3799,8 @@ func _hydrate_entity_graph_playable(data: Dictionary, phase_report: Dictionary, 
 	if gs.player == null and gs.npcs.size() > 0:
 		gs.player = gs.npcs [0]
 	gs.player_id = gs.player.id if gs.player != null else -1
+	if gs.pending_situations_engine != null:
+		gs.pending_situations_engine.restore_checkpoint_age_windows(data)
 
 	var consciousness_repaired_now: int = 0
 	if gs.player != null:
@@ -4567,6 +4574,8 @@ func _hydrate_core_identity(data: Dictionary, phase_report: Dictionary, _options
 	gs.year = int(data.get("year", 2000))
 	gs.next_id = int(data.get("next_id", 1))
 	gs.era = gs._resolve_loaded_era_from_save_data(data, gs.year)
+	if gs.school_engine != null:
+		gs.school_engine.restore_school_state(data)
 	gs.save_version = int(data.get("save_version", gs.save_version))
 	gs.game_state_contract_registry = data.get("game_state_contract_registry", {})
 	gs.game_state_contract_slices = data.get("game_state_contract_slices", {})
@@ -4758,6 +4767,8 @@ func _hydrate_entity_graph(data: Dictionary, phase_report: Dictionary, _options:
 	if gs.player == null and gs.npcs.size() > 0:
 		gs.player = gs.npcs [0]
 	gs.player_id = gs.player.id if gs.player != null else -1
+	if gs.pending_situations_engine != null:
+		gs.pending_situations_engine.restore_checkpoint_age_windows(data)
 
 	if gs.consciousness_engine != null:
 		for npc in gs.npcs:

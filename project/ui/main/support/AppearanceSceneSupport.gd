@@ -116,20 +116,20 @@ static func _append_stone_colored_text_to_rich_label(
 		if nearest_index == -1:
 			var tail_text: String = text.substr(cursor)
 			if tail_text != "":
-				target_label.append_text(tail_text)
+				target_label.add_text(tail_text)
 			if append_newline:
-				target_label.append_text("\n")
+				target_label.add_text("\n")
 			return
 		if nearest_index > cursor:
-			target_label.append_text(text.substr(cursor, nearest_index - cursor))
+			target_label.add_text(text.substr(cursor, nearest_index - cursor))
 		target_label.push_color(stone_colors.get(nearest_name, Color(1.0, 1.0, 1.0, 1.0)))
 		target_label.push_bold()
-		target_label.append_text(nearest_name)
+		target_label.add_text(nearest_name)
 		target_label.pop()
 		target_label.pop()
 		cursor = nearest_index + nearest_name.length()
 	if append_newline:
-		target_label.append_text("\n")
+		target_label.add_text("\n")
 
 
 static func _era_surface_theme_data(theme_key: String, surface_kind: String = "main") -> Dictionary:

@@ -50,10 +50,28 @@ func _run() -> void:
 	_test_money_defaults_and_loss()
 	_test_connections()
 	_test_chronicle()
+	_test_pending_row_identity()
 	_test_binary()
 	_test_packs()
 	print("CONNECTED LIVES TESTS: ", "FAIL" if failed else "PASS", "; responses=", connected_responses)
 	quit(1 if failed else 0)
+
+func _test_pending_row_identity() -> void:
+	var state := _connected_fixture()
+	_start(state, CHILD)
+	var offer := _pending(state, CHILD)
+	var payload: Dictionary = state.pending_situations_engine.build_pending_list_payload(state.player_id)
+	var rows: Array = payload.get("summaries", [])
+	var panel := CrimePanel.new()
+	var found := false
+	for row in rows:
+		if str(row.get("source_contract_id", "")) == str(offer.id):
+			found = true
+			_check(panel._crime_row_identity_key(row) == "contract:" + str(offer.id), "Pending story was treated as a numeric item")
+	_check(found, "Pending story missing from the shared summary")
+	_check(panel._crime_row_identity_key({"item":{"id":28}}) == "item:28", "Weapon row identity changed")
+	_check(panel._crime_row_identity_key({"target_id":101}) == "target:101", "Crime target identity changed")
+	panel.free()
 
 func _test_routes() -> void:
 	var routes := [
@@ -102,7 +120,7 @@ func _test_responses(engine: LifeStoryEngine) -> void:
 				_check(not state.scenario_runtime_contract_engine.resolve_popup_contract(pending.id, option.id, {"viewer_actor_id":state.player_id}).get("success", true), "Duplicate connected response accepted")
 				_check(JSON.stringify([record, state.player.bank_balance, state.player.affection]) == after, "Duplicate response had effects")
 				connected_responses += 1
-	_check(connected_responses == 50, "Not all connected responses checked")
+	_check(connected_responses == 51, "Not all connected responses checked")
 
 func _test_cast_and_memory() -> void:
 	for invalid in ["no_child", "young", "old", "dead", "nonreciprocal"]:
@@ -288,12 +306,14 @@ func _test_packs() -> void:
 	state.get_npc_by_id(103, false).age = state.player.age
 	_start(state, id)
 	_check(_resolve(state, id, "walk").get("success", false), "Installed sample pack cannot play")
-	var before := JSON.stringify(_record_for(state, id))
+	var before := _record_for(state, id).duplicate(true)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	state.scenario_runtime_contract_engine.life_story_engine = LifeStoryEngine.new(state)
 	state.scenario_runtime_contract_engine.life_story_service_signature = ""
 	state.scenario_runtime_contract_engine.service_life_stories()
-	_check(JSON.stringify(_record_for(state, id)) == before, "Removed pack destroyed saved progress")
+	var suspended := _record_for(state, id).duplicate(true)
+	suspended.erase("suspension")
+	_check(suspended == before, "Removed pack destroyed saved progress")
 	var incompatible := sample.duplicate(true)
 	incompatible.stories[0].nodes.after_walk = incompatible.stories[0].nodes.later
 	incompatible.stories[0].nodes.erase("later")
@@ -304,12 +324,16 @@ func _test_packs() -> void:
 	state.scenario_runtime_contract_engine.life_story_engine = LifeStoryEngine.new(state)
 	state.scenario_runtime_contract_engine.life_story_service_signature = ""
 	state.scenario_runtime_contract_engine.service_life_stories()
-	_check(JSON.stringify(_record_for(state, id)) == before, "Incompatible pack changed saved progress")
+	suspended = _record_for(state, id).duplicate(true)
+	suspended.erase("suspension")
+	_check(suspended == before, "Incompatible pack changed saved progress")
 	_check(str(state.scenario_runtime_contract_engine.life_story_engine.pack_report.errors).contains("saved chapter is missing"), "Incompatible pack did not explain its paused chapter")
 	file = FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(JSON.stringify(sample))
 	file.close()
 	state.scenario_runtime_contract_engine.life_story_engine = LifeStoryEngine.new(state)
+	state.scenario_runtime_contract_engine.life_story_service_signature = ""
+	state.scenario_runtime_contract_engine.service_life_stories()
 	_advance_to_due(state, id)
 	_check(_resolve(state, id, "again").get("success", false), "Reinstalled sample cannot continue")
 	_check(_record_for(state, id).history.size() == 2, "Sample pack replayed or lost progress")

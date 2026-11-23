@@ -6266,6 +6266,11 @@ func _paint_streamed_crime_section_row(
 func _crime_row_identity_key(
 	row: Dictionary
 ) -> String:
+	# Pending situation summaries carry opaque contract IDs, not item numbers.
+	var source_contract_id := str(row.get("source_contract_id", "")).strip_edges()
+	if source_contract_id != "":
+		return "contract:" + source_contract_id
+
 	var item: Dictionary = _shallow_dictionary(
 		row.get(
 			"item",

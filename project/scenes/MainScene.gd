@@ -2259,7 +2259,7 @@ func _bind_resident_relationship_section_signal(
 	var relationship_section_callback: Callable = Callable(
 		self,
 		"_on_resident_relationship_section_contract_ready"
-	)
+	).bind(projection_engine.get_instance_id())
 
 	if projection_engine.is_connected(
 		"resident_relationship_section_contract_ready",
@@ -2322,7 +2322,7 @@ func _capture_reality_residency_host() -> void:
 	var relationship_section_callback: Callable = Callable(
 		self,
 		"_on_resident_relationship_section_contract_ready"
-	)
+	).bind(projection_engine.get_instance_id())
 
 	var projection_callback: Callable = Callable(
 		self,
@@ -3329,7 +3329,8 @@ func _on_resident_relationship_section_contract_ready(
 	signature: String,
 	actor_id: int,
 	section_id: String,
-	section_contract: Dictionary
+	section_contract: Dictionary,
+	source_projection_id: int = 0
 ) -> void:
 	if (
 		gs == null
@@ -3369,6 +3370,20 @@ func _on_resident_relationship_section_contract_ready(
 	var clean_section_id: String = str(
 		section_id
 	).strip_edges().to_lower()
+
+	# A restored game's section producer can lack a prewarm signature. Only
+	# accept its packet through the current runtime's own signal, when both
+	# the packet and the existing panel already belong to this actor and year.
+	var projection = gs.reality_projection_contract_engine
+	if (clean_signature.is_empty() and is_instance_valid(projection)
+		and source_projection_id == projection.get_instance_id() and projection.gs == gs):
+		var revision := str(section_contract.get("surface_revision", ""))
+		var current_frontier := "%d:%d:" % [actor_id, gs.year]
+		if (revision.begins_with(current_frontier) and is_instance_valid(relationship_hub_panel)
+			and relationship_hub_panel.active_actor_id == actor_id
+			and relationship_hub_panel._relationship_observation_contract_world_year(
+				relationship_hub_panel.active_contract) == gs.year):
+			clean_signature = reality_residency_attached_signature.strip_edges()
 
 	if (
 		clean_signature == ""
@@ -12937,9 +12952,18 @@ func _open_career_hub_zero_frame_door(
 		false
 	)
 
+	if int(career_hub_panel.active_contract.get("qualification_actor_age", -1)) != gs.player.age:
+		call_deferred("_refresh_open_career_qualifications", gs.player.id)
+
 	_apply_ui_nav_button_visuals()
 
 	return true
+
+func _refresh_open_career_qualifications(actor_id: int) -> void:
+	if current_panel != "career" or gs == null or gs.player == null or gs.player.id != actor_id:
+		return
+	_request_career_hub_contract(gs.player, {"action_id": "refresh", "source": "career_qualification_age_changed"})
+
 func _on_career_hub_intent_requested(
 		payload: Dictionary
 ) -> void:
@@ -15821,7 +15845,7 @@ func _append_formatted_life_diary_line(
 	else:
 		AppearanceSceneSupport._append_stone_and_element_colored_text_to_rich_label(
 			target_label,
-			text_line.replace("[", "[lb]"),
+			text_line,
 			true
 		)
 func _find_life_diary_focus_line_index(
@@ -36599,6 +36623,10 @@ func _refresh_afterlife_ui_from_result(result: Dictionary) -> void:
 		return
 
 	_show_afterlife_overlay(result)
+
+func _on_controlled_death_after_year(actor_id: int) -> void:
+	if gs != null and gs.player != null and gs.player.id == actor_id and not gs.player.alive:
+		_try_surface_controlled_death_after_age_up("annual_health_phase")
 
 func _try_surface_controlled_death_after_age_up(reason: String = "age_up") -> bool:
 	if gs == null or gs.player == null:
@@ -185287,6 +185315,10 @@ func _deferred_run_age_up_from_button() -> void:
 		}
 	)
 
+	# The annual health phase can finish after the initial year is on screen.
+	if gs.life_engine != null and not gs.life_engine.controlled_death_after_year.is_connected(_on_controlled_death_after_year):
+		gs.life_engine.controlled_death_after_year.connect(_on_controlled_death_after_year, CONNECT_DEFERRED)
+
 	var intent_report: Dictionary = _express_global_ui_intent(
 		{
 			"actor_id": actor_id,
@@ -192458,7 +192490,8 @@ func _schedule_relationship_profile_switch_tail_after_visible_lens(
 	target_id: int,
 	previous_controlled_person_id: int,
 	result: Dictionary,
-	source: String = "relationship_profile_switch_tail"
+	source: String = "relationship_profile_switch_tail",
+	diary_already_bound: bool = false
 ) -> void:
 	var main_tab_pointer_swapped: bool = false
 
@@ -192474,6 +192507,7 @@ func _schedule_relationship_profile_switch_tail_after_visible_lens(
 		)
 
 	var background_receipt: Dictionary = {
+		"diary_already_bound": diary_already_bound,
 		"success": bool(
 			result.get(
 				"success",
@@ -192692,7 +192726,8 @@ func _relationship_profile_switch_tail_after_visible_frame(
 		"_install_switched_actor_support_surfaces_from_store",
 		target_id,
 		source,
-		0
+		0,
+		bool(background_receipt.get("diary_already_bound", false))
 	)
 	call_deferred(
 		"_scroll_life_diary_to_bottom"
@@ -193142,8 +193177,10 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 			)
 		)
 	).strip_edges()
-	var ready_bbcode := str(life_diary_packet.get("bbcode_text", "")).strip_edges()
 	var ready_text := str(life_diary_packet.get("text", "")).strip_edges()
+	if ready_text.is_empty():
+		# Newer viewers escape opening brackets in this legacy packet field.
+		ready_text = str(life_diary_packet.get("bbcode_text", "")).replace("[lb]", "[").strip_edges()
 
 	var explicit_clear_requested: bool = bool(
 		life_diary_packet.get(
@@ -193157,7 +193194,6 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 	var packet_contains_diary_truth: bool = (
 		not surface_lines.is_empty()
 		or ready_text != ""
-		or ready_bbcode != ""
 	)
 
 
@@ -193189,8 +193225,6 @@ func _apply_playable_life_viewer_life_diary_packet_zero_frame(
 		if not surface_lines.is_empty():
 			for raw_line in surface_lines:
 				_append_formatted_life_diary_line(output_label, str(raw_line))
-		elif ready_bbcode != "":
-			output_label.append_text(ready_bbcode + "\n")
 		elif ready_text != "":
 			var fallback_lines: PackedStringArray = (
 				ready_text.split(
@@ -193389,7 +193423,9 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 
 
 
-	var lens_text := _profile_switch_diary_bbcode(lens_cache, clean_text)
+	var lens_text := str(lens_cache.get("life_diary_text", "")).strip_edges()
+	if lens_text.is_empty():
+		lens_text = clean_text.strip_edges()
 
 	if lens_text == "":
 		var world_year: int = int(
@@ -193409,16 +193445,16 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 			% [
 				_format_year(world_year),
 				actor_age,
-				actor_name.replace("[", "[lb]")
+				actor_name
 			]
 		)
 
-	var diary_line_count: int = (
-		lens_text.split(
-			"\n",
-			false
-		).size()
-	)
+	var lens_lines: Array = ValueSceneSupport._safe_array(lens_cache.get(
+		"life_diary_lines", packet.get("life_diary_lines", surface.get("life_diary_lines", []))
+	))
+	if lens_lines.is_empty():
+		lens_lines.assign(lens_text.split("\n", false))
+	var diary_line_count: int = lens_lines.size()
 
 	current_panel = "life"
 
@@ -193582,7 +193618,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 		) != signature:
 
 
-			_replace_profile_switch_diary(lens_text)
+			_replace_profile_switch_diary(lens_lines)
 			output_label.set_meta(
 				"visible_truth_anchor_signature",
 				signature
@@ -193598,7 +193634,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 			)
 			output_label.set_meta(
 				"visible_truth_anchor_used_standard_diary_formatter",
-				false
+				true
 			)
 			output_label.set_meta(
 				"visible_truth_anchor_used_precomposed_lens_text",
@@ -193665,7 +193701,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 		] = false
 		gs.scenario_state [
 			"playable_life_viewer_press_frame_standard_diary_formatter"
-		] = false
+		] = true
 
 	EraLog.truth(
 		(
@@ -193676,7 +193712,7 @@ func _apply_playable_life_viewer_packet_press_frame_lens_only(
 			+ "|age=%d"
 			+ "|diary_lines=%d"
 			+ "|precomposed_lens_text=true"
-			+ "|standard_diary_formatter=false"
+			+ "|standard_diary_formatter=true"
 			+ "|full_diary_rebuild=false"
 			+ "|life_diary_packet_scan=false"
 			+ "|nav_rebind=false"
@@ -196827,6 +196863,16 @@ func _install_switched_actor_life_diary_from_published_packet(
 					)
 				)
 
+	if life_lines.is_empty():
+		var cached_lens: Dictionary = _zero_frame_contract_dictionary(profile_packet.get(
+			"press_frame_lens_cache", surface_contract.get("press_frame_lens_cache", {})
+		))
+		var fallback_text := str(cached_lens.get("life_diary_text", "")).strip_edges()
+		if fallback_text == "":
+			fallback_text = str(diary_packet.get("text", "")).strip_edges()
+		if fallback_text != "":
+			life_lines.assign(fallback_text.split("\n", false))
+
 	if (
 		life_entries.is_empty()
 		and not life_lines.is_empty()
@@ -196986,27 +197032,6 @@ func _install_switched_actor_life_diary_from_published_packet(
 		not cursor_contract_used
 	)
 
-	var press_frame_lens_cache: Dictionary = (
-		_zero_frame_contract_dictionary(
-			profile_packet.get(
-				"press_frame_lens_cache",
-				surface_contract.get(
-					"press_frame_lens_cache",
-					{}
-				)
-			)
-		)
-	)
-	var precomposed_lens_text := _profile_switch_diary_bbcode(
-		press_frame_lens_cache, str(diary_packet.get("text", ""))
-	)
-	if precomposed_lens_text == "":
-		precomposed_lens_text = (
-			_relationship_profile_press_frame_lens_text_for_lines(
-				life_lines
-			)
-		)
-
 	var visible_diary_rebound: bool = false
 
 
@@ -197024,10 +197049,10 @@ func _install_switched_actor_life_diary_from_published_packet(
 		and is_instance_valid(
 			output_label
 		)
-		and precomposed_lens_text != ""
+		and not life_lines.is_empty()
 	):
 		output_label.bbcode_enabled = true
-		_replace_profile_switch_diary(precomposed_lens_text)
+		_replace_profile_switch_diary(life_lines)
 		output_label.visible = true
 		output_label.mouse_filter = (
 			Control.MOUSE_FILTER_IGNORE
@@ -197045,7 +197070,7 @@ func _install_switched_actor_life_diary_from_published_packet(
 	)
 	set_meta(
 		"switched_actor_life_diary_visible_text_precomposed",
-		true
+		false
 	)
 	set_meta(
 		"switched_actor_life_diary_full_render_called",
@@ -197068,7 +197093,7 @@ func _install_switched_actor_life_diary_from_published_packet(
 		+ str(
 			visible_diary_rebound
 		).to_lower()
-		+ "|precomposed_text=true"
+		+ "|precomposed_text=false"
 		+ "|cursor_contract_used="
 		+ str(
 			cursor_contract_used
@@ -197587,7 +197612,7 @@ func _consume_continue_lineage_perspective_handoff(
 				)
 
 			output_label.bbcode_enabled = true
-			_replace_profile_switch_diary(minimum_life_text.replace("[", "[lb]"))
+			_replace_profile_switch_diary(Array(minimum_life_text.split("\n", false)))
 			output_label.visible = true
 			output_label.scroll_active = true
 			output_label.mouse_filter = (
@@ -197671,11 +197696,14 @@ func _consume_continue_lineage_perspective_handoff(
 
 
 
+	# The published pointer predates the successor's committed journal entry.
+	# Keep this binding when the remaining panels install on the following frame.
 	_schedule_relationship_profile_switch_tail_after_visible_lens(
 		target_id,
 		previous_actor_id,
 		result,
-		source
+		source,
+		diary_history_bound
 	)
 
 	set_meta(
@@ -197800,7 +197828,8 @@ func _consume_continue_lineage_perspective_handoff(
 func _install_switched_actor_support_surfaces_from_store(
 	target_id: int,
 	source: String = "relationship_profile_switch_tail",
-	stage_index: int = 0
+	stage_index: int = 0,
+	diary_already_bound: bool = false
 ) -> void:
 	if (
 		gs == null
@@ -197860,7 +197889,7 @@ func _install_switched_actor_support_surfaces_from_store(
 			)
 		)
 
-		var pointer_diary_hot: bool = (
+		var pointer_diary_hot: bool = diary_already_bound or (
 			_install_switched_actor_life_diary_from_published_packet(
 				target,
 				pointer_packet,
@@ -198028,7 +198057,7 @@ func _install_switched_actor_support_surfaces_from_store(
 				support_value as Dictionary
 			).duplicate(false)
 
-	var life_diary_hot: bool = (
+	var life_diary_hot: bool = diary_already_bound or (
 		_install_switched_actor_life_diary_from_published_packet(
 			target,
 			profile_packet,
@@ -200075,6 +200104,14 @@ func _on_relationship_profile_panel_action_requested(
 		action_id,
 		target_id
 	)
+# Renderer nodes belong to the actor in this world and era. Yearly contract
+# revisions refresh their contents while a player can still be using the tab.
+func _resident_renderer_lens_key() -> String:
+	return "renderer:%d|era:%s" % [
+		int(get_meta("world_seed_ui_lens_epoch", 0)),
+		str(gs.era.name) if gs != null and gs.era != null else "unknown_era"
+	]
+
 func _resident_main_tab_renderer_deck_for_actor(
 	actor_id: int
 ) -> Dictionary:
@@ -200104,7 +200141,7 @@ func _resident_main_tab_renderer_deck_for_actor(
 		)
 	).strip_edges()
 	var current_lens_key: String = (
-		_world_seed_ui_lens_key()
+		_resident_renderer_lens_key()
 	)
 
 	if (
@@ -200678,7 +200715,7 @@ func _queue_resident_main_tab_renderer_deck_prewarm(
 		deck = {
 			"actor_id": actor_id,
 			"world_seed_ui_lens_key": (
-				_world_seed_ui_lens_key()
+				_resident_renderer_lens_key()
 			),
 			"world_year": (
 				int(gs.year)
@@ -200697,6 +200734,8 @@ func _queue_resident_main_tab_renderer_deck_prewarm(
 			{}
 		)
 	)
+
+	var previous_contracts := deck_contracts.duplicate(false)
 
 	for raw_surface_id in real_contracts.keys():
 		var surface_id: String = str(
@@ -200837,7 +200876,7 @@ func _queue_resident_main_tab_renderer_deck_prewarm(
 					)
 				)
 
-		if existing_hot:
+		if existing_hot and previous_contracts.get(surface_id) == contract:
 			continue
 
 		var revision: String = str(
@@ -200977,7 +201016,7 @@ func _service_resident_main_tab_renderer_deck_prewarm() -> void:
 			deck = {
 				"actor_id": actor_id,
 				"world_seed_ui_lens_key": (
-					_world_seed_ui_lens_key()
+					_resident_renderer_lens_key()
 				),
 				"world_year": (
 					int(gs.year)
@@ -203380,7 +203419,8 @@ func _relationship_profile_stage_playable_life_shell_for_actor(actor: Person, su
 		"version": 1,
 		"actor_id": actor_id,
 		"actor_name": actor_name,
-		"life_diary_text": _relationship_profile_press_frame_lens_text_for_lines(life_lines, clean_switch_text),
+		"life_diary_text": "\n".join(life_lines.slice(0, 18)) if not life_lines.is_empty() else clean_switch_text,
+		"life_diary_lines": life_lines.slice(0, 18),
 		"life_diary_signature": signature,
 		"pending_situations_count": _pending_situations_count_for_actor(actor),
 		"current_panel": "life",
@@ -203553,20 +203593,12 @@ func _relationship_profile_life_diary_lines_for_shell(
 		"This life was already in motion before I took control."
 	]
 
-func _profile_switch_diary_bbcode(cache: Dictionary, fallback: String) -> String:
-	var text := str(cache.get("life_diary_text", "")).strip_edges()
-	if text.is_empty():
-		return fallback.strip_edges().replace("[", "[lb]")
-	# The scene adds header styling. Simulation packets carry plain journal text.
-	if cache.get("schema", "") == "eralife.relationship_profile.press_frame_lens_cache":
-		return text
-	return text.replace("[", "[lb]")
-
-func _replace_profile_switch_diary(bbcode: String) -> void:
-	# Committed entries append to this packet on the same frame. Keep the last
-	# paragraph complete and discard the previous actor's scrolling spacer.
-	output_label.text = bbcode.trim_suffix("\n") + "\n"
+func _replace_profile_switch_diary(lines: Array) -> void:
+	# Reset the previous actor's scroll spacer before appending the new entries.
+	output_label.clear()
 	output_label.set_meta("life_diary_focus_spacer_paragraph_count", 0)
+	for line in lines:
+		_append_formatted_life_diary_line(output_label, str(line))
 
 func _relationship_profile_press_frame_lens_text_for_lines(
 	life_lines: Array,
@@ -207137,9 +207169,6 @@ func _populate_relationship_popup_actions(target: Person) -> void:
 		elif not hide_befriend:
 			_relationship_profile_add_action_if_allowed("Befriend", "Befriend", target)
 
-	if _can_ask_out_target(target):
-		_relationship_profile_add_action_if_allowed("Ask Out", "Ask Out", target)
-
 	var romantic_target:= false
 	if gs.player != null:
 		var active_partner: Person = gs.get_valid_partner(gs.player, true, true)
@@ -207498,41 +207527,8 @@ func _open_relationship_profile_for_person_id(
 func _on_relationship_browser_target_pressed(npc_id: int) -> void:
 	_open_relationship_profile_for_person_id(npc_id, "relationship_contract_hub")
 func _can_ask_out_target(target: Person) -> bool:
-	if target == null or gs == null or gs.player == null:
-		return false
-	if not target.alive or not gs.player.alive:
-		return false
-	if int(target.id) == int(gs.player.id):
-		return false
+	return gs != null and gs.relationship_activities_engine != null and gs.relationship_activities_engine.can_ask_out(gs.player, target)
 
-	var relation_label:= _relationship_label_for_target(target)
-	var blocked_relation_labels:= [
-		"Father", "Mother",
-		"Brother", "Sister",
-		"Son", "Daughter", "Child",
-		"Father-in-Law", "Mother-in-Law",
-		"Brother-in-Law", "Sister-in-Law",
-		"Grandfather-in-Law", "Grandmother-in-Law",
-		"Great Grandfather-in-Law", "Great Grandmother-in-Law",
-		"Maternal Grandfather", "Maternal Grandmother",
-		"Paternal Grandfather", "Paternal Grandmother",
-		"Maternal Great Grandfather", "Maternal Great Grandmother",
-		"Paternal Great Grandfather", "Paternal Great Grandmother",
-		"Husband", "Wife",
-		"Fiancé", "Fiancée",
-		"Boyfriend", "Girlfriend",
-		"Partner"
-	]
-	if relation_label in blocked_relation_labels:
-		return false
-
-	var player_age: int = int(gs.player.age)
-	var target_age: int = int(target.age)
-	if player_age < 14:
-		return false
-	if player_age < 18:
-		return target_age >= 14 and target_age <= 17
-	return target_age >= 18
 func _standard_tab_add_money_card(title: String, amount: int) -> void:
 	if standard_tab_popup_right == null:
 		return
@@ -212853,6 +212849,8 @@ func _express_relationship_hub_panel_action(
 	if action_id == "":
 		action_id = "refresh"
 
+	if action_id == "meet_local_peer" and int(expression.get("actor_id", actor_id)) != actor_id:
+		return
 	expression ["actor_id"] = actor_id
 	expression ["action_id"] = action_id
 	expression ["section_id"] = str(
@@ -212897,6 +212895,13 @@ func _express_relationship_hub_panel_action(
 		report
 	)
 	cached_last_result = result.duplicate(true)
+
+	if action_id == "meet_local_peer" and result.get("success", false):
+		var introduced_id := int(result.get("target_id", -1))
+		var introduced := gs.get_npc_by_id(introduced_id)
+		if introduced != null:
+			_on_relationship_hub_full_profile_pressed(introduced_id, introduced, result.get("profile_contract", {}))
+			return
 
 	var hub_contract: Dictionary = ValueSceneSupport._safe_dictionary(
 		result.get(

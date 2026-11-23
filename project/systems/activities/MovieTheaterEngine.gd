@@ -5,6 +5,7 @@ const CONTRACT_SCHEMA:= "eralife.movie_theater_engine"
 const CONTRACT_VERSION:= 1
 
 var gs
+var ticket_payments_in_progress: Dictionary = {}
 var movie_theater_sessions_by_actor_id: Dictionary = {}
 var last_report: Dictionary = {}
 
@@ -249,12 +250,13 @@ func get_movie_lobby_rows(context: Dictionary = {}) -> Array:
 		actions.append({ "id": "movie_advance_line", "label": "Wait For Line To Move", "kind": "packet", "style": "primary"})
 	actions.append({ "id": "movie_back:movies", "label": "Back", "kind": "packet", "style": "secondary", "payload": { "target_section": "movies"}})
 	var status: String = "You are in the lobby."
-	if line_position >= 0 and not line_ready:
+	if ticket_bought:
+		status = "Ticket bought. You can grab food or enter the theater."
+	elif line_position >= 0 and not line_ready:
 		status = "You are standing in line. %d people are ahead of you." % line_position
 	elif line_ready:
 		status = "The cashier is ready for you."
-	elif ticket_bought:
-		status = "Ticket bought. You can grab food or enter the theater."
+
 	return [{
 		"id": "movie_lobby_status",
 		"label": "Lobby",
@@ -423,6 +425,8 @@ func select_movie(actor: Person, movie_id: String, _context: Dictionary = {}) ->
 	var movie: Dictionary = _movie_by_id(theater_id, movie_id)
 	if movie.is_empty():
 		return { "success": false, "reason": "Movie not found."}
+	if session.get("movie_id") == movie_id and bool(session.get("ticket_bought", false)):
+		return _make_action_report(actor, true, "concessions", "You already have a ticket for this movie.")
 	session ["movie_id"] = movie_id
 	session ["movie_title"] = str(movie.get("title", movie_id))
 	session ["genre"] = str(movie.get("genre", "Drama"))
@@ -469,12 +473,20 @@ func buy_ticket(actor: Person, context: Dictionary = {}) -> Dictionary:
 	var session: Dictionary = _session_for_actor(actor)
 	if str(session.get("movie_id", "")).strip_edges() == "":
 		return { "success": false, "reason": "Choose a movie first."}
+	if bool(session.get("ticket_bought", false)) or ticket_payments_in_progress.has(actor.id):
+		return _make_action_report(actor, false, "concessions", "You already have a ticket for this movie.")
 	var theater: Dictionary = get_theater(str(session.get("theater_id", "")))
 	var ticket_price: float = float(theater.get("ticket_price", 12.0))
-	var pay_report: Dictionary = _pay(actor, ticket_price, { "source": "movie_theater_ticket", "context": context.duplicate(true)})
+	# A payment can publish events synchronously. Reserve this ticket before charging.
+	ticket_payments_in_progress[actor.id] = true
+	var payment_context := context.duplicate()
+	payment_context["source"] = "movie_theater_ticket"
+	var pay_report: Dictionary = _pay(actor, ticket_price, payment_context)
+	ticket_payments_in_progress.erase(actor.id)
 	if not bool(pay_report.get("success", false)):
 		return _make_action_report(actor, false, "lobby", str(pay_report.get("reason", "I could not afford the movie ticket.")), { "mode": "movie_buy_ticket", "payment_report": pay_report.duplicate(true)})
 	session ["ticket_bought"] = true
+	session ["line_position"] = -1
 	session ["line_ready"] = false
 	session ["paid_total"] = float(session.get("paid_total", 0.0)) + ticket_price
 	session ["updated_year"] = _current_year()
@@ -487,7 +499,9 @@ func buy_concession(actor: Person, concession_id: String, context: Dictionary = 
 	if item.is_empty():
 		return { "success": false, "reason": "Concession item not found."}
 	var price: float = float(item.get("price", 0.0))
-	var pay_report: Dictionary = _pay(actor, price, { "source": "movie_theater_concession", "context": context.duplicate(true)})
+	var payment_context := context.duplicate()
+	payment_context["source"] = "movie_theater_concession"
+	var pay_report: Dictionary = _pay(actor, price, payment_context)
 	if not bool(pay_report.get("success", false)):
 		return _make_action_report(actor, false, "concessions", str(pay_report.get("reason", "I could not afford that concession.")), { "mode": "movie_buy_concession", "payment_report": pay_report.duplicate(true)})
 	var session: Dictionary = _session_for_actor(actor)
@@ -843,6 +857,9 @@ func _pay(actor: Person, amount: float, context: Dictionary = {}) -> Dictionary:
 		return { "success": true, "amount": 0.0}
 	if gs != null and gs.food_engine != null and gs.food_engine.has_method("_pay_for_food"):
 		return gs.food_engine._pay_for_food(actor, amount, context)
+	if gs != null and gs.bank_engine != null:
+		var account_context := context.merged({"currency": BankEngine.DEFAULT_CURRENCY}, true)
+		return gs.bank_engine.settle_obligation_for_actor(actor, amount, {"reason": context.get("source", "movie_purchase")}, account_context)
 	if actor.bank_balance < amount:
 		return { "success": false, "reason": "Not enough money.", "amount": amount}
 	actor.bank_balance -= amount

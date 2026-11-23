@@ -64,6 +64,13 @@ func _run() -> void:
 		and int(walker.get("contract_target_age", -1)) == 31,
 		"A new year resumed the stale age transaction"
 	)
+	runtime.runtime_phase_contracts["core_state_resolution"] = {"soft_budget_ms": 4, "hard_budget_ms": 12}
+	for elapsed_ms in [2, 6, 8, 14, 19, 21]:
+		runtime._record_phase_overflow_if_needed("core_state_resolution", elapsed_ms)
+	var overflows := runtime.runtime_phase_overflow_log
+	_check(overflows.size() == 2 and overflows[0].overflow_level == "soft"
+		and overflows[1].overflow_level == "hard",
+		"Repeated yearly walker slices reapplied the same budget governor")
 	# Crime eligibility must be enforced at the action owner as well as the UI.
 	state.player.age = 7
 	var crime := CrimeEngine.new(state)

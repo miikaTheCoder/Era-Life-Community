@@ -3,7 +3,11 @@ extends SceneTree
 # Run with Godot 4.4.1, an isolated XDG_DATA_HOME and a graphical display.
 # ERA_MODE selects narrative-family, narrative-continue, household, god, or restore.
 # ERA_PREVIEW_DIR optionally records screenshots. No existing saves are used.
+# ERA_R17=1 follows visible family and work choices and logs elapsed time.
+# Use the same profile with restore for each fresh-process lifetime segment.
 var mode := OS.get_environment("ERA_MODE")
+var r17_playtest := OS.get_environment("ERA_R17") == "1"
+var mortality_probe := OS.get_environment("ERA_R17_MORTALITY") == "1" and DisplayServer.get_name() == "headless"
 var failed := false
 var origin_mode := ""
 var years_per_run := 1
@@ -19,6 +23,10 @@ const RUNTIME_SHORTCUT_LABELS := {
 }
 
 func _initialize() -> void:
+	if r17_playtest and DisplayServer.get_name() == "headless":
+		# The dummy renderer has no presentation callback. Schedule the same
+		# deferred scene work that a rendered frame would release on desktop.
+		process_frame.connect(func(): RenderingServer.frame_post_draw.emit())
 	call_deferred("_run")
 
 func _check(ok: bool, message: String) -> bool:
@@ -165,12 +173,26 @@ func _click(control: Control) -> bool:
 		return false
 	if control is BaseButton and not _check(not control.disabled, "Disabled control: " + control.name):
 		return false
+	# The headless mortality sample exercises the same bound Age Up action.
+	# Desktop samples continue through the full pointer press and release.
+	if mortality_probe and control is Button and control.text.strip_edges().to_upper() == "AGE UP":
+		control.pressed.emit()
+		await process_frame
+		return true
+	var clicked_label: String = control.text if control is Button else ""
 	var parent := control.get_parent()
 	while parent != null:
 		if parent is ScrollContainer:
 			parent.ensure_control_visible(control)
 		parent = parent.get_parent()
 	await create_timer(0.2).timeout
+	if r17_playtest and not is_instance_valid(control):
+		for candidate in current_scene.find_children("*", "Button", true, false):
+			if candidate.is_visible_in_tree() and not candidate.disabled and candidate.text == clicked_label and not candidate.is_queued_for_deletion():
+				control = candidate
+				break
+	if not _check(is_instance_valid(control), "Control disappeared before click: " + clicked_label):
+		return false
 	print("DESKTOP CLICK: ", control.name, " rect=", control.get_global_rect())
 	# Retain the input boundary, not just the later simulation timeout. Do not
 	# retry or dispatch an action directly when a real button click is lost.
@@ -212,7 +234,7 @@ func _run() -> void:
 	origin_mode = mode
 	var requested_years := OS.get_environment("ERA_YEARS")
 	if not requested_years.is_empty():
-		years_per_run = clampi(int(requested_years), 0, 30)
+		years_per_run = clampi(int(requested_years), 0, 130 if mortality_probe else 30)
 	if not _check(not OS.get_environment("XDG_DATA_HOME").is_empty(), "Use scripts/test-desktop-modes.sh to isolate test saves"):
 		quit(1)
 		return
@@ -386,14 +408,244 @@ func _age_and_save() -> void:
 		var parent: Person = state.get_npc_by_id(int(parent_id))
 		_check(parent != null and parent.children.has(state.player_id), "Created life has a one-way parent link")
 	var previous_entries: Array = state.scenario_state.get("life_diary_state_by_npc", {}).get(str(state.player_id), {}).get("entries", []).duplicate(true)
+	if r17_playtest:
+		print("R17 READY ms=", Time.get_ticks_msec(), " world_seed=", state.scenario_state.get("world_seed"), " catalog=", state.scenario_runtime_contract_engine._ensure_life_story_engine().catalog.size())
 	for offset in range(years_per_run):
-		if not await _advance_one_year():
+		if r17_playtest and not state.player.alive:
+			await _r17_afterlife()
 			return
+		if r17_playtest:
+			var pending: Button = current_scene.get("pending_situations_button")
+			if is_instance_valid(pending) and pending.is_visible_in_tree():
+				print("R17 LIFE age=", state.player.age, " ", pending.text)
+			if not mortality_probe:
+				await _r17_pending()
+			if not mortality_probe and state.player.age in [18, 25, 32, 40, 48, 50]:
+				await _r17_work()
+		if r17_playtest and not mortality_probe and state.player.age in [4, 10, 18, 28, 45, 60, 68, 78]:
+			await _r17_visit_family()
+			if failed:
+				return
+		var started := Time.get_ticks_msec()
+		if not await _advance_one_year():
+			if r17_playtest and not state.player.alive:
+				await _r17_afterlife()
+			elif r17_playtest:
+				await _capture("stopped-at-%d" % state.player.age)
+			return
+		if r17_playtest:
+			print("R17 YEAR ms=", Time.get_ticks_msec() - started, " diary=", current_scene.get("output_label").get_parsed_text().right(1200))
 		print("DESKTOP YEAR: ", JSON.stringify({"mode": origin_mode, "years_completed": years_completed, "age": state.player.age, "year": state.year, "alive": state.player.alive, "health": state.player.health, "money": state.player.bank_balance, "job": state.player.job, "school_status": state.player.school_status, "education_level": state.player.education_level, "friends": state.player.friends.size(), "children": state.player.children.size()}))
 	await _capture("aged-%d" % state.player.age)
 	if OS.get_environment("ERA_EXPLORE") == "1":
 		await _inspect_gameplay()
 	await _save(previous_entries)
+
+func _r17_afterlife() -> void:
+	var state: GameState = current_scene.get("gs")
+	var founder := state.player
+	print("R17 DEATH age=", founder.age, " reason=", founder.cause_of_death, " balance=", founder.bank_balance)
+	await _capture("death")
+	var evidence_dir := OS.get_environment("ERA_PREVIEW_DIR")
+	if not evidence_dir.is_empty():
+		var payload := GameStateSerializationRuntime.new(state)._build_interactive_checkpoint_payload()
+		var checkpoint := FileAccess.open(evidence_dir.path_join("natural-death.bin"), FileAccess.WRITE)
+		if _check(checkpoint != null, "Cannot preserve terminal checkpoint"):
+			checkpoint.store_buffer(BinarySaveEngine.encode(payload))
+			checkpoint.close()
+	for stage in ["death_transition_buttons", "afterlife_overlay_buttons", "afterlife_overlay_buttons"]:
+		var present := func():
+			var surface: Control = current_scene.get(stage)
+			return is_instance_valid(surface) and surface.is_visible_in_tree()
+		if not await _wait_for(present, 12) and stage == "death_transition_buttons":
+			print("R17 DEATH SCREEN ", JSON.stringify({"afterlife": state.afterlife_active, "pending": state.afterlife_state.get("pending_mode"), "surface_reason": state.scenario_state.get("controlled_death_prompt_surface_reason"), "tail_pending": state.scenario_state.get("age_up_tail_runtime_pending")}))
+			await _capture("missing-death-menu")
+			for b in current_scene.find_children("*", "Button", true, false):
+				if b.text.strip_edges().to_upper() == "AGE UP" and b.is_visible_in_tree() and not b.disabled:
+					print("R17 DEATH SCREEN pressed visible Age Up")
+					await _click(b)
+					break
+		if not _check(await _wait_for(present, 6), "Death menu missing"):
+			await _capture("death-menu-stalled")
+			return
+		var box: Control = current_scene.get(stage)
+		var buttons := box.find_children("*", "Button", true, false).filter(func(b): return b.is_visible_in_tree() and not b.disabled)
+		print("R17 AFTERLIFE ", buttons.map(func(b): return b.text))
+		var selected: Button = null
+		for b in buttons:
+			if stage == "death_transition_buttons" and b.text == "Continue Lineage":
+				selected = b
+			elif stage == "afterlife_overlay_buttons" and b.text == "Continue Lineage + Inheritance":
+				selected = b
+			elif stage == "afterlife_overlay_buttons" and selected == null and b.text not in ["Continue Lineage", "Back to life choices", "Choose someone else"]:
+				selected = b
+		if selected == null:
+			print("R17 No eligible lineage choice")
+			await _capture("no-heir")
+			return
+		var balances := {}
+		for actor in state.npcs:
+			balances[actor.id] = actor.bank_balance
+		var inherit := selected.text == "Continue Lineage + Inheritance"
+		var assets := {}
+		var businesses := FamilyBusinessEngine.new(state)
+		var stakes := {}
+		if inherit:
+			for venture in businesses.ventures_for(founder.id):
+				stakes[venture.id] = [venture.stakes.duplicate(true), businesses.balance(venture)]
+			for key in ["properties", "vehicles", "belongings"]:
+				var engine = state.get({"properties":"property_engine", "vehicles":"vehicle_engine", "belongings":"belongings_engine"}[key])
+				if engine != null:
+					assets[key] = engine.get(key).duplicate(true)
+			print("R17 ESTATE BEFORE ", JSON.stringify({"assets": assets, "stakes": stakes, "cash": balances[founder.id]}))
+		await _click(selected)
+		await create_timer(1).timeout
+		if inherit:
+			if not _check(await _wait_for(func(): return state.player_id != founder.id, 60), "Inheritance did not hand over control"):
+				return
+			_check(state.player.bank_balance == balances[state.player_id] + balances[founder.id] and founder.bank_balance == 0, "Estate balance mismatch")
+			for key in assets:
+				var engine = state.get({"properties":"property_engine", "vehicles":"vehicle_engine", "belongings":"belongings_engine"}[key])
+				var owners: Dictionary = engine.get(key)
+				if assets[key].has(founder.id):
+					var expected = assets[key][founder.id]
+					if expected is Array:
+						expected = assets[key].get(state.player_id, []) + expected
+					_check(not owners.has(founder.id) and owners.get(state.player_id) == expected, "Estate ownership mismatch: " + key)
+			for id in stakes:
+				var venture: Dictionary = state.scenario_state.family_businesses.ventures[id]
+				var prior: Dictionary = stakes[id][0]
+				_check(venture.stakes.get(str(state.player_id), 0) == prior.get(str(state.player_id), 0) + prior[str(founder.id)] and businesses.balance(venture) == stakes[id][1], "Business inheritance mismatch")
+			var memory: String = current_scene.get("output_label").get_parsed_text()
+			_check(founder.first_name in memory and founder.last_name in memory, "Heir diary did not name the previous life")
+			print("R17 ESTATE AFTER founder=", founder.bank_balance, " heir=", state.player.bank_balance, " diary=", memory.right(900))
+			await _capture("heir")
+			await _r17_visit_family()
+			if await _advance_one_year():
+				await _save([])
+			return
+
+func _r17_work() -> void:
+	if not await _click(_navigation_button("career")):
+		return
+	await create_timer(1).timeout
+	for step in range(4):
+		var options := current_scene.find_children("*", "Button", true, false).filter(func(b): return b.is_visible_in_tree() and not b.disabled)
+		print("R17 CAREER ", options.map(func(b): return b.text))
+		var selected: Button = null
+		var preferences := ["apply", "browse occupations", "part-time", "explore"]
+		for label in preferences:
+			if label == "part-time" and step > 1:
+				continue
+			for b in options:
+				if b.text.strip_edges().to_lower() == label:
+					selected = b
+					break
+			if selected != null:
+				break
+		if selected == null:
+			break
+		await _click(selected)
+		await create_timer(0.5).timeout
+		if selected.text.strip_edges().to_lower() in ["apply", "explore"]:
+			break
+	await _capture("career-%d" % current_scene.get("gs").player.age)
+	for attempts in range(4):
+		var card: Control = current_scene.get("action_result_popup_card")
+		if is_instance_valid(card) and card.is_visible_in_tree():
+			await _click_at(card.get_global_rect().get_center())
+			continue
+		var panel: Control = current_scene.get("career_hub_panel")
+		if not is_instance_valid(panel) or not panel.is_visible_in_tree():
+			break
+		var close: Button = null
+		for b in panel.find_children("*", "Button", true, false):
+			if b.is_visible_in_tree() and b.text.strip_edges() == "CLOSE OVERVIEW":
+				close = b
+				break
+			if b.is_visible_in_tree() and "RETURN TO LIFE" in b.text:
+				close = b
+		if close == null:
+			break
+		await _click(close)
+		await create_timer(0.5).timeout
+	await _click(_navigation_button("life"))
+
+func _r17_pending() -> void:
+	var pending: Button = current_scene.get("pending_situations_button")
+	if not is_instance_valid(pending) or not pending.is_visible_in_tree() or pending.disabled or "(0)" in pending.text:
+		return
+	print("R17 PENDING ", pending.text)
+	if not await _click(pending):
+		return
+	await create_timer(0.5).timeout
+	var viewer: PopupViewer = current_scene.get("popup_viewer")
+	if not is_instance_valid(viewer):
+		return
+	for step in range(6):
+		if not viewer.is_visible_in_tree():
+			break
+		var choosing := viewer.options_box.get_children().any(func(b): return b is Button and b.is_visible_in_tree() and not b.disabled and not b.is_queued_for_deletion())
+		var container := viewer.options_box if choosing else viewer.list_box
+		var options := container.find_children("*", "Button", true, false).filter(func(b): return b.is_visible_in_tree() and not b.disabled and not b.is_queued_for_deletion() and not b.text.contains("Back"))
+		if options.is_empty():
+			break
+		var selected: Button = options[0]
+		for b in options:
+			if ["together", "help", "listen", "family", "visit", "work", "support"].any(func(word): return word in b.text.to_lower()):
+				selected = b
+				break
+		print("R17 SITUATION ", viewer.title_label.text, " ", viewer.body_label.get_parsed_text(), " -> ", selected.text)
+		await _capture("pending-%d-%d" % [current_scene.get("gs").player.age, step])
+		await _click(selected)
+		await create_timer(0.4).timeout
+		if choosing:
+			break
+	var result: Control = current_scene.get("action_result_popup_card")
+	if is_instance_valid(result) and result.is_visible_in_tree():
+		print("R17 RESULT ", current_scene.get("action_result_popup_title").text)
+		await _click_at(result.get_global_rect().get_center())
+		await _wait_for(func(): return viewer.is_visible_in_tree(), 3)
+	if viewer.is_visible_in_tree():
+		for b in viewer.find_children("*", "Button", true, false):
+			if b.is_visible_in_tree() and b.text == "X":
+				await _click(b)
+				break
+	await _click(_navigation_button("life"))
+
+func _r17_visit_family() -> void:
+	if not await _click(_navigation_button("relationships")):
+		return
+	await create_timer(1).timeout
+	var visit_partner: bool = current_scene.get("gs").player.age in [68, 78]
+	for step in range(3 if visit_partner else 2):
+		var options := current_scene.find_children("*", "Button", true, false).filter(func(b): return b.is_visible_in_tree() and not b.disabled and not b.is_queued_for_deletion())
+		print("R17 FAMILY ", options.map(func(b): return b.text))
+		var preferred := ["Open full relationship profile"] if step == 0 else ["Spend Time Together", "Converse", "Compliment", "Whine to be Held", "Show Affection"]
+		if visit_partner:
+			preferred = ["PARTNER"] if step == 0 else ["Find a Date", "Find Love", "Go on a Date", "Spend Time Together", "Converse", "Open full relationship profile"]
+		var picked := false
+		for b in options:
+			if b.text.strip_edges().to_lower() in preferred.map(func(label): return label.to_lower()):
+				print("R17 VISIT ", b.text)
+				await _click(b)
+				await create_timer(1).timeout
+				picked = true
+				break
+		if not picked:
+			break
+	await _capture("family-%d" % current_scene.get("gs").player.age)
+	for step in range(3):
+		var closed := false
+		for b in current_scene.find_children("*", "Button", true, false):
+			if b.is_visible_in_tree() and b.text.strip_edges() in ["Back", "×", "X", "← RETURN TO LIFE"]:
+				await _click(b)
+				closed = true
+				break
+		if not closed:
+			break
+
+	await _click(_navigation_button("life"))
 
 func _inspect_gameplay() -> void:
 	for tab in ["school", "career", "relationships"]:
@@ -453,11 +705,14 @@ func _advance_one_year() -> bool:
 		if button.is_visible_in_tree() and button.text.to_upper().strip_edges() == "AGE UP":
 			age_button = button
 			break
+	var pressed_at := Time.get_ticks_msec()
 	if not await _click(age_button):
 		return false
 	var deadline := Time.get_ticks_msec() + 90000
 	var prompt_count := 0
 	while state.year <= old_year and Time.get_ticks_msec() < deadline:
+		if r17_playtest and not state.player.alive:
+			return false
 		if await _answer_blocking_prompt():
 			prompt_count += 1
 			if not _check(prompt_count <= 12, "Choices keep returning without allowing the year to advance"):
@@ -465,15 +720,21 @@ func _advance_one_year() -> bool:
 			if state.year <= old_year:
 				await _click(age_button)
 		await create_timer(0.2).timeout
+	if r17_playtest and not state.player.alive:
+		return false
 	if not _check(state.year > old_year and state.player.age > old_age, "Age Up did not advance the simulation"):
 		await _capture("age-stalled")
 		print("DESKTOP STALL: ", current_scene.get("cached_last_result"))
 		return false
-	await create_timer(4).timeout
+	if r17_playtest:
+		print("R17 AGE CHANGE age=", state.player.age, " input_to_age_ms=", Time.get_ticks_msec() - pressed_at)
+	await create_timer(0.25 if r17_playtest and DisplayServer.get_name() == "headless" else 4.0).timeout
 	if not _check(await _wait_for(func(): return not state.scenario_state.get("age_up_tail_runtime_pending", false), 90), "Yearly simulation did not finish after age changed"):
 		var stalled_runtime: AgeUpRuntimeEngine = state.life_engine.runtime_engine
 		print("DESKTOP YEAR STALL: ", JSON.stringify({"age": state.player.age, "year": state.year, "phase_cursor": stalled_runtime.runtime_slice_phase_cursor, "phase_order": stalled_runtime.runtime_slice_order, "narrative_progress": stalled_runtime.active_year_context.get("narrative_progress"), "last_report": state.scenario_state.get("age_up_tail_runtime_last_autonomous_report", {})}))
 		await _capture("year-stalled")
+		return false
+	if r17_playtest and not state.player.alive:
 		return false
 	var year_report: Dictionary = state.scenario_state.get("age_up_tail_runtime_last_autonomous_report", {})
 	print("DESKTOP YEAR RUNTIME: ", JSON.stringify({"mode": year_report.get("mode"), "success": year_report.get("success"), "complete": year_report.get("is_complete")}))
@@ -570,7 +831,8 @@ func _save(previous_entries: Array) -> void:
 		diary = {"entries": state.life_diary_contract_engine.diary_entries_for_actor(state.player_id)}
 	_check(not diary.get("entries", []).is_empty(), "Aged life has no diary to preserve")
 	for old_entry in previous_entries:
-		_check(old_entry in diary.get("entries", []), "Aging after reload lost an earlier diary year")
+		# An action before Age Up can append to the restored year's entry.
+		_check(diary.get("entries", []).any(func(row): return row is Array and row.slice(0, old_entry.size()) == old_entry), "Aging after reload lost an earlier diary year")
 	_check(diary.get("entries", []) == payload.scenario_state.get("life_diary_state_by_npc", {}).get(str(state.player_id), {}).get("entries", []), "Save did not capture the current diary")
 	var expected := {"path": path, "mode": origin_mode, "years_completed": years_completed, "checkpoints_restored": checkpoints_restored, "id": state.player_id, "first_name": state.player.first_name, "last_name": state.player.last_name, "age": state.player.age, "year": state.year, "money": state.player.bank_balance, "parents": state.player.parents, "diary": diary, "world_feed": payload.get("world_feed", []), "household": state.scenario_state.get("custom_household_member_index", {}), "story": state.scenario_state.get("choose_adventure", {})}
 	expected["player_fields"] = {}
@@ -601,6 +863,7 @@ func _restore() -> void:
 	choices_made = int(expected.get("choices_made", 0))
 	if not _check(await _wait_for(func(): return current_scene.call("_title_card_continue_available"), 60), "Saved life is not available from the title screen"):
 		return
+	var continue_ms := Time.get_ticks_msec()
 	for pressed in [true, false]:
 		var key := InputEventKey.new()
 		key.keycode = KEY_C
@@ -609,12 +872,15 @@ func _restore() -> void:
 		await process_frame
 	if not _check(await _wait_for(func(): return current_scene.call("_playable_life_shell_has_visible_sovereignty"), 125), "Continue did not restore gameplay"):
 		return
+	var first_frame_ms := Time.get_ticks_msec()
 	var first_frame_state: GameState = current_scene.get("gs")
 	print("DESKTOP RESUME FIRST FRAME: ", JSON.stringify({"age": first_frame_state.player.age, "year": first_frame_state.year, "affection": first_frame_state.player.affection}))
 	# The first playable frame precedes background checkpoint hydration.
 	if not _check(await _wait_for(_hydration_complete, 90), "Checkpoint hydration did not finish"):
 		return
 	var state: GameState = current_scene.get("gs")
+	if r17_playtest:
+		print("R17 CONTINUE input_to_ready_ms=", Time.get_ticks_msec() - continue_ms, " frame_to_ready_ms=", Time.get_ticks_msec() - first_frame_ms)
 	_verify_shared_checkpoint(saved_payload, state)
 	for field in ["id", "first_name", "last_name", "age"]:
 		_check(state.player.get(field) == expected[field], "Reload changed player " + field)

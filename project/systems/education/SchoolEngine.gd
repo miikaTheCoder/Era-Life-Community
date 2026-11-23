@@ -2009,6 +2009,84 @@ func graduate_if_ready(person: Person) -> Dictionary:
 
 
 
+func checkpoint_school_state(actor_ids: Array) -> Dictionary:
+	var students := {}
+	var records := {}
+	for id in actor_ids:
+		if enrollment.has(id):
+			students[id] = enrollment[id]
+		if school_academic_records.has(str(id)):
+			records[str(id)] = school_academic_records[str(id)]
+	var rosters := {}
+	var teachers := {}
+	for key in school_rosters:
+		var roster: Array = school_rosters[key].filter(func(id): return int(id) in actor_ids)
+		if not roster.is_empty():
+			rosters[key] = roster
+	for key in school_teachers:
+		var staff: Array = school_teachers[key].filter(func(id): return int(id) in actor_ids)
+		if not staff.is_empty():
+			teachers[key] = staff
+	return {"school_enrollment": students, "school_rosters": rosters,
+		"school_teachers": teachers, "school_academic_records": records}
+
+
+func restore_school_state(data: Dictionary) -> void:
+	if data.has("school_enrollment"):
+		enrollment = {}
+		for key in data.school_enrollment:
+			enrollment[int(key)] = data.school_enrollment[key].duplicate(true)
+		school_rosters = _restore_school_member_ids(data.get("school_rosters", {}))
+		school_teachers = _restore_school_member_ids(data.get("school_teachers", {}))
+		school_academic_records = data.get("school_academic_records", {}).duplicate(true)
+	elif data.get("meta", {}).get("checkpoint_save", false):
+		# Older compact checkpoints only saved the student's displayed fields.
+		enrollment = {}
+		school_rosters = {}
+		school_teachers = {}
+		school_academic_records = {}
+		for row in data.get("npcs", []):
+			var mode := str(row.get("school_mode", ""))
+			var status := str(row.get("school_status", ""))
+			var school := str(row.get("school_name", ""))
+			if status in ["", "None"] or school in ["", "None"]:
+				continue
+			var rec := {"mode": mode, "status": status, "school_name": school}
+			var locations := {mode: school}
+			match mode:
+				"era_school":
+					rec["program"] = str(row.get("education_level", school))
+				"dual":
+					var parts := school.split(" and ", true, 1)
+					if parts.size() != 2:
+						continue
+					rec.merge({"era_school": parts[0], "bending_school": parts[1]})
+					locations = {"era_school": parts[0], "bending_school": parts[1]}
+				"college_major":
+					rec["major"] = str(row.get("education_level", "")).trim_prefix("College - ")
+				"graduate_school":
+					rec["graduate_school"] = str(row.get("education_level", school))
+				"bending_school":
+					pass
+				_:
+					continue
+			var id := int(row.id)
+			enrollment[id] = rec
+			if status == "active":
+				for type in locations:
+					var key := "%s|%s|%s" % [data.get("era_name", ""), type, locations[type]]
+					_register_student_in_roster(id, key)
+	gs.school_rosters = school_rosters
+
+
+func _restore_school_member_ids(groups: Dictionary) -> Dictionary:
+	var normalized := {}
+	for key in groups:
+		var ids: Array = groups[key]
+		normalized[key] = ids.map(func(id): return int(id))
+	return normalized
+
+
 func sync_person_school_fields(person: Person) -> void:
 	if person == null:
 		return

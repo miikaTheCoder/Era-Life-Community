@@ -415,6 +415,7 @@ var awaiting_new_life: bool = false
 
 const REWIND_LIMIT:= 3
 var rewind_snapshot_paths: Array = []
+var _rewind_temp_path: String = ""
 var rewind_uses_remaining: int = REWIND_LIMIT
 var afterlife_influence_engine
 var afterlife_active: bool = false
@@ -13328,6 +13329,7 @@ func sync_person_death_state_from_health(p: Person, cause: String = "Health depl
 	p.cause_of_death = safe_cause
 	if "death_year" in p:
 		p.death_year = int(year)
+	settle_new_npc_estate(p)
 	queue_known_person_death_message(p)
 	return true
 func _remember_npc_in_index(npc: Person) -> void:
@@ -16970,6 +16972,18 @@ func _checkpoint_resume_main_tab_surface_contracts_for_actor(
 			] = contract.duplicate(false)
 
 	return merged
+
+
+func checkpoint_diary_entries(actor_id: int) -> Array:
+	if life_diary_contract_engine != null:
+		var entries: Array = life_diary_contract_engine.diary_entries_for_actor(actor_id, {"read_only": true})
+		if not entries.is_empty():
+			return entries
+	var saved: Dictionary = _safe_dictionary(scenario_state.get("life_diary_state_by_npc", {}))
+	var row: Dictionary = _safe_dictionary(saved.get(str(actor_id), {}))
+	return EraUtils.safe_array(row.get("entries", [])).duplicate(true)
+
+
 func _enrich_current_life_checkpoint_resume_presentation(
 	checkpoint_commit: Dictionary,
 	save_options: Dictionary = {}
@@ -17017,55 +17031,7 @@ func _enrich_current_life_checkpoint_resume_presentation(
 	if current_panel == "":
 		current_panel = "life"
 
-	var diary_entries: Array = []
-	var diary_store_raw: Variant = scenario_state.get(
-		"life_diary_state_by_npc",
-		{}
-	)
-
-	if typeof(diary_store_raw) == TYPE_DICTIONARY:
-		var diary_store: Dictionary = diary_store_raw as Dictionary
-		var diary_bucket_raw: Variant = diary_store.get(
-			actor_key,
-			{}
-		)
-
-		if typeof(diary_bucket_raw) == TYPE_DICTIONARY:
-			var diary_bucket: Dictionary = diary_bucket_raw as Dictionary
-			var entries_raw: Variant = diary_bucket.get(
-				"entries",
-				[]
-			)
-
-			if typeof(entries_raw) == TYPE_ARRAY:
-				diary_entries = (
-					entries_raw as Array
-				).duplicate(true)
-
-	if (
-		diary_entries.is_empty()
-		and life_diary_contract_engine != null
-		and life_diary_contract_engine.has_method(
-			"diary_entries_for_actor"
-		)
-	):
-		var engine_entries_raw: Variant = (
-			life_diary_contract_engine.diary_entries_for_actor(
-				actor_id,
-				{
-					"source": (
-						"checkpoint_resume_presentation_capture"
-					),
-					"read_only": true
-				}
-			)
-		)
-
-		if typeof(engine_entries_raw) == TYPE_ARRAY:
-			diary_entries = (
-				engine_entries_raw as Array
-			).duplicate(true)
-
+	var diary_entries := checkpoint_diary_entries(actor_id)
 	var latest_diary_lines: Array = []
 
 	for entry_index in range(
@@ -20132,6 +20098,9 @@ func _npc_is_dormancy_protected(
 
 	if not npc.alive:
 		return true
+	for claim in scenario_state.get(FamilyContractEngine.PENDING_LINEAGE_ESTATES, {}).values():
+		if int(claim.heir_id) == npc.id:
+			return true
 
 
 
@@ -20973,6 +20942,13 @@ func _unique_positive_ids(values: Array) -> Array:
 		if id_value > 0 and id_value not in out:
 			out.append(id_value)
 	return out
+func settle_new_npc_estate(deceased: Person) -> void:
+	if deceased == null or deceased.alive or deceased == player or should_skip_manual_player_inheritance(deceased.id):
+		return
+	if family_control_engine == null:
+		family_control_engine = FamilyControlEngine.new(self)
+	family_control_engine.handle_spousal_estate_inheritance(deceased)
+
 func queue_known_person_death_message(dead_person: Person) -> void:
 	if dead_person == null or player == null:
 		return
@@ -21044,6 +21020,12 @@ func _try_apply_family_inheritance(dead_person: Person, relationship_label: Stri
 	if dead_person == null or player == null:
 		return { "success": false}
 
+	# An executed or bank-restricted estate has a designated beneficiary and
+	# a single payout. Its funeral cannot offer an additional cash award.
+	var estate: Dictionary = dead_person.person_contract.get("family", {}).get("estate", {})
+	if estate.get("execution", {}).get("executed", false) or scenario_state.get(FamilyContractEngine.PENDING_LINEAGE_ESTATES, {}).has(str(dead_person.id)):
+		return {"success": false}
+
 	if not _family_inheritance_relationship_allows_notice(relationship_label):
 		return { "success": false}
 
@@ -21099,7 +21081,8 @@ func _try_apply_family_inheritance(dead_person: Person, relationship_label: Stri
 	}
 func _finalize_dormant_death(
 	d: Dictionary,
-	fallback_id: int
+	fallback_id: int,
+	newly_deceased: bool = false
 ) -> void:
 	var npc_id:= int(
 		d.get(
@@ -21138,6 +21121,19 @@ func _finalize_dormant_death(
 			npc_id
 		)
 
+	# Keep an actor-backed estate for a known living beneficiary before the
+	# dormant row is replaced by a graveyard summary.
+	var deceased: Person = null
+	if newly_deceased:
+		var relatives: Array = [d.get("partner_id", -1)]
+		relatives.append_array(EraUtils.safe_array(d.get("children", [])))
+		relatives.append_array(EraUtils.safe_array(d.get("parents", [])))
+		for relative_id in relatives:
+			if int(relative_id) > 0 and is_npc_alive_anywhere(int(relative_id)):
+				deceased = get_or_reactivate_npc_by_id(npc_id)
+				settle_new_npc_estate(deceased)
+				break
+
 	if event_bus != null:
 		event_bus.emit(
 			ActionEventTypes.NPC_DIED,
@@ -21147,10 +21143,10 @@ func _finalize_dormant_death(
 			)
 		)
 
-	_queue_known_person_death_message_from_snapshot(
-		d,
-		npc_id
-	)
+	if deceased != null:
+		queue_known_person_death_message(deceased)
+	else:
+		_queue_known_person_death_message_from_snapshot(d, npc_id)
 
 	npc_graveyard [
 		npc_id
@@ -22234,10 +22230,7 @@ func simulate_dormant_population(
 				true
 			)
 		):
-			_finalize_dormant_death(
-				d,
-				int(id)
-			)
+			_finalize_dormant_death(d, int(id), was_alive)
 		else:
 			d ["_query_facts"] = (
 				_extract_queryable_npc_facts(
@@ -22888,11 +22881,14 @@ func _collect_family_ids_anywhere(id: int, result: Array, visited: Dictionary) -
 func should_skip_manual_player_inheritance(dead_id: int) -> bool:
 	if dead_id <= 0:
 		return false
-	if not afterlife_active:
-		return false
-	if int(afterlife_state.get("ghost_player_id", -1)) != dead_id:
-		return false
-	return bool(afterlife_state.get("manual_player_inheritance_authority", false))
+	# Mortality can publish the death before the year-end choice screen opens.
+	if player != null and player.id == dead_id and not player.alive:
+		return true
+	if afterlife_active and int(afterlife_state.get("ghost_player_id", -1)) == dead_id:
+		return bool(afterlife_state.get("manual_player_inheritance_authority", false))
+	# Deferred death subscribers can also run after a confirmed profile switch.
+	var deceased := get_npc_by_id(dead_id)
+	return deceased != null and not deceased.alive and deceased.person_contract.get("manual_estate_death_year") == deceased.death_year
 func register_controlled_character(npc_id: int) -> void:
 	npc_id = int(npc_id)
 	if npc_id <= 0:
@@ -22931,7 +22927,25 @@ func _ensure_rewind_dir() -> void:
 	if root != null and not root.dir_exists("rewind_cache"):
 		root.make_dir("rewind_cache")
 
+func _discard_rewind_temp_file() -> void:
+	if not _rewind_temp_path.is_empty():
+		DirAccess.remove_absolute(_rewind_temp_path)
+		_rewind_temp_path = ""
+
+func _fail_rewind_snapshot_write(bucket: Dictionary, error: int, keep_recovery: bool = false) -> void:
+	var path: String = str(bucket.get("path", ""))
+	bucket.clear()
+	bucket.merge({"active": false, "stage": "complete", "success": false,
+		"path": path, "reason": "write_failed", "io_error": error})
+	if keep_recovery:
+		bucket["recovery_path"] = _rewind_temp_path
+		_rewind_temp_path = ""
+	else:
+		_discard_rewind_temp_file()
+
 func reset_rewind_support_for_new_life() -> void:
+	_discard_rewind_temp_file()
+	scenario_state.erase("rewind_snapshot_pipeline")
 	for path_value in rewind_snapshot_paths:
 		var rewind_path: String = str(path_value)
 		if FileAccess.file_exists(rewind_path):
@@ -22957,6 +22971,7 @@ func capture_rewind_snapshot() -> void:
 		return
 	if typeof(scenario_state) != TYPE_DICTIONARY:
 		scenario_state = {}
+	_discard_rewind_temp_file()
 	scenario_state ["rewind_snapshot_pipeline"] = {
 		"active": true,
 		"stage": "delay",
@@ -23183,16 +23198,21 @@ func step_rewind_snapshot_pipeline(max_steps: int = 1) -> bool:
 					bucket ["stage"] = "save_write_flush_open"
 
 			"save_write_flush_open":
+				var rewind_path: String = str(bucket.get("path", "")).strip_edges()
+				var bytes: PackedByteArray = bucket.get("_write_bytes", PackedByteArray())
+				if rewind_path.is_empty() or bytes.is_empty():
+					_fail_rewind_snapshot_write(bucket, ERR_INVALID_DATA)
+					continue
+				_rewind_temp_path = "%s.%s.tmp" % [rewind_path, Crypto.new().generate_random_bytes(16).hex_encode()]
 				bucket ["_write_file_offset"] = 0
 				bucket ["_write_file_started"] = false
 				bucket ["stage"] = "save_write_flush_chunks"
 
 			"save_write_flush_chunks":
-				var rewind_path: String = str(bucket.get("path", "")).strip_edges()
 				var bytes_raw: Variant = bucket.get("_write_bytes", PackedByteArray())
 				var bytes: PackedByteArray = bytes_raw if typeof(bytes_raw) == TYPE_PACKED_BYTE_ARRAY else PackedByteArray()
 				var file_offset: int = int(bucket.get("_write_file_offset", 0))
-				var file_chunk_size: int = int(bucket.get("_write_file_chunk_size", 131072))
+				var file_chunk_size: int = max(1, int(bucket.get("_write_file_chunk_size", 131072)))
 				var file_started: bool = bool(bucket.get("_write_file_started", false))
 
 				if file_offset >= bytes.size():
@@ -23202,27 +23222,55 @@ func step_rewind_snapshot_pipeline(max_steps: int = 1) -> bool:
 				var chunk_end: int = min(file_offset + file_chunk_size, bytes.size())
 				var chunk: PackedByteArray = bytes.slice(file_offset, chunk_end)
 				var mode: int = FileAccess.WRITE_READ if not file_started else FileAccess.READ_WRITE
-				var f = FileAccess.open(rewind_path, mode)
-				if f != null:
-					f.seek(file_offset)
-					f.store_buffer(chunk)
-					f.close()
-					bucket ["_write_file_started"] = true
-					bucket ["_write_file_offset"] = chunk_end
-					if chunk_end >= bytes.size():
-						bucket ["stage"] = "save_write_flush_close"
-				else:
-					bucket ["active"] = false
-					bucket ["stage"] = "complete"
+				var file := FileAccess.open(_rewind_temp_path, mode)
+				if file == null:
+					_fail_rewind_snapshot_write(bucket, FileAccess.get_open_error())
+					continue
+				# Reopening a changed/truncated partial file must never create a hole.
+				if file.get_length() != file_offset:
+					file.close()
+					_fail_rewind_snapshot_write(bucket, ERR_FILE_CORRUPT)
+					continue
+				file.seek(file_offset)
+				file.store_buffer(chunk)
+				var write_error: int = file.get_error()
+				file.flush()
+				if write_error == OK:
+					write_error = file.get_error()
+				var written_length: int = file.get_length()
+				file.close()
+				if write_error != OK or written_length != chunk_end:
+					_fail_rewind_snapshot_write(bucket, write_error if write_error != OK else ERR_FILE_CANT_WRITE)
+					continue
+				bucket ["_write_file_started"] = true
+				bucket ["_write_file_offset"] = chunk_end
+				if chunk_end >= bytes.size():
+					bucket ["stage"] = "save_write_flush_close"
 
 			"save_write_flush_close":
 				var rewind_path: String = str(bucket.get("path", "")).strip_edges()
+				var bytes: PackedByteArray = bucket.get("_write_bytes", PackedByteArray())
+				var file := FileAccess.open(_rewind_temp_path, FileAccess.READ)
+				if file == null:
+					_fail_rewind_snapshot_write(bucket, FileAccess.get_open_error())
+					continue
+				var complete: bool = not bytes.is_empty() and file.get_length() == bytes.size()
+				file.close()
+				if not complete:
+					_fail_rewind_snapshot_write(bucket, ERR_FILE_CORRUPT)
+					continue
+				var rename_error: int = DirAccess.rename_absolute(_rewind_temp_path, rewind_path)
+				if rename_error != OK:
+					_fail_rewind_snapshot_write(bucket, rename_error, true)
+					continue
+				_rewind_temp_path = ""
 				bucket.erase("_write_bytes")
 				bucket.erase("_write_file_offset")
 				bucket.erase("_write_file_started")
 				bucket.erase("_write_file_chunk_size")
-				if rewind_snapshot_paths.is_empty() or str(rewind_snapshot_paths.back()) != rewind_path:
-					rewind_snapshot_paths.append(rewind_path)
+				bucket ["success"] = true
+				rewind_snapshot_paths.erase(rewind_path)
+				rewind_snapshot_paths.append(rewind_path)
 				bucket ["stage"] = "cleanup"
 
 			"cleanup":

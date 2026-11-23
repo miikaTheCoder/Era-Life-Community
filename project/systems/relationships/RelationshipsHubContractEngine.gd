@@ -968,6 +968,21 @@ func _switch_support_projection_requires_complete(
 			"control_switch_support_surface_packet"
 		) >= 0
 	)
+func _partner_group(actor: Person, context: Dictionary) -> Dictionary:
+	if RomanceContractEngine.can_meet_local_peer(actor):
+		return {
+			"row_kind": "actions", "title": "Meet someone", "subtitle": "", "columns": 2,
+			"actions": [
+				{"action_id": "meet_local_peer", "actor_id": actor.id, "gender": "Male", "label": "Meet a man"},
+				{"action_id": "meet_local_peer", "actor_id": actor.id, "gender": "Female", "label": "Meet a woman"}
+			]
+		}
+	var partner := _valid_partner(actor)
+	var ids: Array = [partner.id] if _person_is_canonically_living(partner) else []
+	return emit_group_contract(actor, "Partner", ids, "No current partner.",
+		{"premium": true, "columns": 2, "section_key": "partner"}, context)
+
+
 func _resident_relationship_group_quantum_count(
 	section: String
 ) -> int:
@@ -1220,32 +1235,7 @@ func _resident_relationship_group_quantum(
 		"partner":
 			match group_cursor:
 				0:
-					var partner_ids: Array = []
-					var partner: Person = _valid_partner(
-						actor
-					)
-
-					if _person_is_canonically_living(
-						partner
-					):
-						partner_ids.append(
-							int(
-								partner.id
-							)
-						)
-
-					return emit_group_contract(
-						actor,
-						"Partner",
-						partner_ids,
-						"No current partner.",
-						{
-							"premium": true,
-							"columns": 2,
-							"section_key": "partner"
-						},
-						context
-					)
+					return _partner_group(actor, context)
 				1:
 					return emit_group_contract(
 						actor,
@@ -2887,6 +2877,14 @@ func resolve_intent(
 			"ui_is_renderer_only": true
 		}
 	match action_id:
+		"meet_local_peer":
+			if gs == null or gs.romance_contract_engine == null or int(payload.get("actor_id", actor.id)) != actor.id:
+				return _fail("introduction_unavailable", payload)
+			var introduction: Dictionary = gs.romance_contract_engine.meet_local_peer(actor, str(payload.get("gender", "")))
+			if introduction.get("success", false):
+				var peer := _person_by_id(int(introduction.target_id))
+				introduction["profile_contract"] = emit_external_resident_profile_contract(actor, peer)
+			return introduction
 		"refresh", "open_hub", "change_section", "observe_partial":
 			return {
 				"success": true,
@@ -7594,34 +7592,8 @@ func _hub_group_contracts(
 			)
 
 		"partner":
-			var partner_ids: Array = []
-			var partner: Person = _valid_partner(
-				actor
-			)
-
-			if _person_is_canonically_living(
-				partner
-			):
-				partner_ids.append(
-					int(
-						partner.id
-					)
-				)
-
-			groups.append(
-				emit_group_contract(
-					actor,
-					"Partner",
-					partner_ids,
-					"No current partner.",
-					{
-						"premium": true,
-						"columns": 2,
-						"section_key": "partner"
-					},
-					context
-				)
-			)
+			groups.append(_partner_group(actor, context))
+			var partner := _valid_partner(actor)
 
 			if (
 				_person_is_canonically_living(
